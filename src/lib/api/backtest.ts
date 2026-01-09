@@ -55,15 +55,18 @@ export const runBacktest = (data: StockDataPoint[], initialBalance: number = 100
 
     if (!currentSMA20 || !currentSMA50 || !prevSMA20 || !prevSMA50) continue;
 
-    // BUY条件: ゴールデンクロス (SMA20 が SMA50 を下から上に抜ける) かつ RSI < 70 (買われすぎでない)
+    // BUY条件: 
+    // 1. ゴールデンクロス (SMA20 が SMA50 を下から上に抜ける) かつ RSI < 70
+    // 2. トレンド継続中 (SMA20 > SMA50) かつ 押し目買い (RSI < 60)
     const isGoldenCross = prevSMA20 <= prevSMA50 && currentSMA20 > currentSMA50;
+    const isTrendFollowing = currentSMA20 > currentSMA50 && currentRSI < 60;
     
-    // SELL条件: デッドクロス (SMA20 が SMA50 を上から下に抜ける) または RSI > 70
+    // SELL条件: デッドクロス (SMA20 が SMA50 を上から下に抜ける) または RSI > 75 (過熱)
     const isDeadCross = prevSMA20 >= prevSMA50 && currentSMA20 < currentSMA50;
     const isOverbought = currentRSI > 75;
 
     // エントリー (買い)
-    if (position === null && isGoldenCross && currentRSI < 70) {
+    if (position === null && (isGoldenCross || isTrendFollowing)) {
       const amount = balance / currentPrice;
       position = { entryPrice: currentPrice, amount };
       balance = 0; // 全額ベット
