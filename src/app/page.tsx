@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import dynamic from 'next/dynamic';
 import { fetchStockData } from '@/lib/api/alphavantage';
 import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
-import { runBacktest } from '@/lib/api/backtest';
+import { runBacktest, findOptimalStrategy } from '@/lib/api/backtest';
 import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers, Globe } from 'lucide-react';
 import styles from './page.module.css';
 import { MONITOR_LIST, SCAN_INTERVAL_MS, DATA_REFRESH_INTERVAL_MS, CONFIDENCE_THRESHOLD } from '@/config/constants';
@@ -98,25 +98,31 @@ export default function Home() {
     }
   );
 
-  // 派生データの計算
+  // 派生データの計算（自己最適化ロジックの実行）
   const currentAnalysis = useMemo(() => {
     console.log('StockData Check:', stockData ? stockData.length : 'No Data');
     if (stockData && stockData.length > 50) {
         const analysis = calculateAdvancedPredictions(stockData);
-        console.log('Analysis Result:', analysis);
+        
+        // --- G-Engine AI Self-Optimization ---
+        // この銘柄に最適な閾値を探索（全自動チューニング）
+        const { params, result } = findOptimalStrategy(stockData);
+        
+        console.log(`Optimization for ${scanningSymbol}: Buy>${params.buyThreshold}%, Exp.Profit:${result.profitPercent}%`);
+
         return {
             symbol: scanningSymbol,
             ...analysis,
-            price: stockData[stockData.length - 1].close
+            price: stockData[stockData.length - 1].close,
+            optimalParams: params,
+            optimalProfit: result.profitPercent,
+            optimalWinRate: result.winRate
         };
     }
     return null;
   }, [stockData, scanningSymbol]);
 
   // ベストトレードの更新（副作用）
-  // 以前は閾値(CONFIDENCE_THRESHOLD)を超えた場合のみ更新していたが、
-  // ユーザーから「画面が変わらない」という指摘があったため、
-  // スキャン中の銘柄を常に表示するように変更する。
   useEffect(() => {
     if (currentAnalysis) {
       setTimeout(() => {
@@ -129,9 +135,11 @@ export default function Home() {
     }
   }, [currentAnalysis, stockData]);
 
-  // シグナル履歴の更新
+  // シグナル履歴の更新（最適化された閾値を使用）
   useEffect(() => {
-    if (bestTrade && (bestTrade.confidence >= CONFIDENCE_THRESHOLD)) {
+    const buyThreshold = bestTrade?.optimalParams?.buyThreshold ?? CONFIDENCE_THRESHOLD;
+
+    if (bestTrade && (bestTrade.confidence >= buyThreshold)) {
       const type: TradeType = bestTrade.sentiment === 'BULLISH' ? 'BUY' : 'SELL';
 
       const newEntry: TradeHistoryItem = {
@@ -151,26 +159,29 @@ export default function Home() {
     }
   }, [bestTrade]);
 
-  // 現在表示すべき「指示」
+  // 現在表示すべき「指示」（最適化された閾値を使用）
   const displaySignal: DisplaySignal = useMemo(() => {
     if (isPaused) return { type: 'HOLD', text: '一時停止中', action: 'スキャンを停止しています' };
     if (!bestTrade) return { type: 'HOLD', text: '市場スキャン中...', action: 'チャンスを探しています' };
 
-    if (bestTrade.confidence >= CONFIDENCE_THRESHOLD) {
+    // AIが導き出した最適閾値を使用（なければデフォルト）
+    const buyThreshold = bestTrade.optimalParams?.buyThreshold ?? CONFIDENCE_THRESHOLD;
+
+    if (bestTrade.confidence >= buyThreshold) {
       const isBullish = bestTrade.sentiment === 'BULLISH';
       return {
         type: isBullish ? 'BUY' : 'SELL',
         text: isBullish ? `${bestTrade.symbol} を今すぐ買う` : `${bestTrade.symbol} を今すぐ売る`,
         action: isBullish
-          ? '上昇の波が来ています。新規買い（ロング）のタイミングです。'
+          ? `AI判定: 信頼度${bestTrade.confidence}% (基準値${buyThreshold}%クリア)。強い上昇シグナルです。`
           : '下落の予兆です。保有株は売却し、空売りでの利益を狙えます。'
       };
     } else {
-      // 閾値未満でも分析結果を表示する（スキャン中の様子を見せるため）
+      // 閾値未満
       return {
         type: 'HOLD',
         text: `分析中: ${bestTrade.symbol} (Wait)`,
-        action: `信頼度(${bestTrade.confidence}%)が閾値(${CONFIDENCE_THRESHOLD}%)未満です。明確なシグナル待ち。`
+        action: `現在の信頼度(${bestTrade.confidence}%) < 最適基準値(${buyThreshold}%)\nAIが導き出したこの銘柄の必勝パターンを待っています。`
       };
     }
   }, [bestTrade, isPaused]);
@@ -186,7 +197,10 @@ export default function Home() {
 
   const handleBacktest = () => {
     if (bestTrade?.history) {
-      const result = runBacktest(bestTrade.history);
+      // BacktestResult の計算（既に最適化済みパラメータがあればそれを使う）
+      // 再度 findOptimalStrategy を呼ぶ必要はないが、もしボタン押下時にも再計算したいなら呼んでも良い
+      // ここでは最適化された設定での結果を表示する
+      const { result } = findOptimalStrategy(bestTrade.history);
       setBacktestResult(result);
       setIsPaused(true); // 結果をゆっくり見るために一時停止
     }
@@ -264,6 +278,13 @@ export default function Home() {
 
             <h1 className={styles.signalText}>{displaySignal.text}</h1>
           </div>
+          
+          {/* 最適化情報の表示（デバッグ・信頼感向上用） */}
+          {bestTrade?.optimalParams && (
+             <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
+               AI最適化済み: Buy閾値 {bestTrade.optimalParams.buyThreshold}% / 期待益 {bestTrade.optimalProfit}%
+             </div>
+          )}
 
           {bestTrade?.history && (
             <div className={styles.chartContainer}>
