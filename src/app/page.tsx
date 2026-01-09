@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { fetchStockData } from '@/lib/api/alphavantage';
 import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
 import { runBacktest } from '@/lib/api/backtest';
-import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers, Globe } from 'lucide-react';
 import styles from './page.module.css';
 import { MONITOR_LIST, SCAN_INTERVAL_MS, DATA_REFRESH_INTERVAL_MS, CONFIDENCE_THRESHOLD } from '@/config/constants';
 import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListItem, BacktestResult, ChartSettings } from '@/types/market';
@@ -114,8 +114,11 @@ export default function Home() {
   }, [stockData, scanningSymbol]);
 
   // ベストトレードの更新（副作用）
+  // 以前は閾値(CONFIDENCE_THRESHOLD)を超えた場合のみ更新していたが、
+  // ユーザーから「画面が変わらない」という指摘があったため、
+  // スキャン中の銘柄を常に表示するように変更する。
   useEffect(() => {
-    if (currentAnalysis && currentAnalysis.confidence >= CONFIDENCE_THRESHOLD) {
+    if (currentAnalysis) {
       setTimeout(() => {
         setBestTrade({
           ...currentAnalysis,
@@ -162,9 +165,14 @@ export default function Home() {
           ? '上昇の波が来ています。新規買い（ロング）のタイミングです。'
           : '下落の予兆です。保有株は売却し、空売りでの利益を狙えます。'
       };
+    } else {
+      // 閾値未満でも分析結果を表示する（スキャン中の様子を見せるため）
+      return {
+        type: 'HOLD',
+        text: `分析中: ${bestTrade.symbol} (Wait)`,
+        action: `信頼度(${bestTrade.confidence}%)が閾値(${CONFIDENCE_THRESHOLD}%)未満です。明確なシグナル待ち。`
+      };
     }
-
-    return { type: 'HOLD', text: '異常なし', action: `現在 ${bestTrade?.symbol || '市場'} に明確なシグナルはありません。引き続き全銘柄を監視します。` };
   }, [bestTrade, isPaused]);
 
   const toggleWatchlist = (symbol: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') => {
@@ -457,6 +465,49 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* 全銘柄一覧パネル (Global Market List) */}
+        <div className={styles.allStocksContainer}>
+          <div className={styles.allStocksHeader}>
+            <Globe size={14} /> 全監視銘柄リスト (クリックで即分析)
+          </div>
+          <div className={styles.allStocksGrid}>
+            {MONITOR_LIST.map((symbol) => {
+              const isWatched = watchlist.some(w => w.symbol === symbol);
+              return (
+                <div key={symbol} className={styles.stockCard}>
+                  <div
+                    className={styles.stockName}
+                    onClick={() => {
+                      const idx = MONITOR_LIST.indexOf(symbol);
+                      if (idx >= 0) {
+                        setBacktestResult(null);
+                        setCurrentScanIndex(idx);
+                        setIsPaused(true);
+                      }
+                    }}
+                  >
+                    {symbol}
+                  </div>
+                  <button
+                    className={`${styles.addWatchButton} ${isWatched ? styles.watched : ''}`}
+                    onClick={() => {
+                      // priceやsentimentは仮または取得済みデータがあれば使うが、
+                      // ここではシンプルにリスト登録のみ行う（データは次回のスキャン等で更新される）
+                      // ただし toggleWatchlist は引数が必要なので、簡易的に現在の price などを渡すか、
+                      // 既存の toggleWatchlist を調整するか。
+                      // ここでは既存の toggleWatchlist を呼ぶために、
+                      // 現在表示中のデータがあればそれを、なければ0を入れておく（後で更新される想定）
+                      toggleWatchlist(symbol, 0, 'NEUTRAL');
+                    }}
+                  >
+                    <Star size={14} fill={isWatched ? "currentColor" : "none"} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {history.length > 0 && (
           <div className={styles.historySection}>

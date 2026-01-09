@@ -83,6 +83,8 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     const trendStrength = Math.min(Math.max(adxValue / 20, 0.5), 2.0); 
     // レンジ相場度合い (トレンドが強いほど下がる)
     const oscillatorStrength = Math.min(Math.max(25 / adxValue, 0.5), 2.0);
+    // トレンドが発生しているかのフラグ
+    const isTrending = trendStrength > 1.0;
 
     // ATRによるボラティリティリスク判定
     const atrPercent = (lastATR / lastPrice) * 100; // ATR比率（価格に対する変動率）
@@ -177,16 +179,28 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
 
     const finalScore = bullScore - bearScore;
 
-    // 信頼度の計算正規化
-    const maxPossibleScore = 100 * Math.max(trendStrength, oscillatorStrength);
-    let confidence = (Math.abs(finalScore) / maxPossibleScore) * 100;
+    // 信頼度の計算チューニング (ユーザーFB: 「低すぎる」に対応)
+    // 1. スコア正規化係数を緩和 (50 -> 35): 少ないシグナルでも反応しやすくする
+    // 2. ベース信頼度 (+20): 何もなくてもある程度の期待値を担保
+    let rawConfidence = (Math.abs(finalScore) / 35) * 100;
+
+    // トレンド強度による補正
+    if (isTrending) {
+        rawConfidence *= 1.3; // トレンド時は1.3倍に攻める
+    } else {
+        rawConfidence *= 0.85; // レンジ相場でも0.85倍までに留める (急激な低下を防ぐ)
+    }
     
-    // ボラティリティが高すぎる場合は信頼度を少し下げる（予測が外れやすいため）
+    // ボラティリティが高すぎる場合は信頼度を少し下げる
     if (isHighVolatility) {
-        confidence *= 0.8;
+        rawConfidence *= 0.8;
     }
 
-    confidence = Math.min(Math.round(confidence * 1.2), 99);
+    // ベース信頼度を加算 (全体的な底上げ)
+    rawConfidence += 20;
+
+    let confidence = Math.min(Math.round(rawConfidence), 98); // 100%は胡散臭いので98止め
+
     const sentiment: TradeSentiment = finalScore >= 0 ? 'BULLISH' : 'BEARISH';
 
     // 未来予測パスの生成 (14日分)
