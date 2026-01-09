@@ -1,6 +1,6 @@
 // AIが常に監視するエリート銘柄リスト
 export const MONITOR_LIST = [
-  'NVDA', // AI半導体。トレンドが明確。
+  'NVDA', 'AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'AMD'
 ];
 
 // スキャン設定
