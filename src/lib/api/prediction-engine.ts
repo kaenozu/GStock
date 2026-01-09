@@ -1,4 +1,4 @@
-import { SMA, EMA, RSI, MACD, ADX, BollingerBands } from 'technicalindicators';
+import { SMA, RSI, MACD, ADX, BollingerBands } from 'technicalindicators';
 import { StockDataPoint, AnalysisResult, TradeSentiment, ChartIndicators } from '@/types/market';
 
 /**

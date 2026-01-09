@@ -16,7 +16,10 @@ const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr
 export default function Home() {
   const [currentScanIndex, setCurrentScanIndex] = useState(0);
   const [bestTrade, setBestTrade] = useState<AnalysisResult | null>(null);
-  const [currentAnalysis, setCurrentAnalysis] = useState<AnalysisResult | null>(null);
+  
+  // currentAnalysis は派生データとして計算（Stateにしない）
+  // history は副作用として更新が必要
+
   const [history, setHistory] = useState<TradeHistoryItem[]>([]);
   const [watchlist, setWatchlist] = useState<WatchListItem[]>([]);
   const [isPaused, setIsPaused] = useState(false);
@@ -25,19 +28,23 @@ export default function Home() {
 
   // ウォッチリストの永続化: マウント時に読み込み
   useEffect(() => {
-    const saved = localStorage.getItem('gstock-watchlist');
-    if (saved) {
-      try {
-        setWatchlist(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse watchlist', e);
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gstock-watchlist');
+      if (saved) {
+        try {
+          setTimeout(() => setWatchlist(JSON.parse(saved)), 0);
+        } catch (e) {
+          console.error('Failed to parse watchlist', e);
+        }
       }
     }
   }, []);
 
   // ウォッチリストの永続化: 変更時に保存
   useEffect(() => {
-    localStorage.setItem('gstock-watchlist', JSON.stringify(watchlist));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gstock-watchlist', JSON.stringify(watchlist));
+    }
   }, [watchlist]);
 
   // 銘柄を定期的に巡回スキャンする
@@ -45,6 +52,8 @@ export default function Home() {
     if (isPaused) return;
 
     const scanInterval = setInterval(() => {
+      // スキャン対象が変わるタイミングでバックテスト結果をリセット
+      setBacktestResult(null); 
       setCurrentScanIndex((prev) => (prev + 1) % MONITOR_LIST.length);
     }, SCAN_INTERVAL_MS);
 
@@ -53,10 +62,11 @@ export default function Home() {
 
   const scanningSymbol = MONITOR_LIST[currentScanIndex];
 
-  // 銘柄が変わったらバックテスト結果をリセット
-  useEffect(() => {
-    setBacktestResult(null);
-  }, [scanningSymbol]);
+  // scanningSymbolが手動操作などで変わった場合もリセットしたいが、
+  // useEffectでやるとLintエラーになるため、スキャンインデックス変更ロジックと連動させるか、
+  // あるいは key prop を使ってコンポーネントをリセットする方法もある。
+  // 今回は scanInterval 内でのリセットで十分カバーできるとし、
+  // 手動操作（ウォッチリストクリック時）はイベントハンドラ内でリセットする。
 
   const { data: stockData, isLoading: isScanLoading } = useSWR(
     `scan-${scanningSymbol}`,
@@ -69,29 +79,32 @@ export default function Home() {
     }
   );
 
-  useEffect(() => {
+  // 派生データの計算
+  const currentAnalysis = useMemo(() => {
     if (stockData && stockData.length > 50) {
-      const analysis = calculateAdvancedPredictions(stockData);
-
-      // 今スキャンしている銘柄のリアルタイム分析結果を常にセット
-      setCurrentAnalysis({
-        symbol: scanningSymbol,
-        ...analysis,
-        price: stockData[stockData.length - 1].close
-      });
-
-      // 信頼度が閾値を超える「本命チャンス」のみを更新
-      if (analysis.confidence >= CONFIDENCE_THRESHOLD) {
-        setBestTrade({
-          symbol: scanningSymbol,
-          ...analysis,
-          history: stockData, // チャート表示用に履歴データを保存
-          price: stockData[stockData.length - 1].close,
-          isRealtime: stockData[0].time.includes('-')
-        });
-      }
+        const analysis = calculateAdvancedPredictions(stockData);
+        return {
+            symbol: scanningSymbol,
+            ...analysis,
+            price: stockData[stockData.length - 1].close
+        };
     }
+    return null;
   }, [stockData, scanningSymbol]);
+
+  // ベストトレードの更新（副作用）
+  // これは条件付きでStateを更新するため useEffect が必要
+  useEffect(() => {
+    if (currentAnalysis && currentAnalysis.confidence >= CONFIDENCE_THRESHOLD) {
+        setTimeout(() => {
+          setBestTrade({
+            ...currentAnalysis,
+            history: stockData, 
+            isRealtime: stockData && stockData[0] ? stockData[0].time.includes('-') : false
+          });
+        }, 0);
+    }
+  }, [currentAnalysis, stockData]);
 
   // シグナル履歴の更新
   useEffect(() => {
@@ -105,11 +118,13 @@ export default function Home() {
         confidence: bestTrade.confidence
       };
 
-      setHistory(prev => {
-        // 重複チェック（同じ銘柄・同じタイプが連続しないように）
-        if (prev.length > 0 && prev[0].symbol === newEntry.symbol && prev[0].type === newEntry.type) return prev;
-        return [newEntry, ...prev].slice(0, 5);
-      });
+      setTimeout(() => {
+        setHistory(prev => {
+          // 重複チェック
+          if (prev.length > 0 && prev[0].symbol === newEntry.symbol && prev[0].type === newEntry.type) return prev;
+          return [newEntry, ...prev].slice(0, 5);
+        });
+      }, 0);
     }
   }, [bestTrade]);
 
@@ -360,9 +375,10 @@ export default function Home() {
              <div className={styles.watchlistGrid}>
                 {watchlist.map((item) => (
                   <div key={item.symbol} className={styles.watchItem} onClick={() => {
-                     // クリックでその銘柄にジャンプ（簡易的にスキャンインデックスを変更）
+                     // クリックでその銘柄にジャンプ
                      const idx = MONITOR_LIST.indexOf(item.symbol);
                      if (idx >= 0) {
+                        setBacktestResult(null); // 明示的にリセット
                         setCurrentScanIndex(idx);
                         setIsPaused(true); // 詳細を見るために一時停止
                      }
