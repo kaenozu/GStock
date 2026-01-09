@@ -401,6 +401,56 @@
     color: #ef4444;
 }
 
+.liveAnalysisStrip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px 20px;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-cyan);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.liveLabel {
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.liveStats {
+    display: flex;
+    gap: 1.5rem;
+    font-weight: 600;
+}
+
+.loadingDot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent-cyan);
+    border-radius: 50%;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.4;
+        transform: scale(0.8);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+
+    100% {
+        opacity: 0.4;
+        transform: scale(0.8);
+    }
+}
+
 .autoFooter {
     padding: 2rem;
     text-align: center;

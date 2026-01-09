@@ -140,6 +140,12 @@ export const calculateAdvancedPredictions = (data: any[]) => {
         predictions,
         confidence: Math.round(confidence),
         sentiment: finalScore > 0 ? 'BULLISH' : 'BEARISH',
-        signals
+        signals,
+        stats: {
+            rsi: Math.round(lastRSI),
+            trend: lastSMA20 > lastSMA50 ? 'UP' : 'DOWN',
+            adx: Math.round(lastADX.adx),
+            price: lastPrice
+        }
     };
 };

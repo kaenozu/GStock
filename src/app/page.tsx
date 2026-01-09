@@ -24,25 +24,27 @@ export default function Home() {
   const [bestTrade, setBestTrade] = useState<any>(null);
   const [scanning, setScanning] = useState(true);
 
-  // 銘柄を高速（1.5秒ごと）に巡回スキャンする
+  const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
+
+  // 銘柄を15秒ごとに巡回スキャンする (API制限 U7X5ERM9E4UYO140 を守るため)
   useEffect(() => {
     const scanInterval = setInterval(() => {
       setCurrentScanIndex((prev) => (prev + 1) % MONITOR_LIST.length);
-    }, 1500); // 15秒から1.5秒へ超高速化
+    }, 15000); // 1.5秒から15秒へ調整。APIの健全性を優先。
 
     return () => clearInterval(scanInterval);
   }, []);
 
   const scanningSymbol = MONITOR_LIST[currentScanIndex];
 
-  const { data: stockData } = useSWR(
+  const { data: stockData, isLoading: isScanLoading } = useSWR(
     `scan-${scanningSymbol}`,
     () => fetchStockData(scanningSymbol),
     {
       revalidateOnFocus: false,
-      dedupingInterval: 60000, // 1分間はキャッシュを活用
+      dedupingInterval: 60000,
       focusThrottleInterval: 60000,
-      refreshInterval: 60000 // 各銘柄のデータ更新は1分ごと
+      refreshInterval: 300000 // データの鮮度は5分おきでOK
     }
   );
 
@@ -50,8 +52,15 @@ export default function Home() {
     if (stockData && stockData.length > 50) {
       const analysis = calculateAdvancedPredictions(stockData);
 
-      // 信頼度が70%を超えるか、現在のbestTradeより高い場合に更新
-      if (analysis.confidence > 70 || !bestTrade || analysis.confidence > bestTrade.confidence) {
+      // 今スキャンしている銘柄のリアルタイム分析結果を常にセット
+      setCurrentAnalysis({
+        symbol: scanningSymbol,
+        ...analysis,
+        price: stockData[stockData.length - 1].close
+      });
+
+      // 信頼度が65%を超える「本命チャンス」のみを更新
+      if (analysis.confidence >= 65) {
         setBestTrade({
           symbol: scanningSymbol,
           ...analysis,
@@ -126,6 +135,17 @@ export default function Home() {
 
       <main className={styles.mainContent}>
         <div className={`${styles.signalCard} ${styles[`signal${displaySignal.type}`]}`}>
+          {/* 現在分析中の生データ表示 */}
+          <div className={styles.liveAnalysisStrip}>
+            <div className={styles.liveLabel}>ANALYZING: {scanningSymbol}</div>
+            <div className={styles.liveStats}>
+              <span>RSI: {currentAnalysis?.stats?.rsi || '--'}</span>
+              <span>TREND: {currentAnalysis?.stats?.trend || '--'}</span>
+              <span>VOL: {currentAnalysis?.stats?.adx || '--'}</span>
+            </div>
+            {isScanLoading && <div className={styles.loadingDot}></div>}
+          </div>
+
           <div className={styles.signalLabel}>
             <Target size={14} style={{ marginRight: 8 }} />
             AI OPTIMIZED SIGNAL
