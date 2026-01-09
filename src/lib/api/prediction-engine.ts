@@ -5,12 +5,12 @@ import { StockDataPoint, AnalysisResult, TradeSentiment, ChartIndicators } from 
  * G-Engine Prime: アンサンブルテクニカル分析による高精度予測
  */
 export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisResult => {
-    if (data.length < 50) return { 
-        predictions: [], 
-        confidence: 0, 
-        sentiment: 'NEUTRAL', 
-        signals: [], 
-        stats: { rsi: 0, trend: 'NEUTRAL', adx: 0, price: 0 } 
+    if (data.length < 50) return {
+        predictions: [],
+        confidence: 0,
+        sentiment: 'NEUTRAL',
+        signals: [],
+        stats: { rsi: 0, trend: 'NEUTRAL', adx: 0, price: 0 }
     };
 
     const prices = data.map((d) => d.close);
@@ -126,15 +126,15 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
 
     predictions.push({ time: data[data.length - 1].time, value: lastPrice });
 
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 14; i++) {
         const nextDate = new Date(lastDate);
         nextDate.setDate(lastDate.getDate() + i);
         if (nextDate.getDay() === 0 || nextDate.getDay() === 6) continue;
 
         const dateStr = nextDate.toISOString().split('T')[0];
 
-        // スコアに基づく価格推移（ボラティリティを考慮）
-        const volatilityBase = lastPrice * 0.01; // 1% base volatility
+        // スコアに基づく価格推移（長期になるほど変動幅を抑制しつつトレンドを反映）
+        const volatilityBase = lastPrice * 0.008; // 少し抑えめに調整 (1% -> 0.8%)
         const change = (finalScore / 100) * volatilityBase * i;
 
         predictions.push({
@@ -147,7 +147,7 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     // technicalindicators の結果配列は、期間(period)分だけ元データより短い
     // data[0]...data[period-1] までは計算不能のため結果に含まれない
     // つまり、result[0] は data[period-1] に対応する
-    
+
     const chartIndicators: ChartIndicators = {
         sma20: sma20.map((val, i) => ({ time: data[i + 19].time, value: val })),
         sma50: sma50.map((val, i) => ({ time: data[i + 49].time, value: val })),

@@ -16,7 +16,7 @@ const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr
 export default function Home() {
   const [currentScanIndex, setCurrentScanIndex] = useState(0);
   const [bestTrade, setBestTrade] = useState<AnalysisResult | null>(null);
-  
+
   // currentAnalysis は派生データとして計算（Stateにしない）
   // history は副作用として更新が必要
 
@@ -53,7 +53,7 @@ export default function Home() {
 
     const scanInterval = setInterval(() => {
       // スキャン対象が変わるタイミングでバックテスト結果をリセット
-      setBacktestResult(null); 
+      setBacktestResult(null);
       setCurrentScanIndex((prev) => (prev + 1) % MONITOR_LIST.length);
     }, SCAN_INTERVAL_MS);
 
@@ -82,12 +82,12 @@ export default function Home() {
   // 派生データの計算
   const currentAnalysis = useMemo(() => {
     if (stockData && stockData.length > 50) {
-        const analysis = calculateAdvancedPredictions(stockData);
-        return {
-            symbol: scanningSymbol,
-            ...analysis,
-            price: stockData[stockData.length - 1].close
-        };
+      const analysis = calculateAdvancedPredictions(stockData);
+      return {
+        symbol: scanningSymbol,
+        ...analysis,
+        price: stockData[stockData.length - 1].close
+      };
     }
     return null;
   }, [stockData, scanningSymbol]);
@@ -96,13 +96,13 @@ export default function Home() {
   // これは条件付きでStateを更新するため useEffect が必要
   useEffect(() => {
     if (currentAnalysis && currentAnalysis.confidence >= CONFIDENCE_THRESHOLD) {
-        setTimeout(() => {
-          setBestTrade({
-            ...currentAnalysis,
-            history: stockData, 
-            isRealtime: stockData && stockData[0] ? stockData[0].time.includes('-') : false
-          });
-        }, 0);
+      setTimeout(() => {
+        setBestTrade({
+          ...currentAnalysis,
+          history: stockData,
+          isRealtime: stockData && stockData[0] ? stockData[0].time.includes('-') : false
+        });
+      }, 0);
     }
   }, [currentAnalysis, stockData]);
 
@@ -110,7 +110,7 @@ export default function Home() {
   useEffect(() => {
     if (bestTrade && (bestTrade.confidence >= CONFIDENCE_THRESHOLD)) {
       const type: TradeType = bestTrade.sentiment === 'BULLISH' ? 'BUY' : 'SELL';
-      
+
       const newEntry: TradeHistoryItem = {
         symbol: bestTrade.symbol || '',
         type,
@@ -178,7 +178,7 @@ export default function Home() {
 
         <div className={styles.scanningStatus}>
           {isPaused ? <Pause size={16} className={styles.pausedDot} /> : <Search size={16} className={styles.scanIcon} />}
-          <span>{isPaused ? 'PAUSED' : `SCANNING: ${scanningSymbol}`}</span>
+          <span>{isPaused ? '一時停止' : `市場監視中: ${scanningSymbol}`}</span>
           {!isPaused && (
             <div className={styles.scanProgress}>
               <div className={styles.scanProgressBar} style={{ width: `${((currentScanIndex + 1) / MONITOR_LIST.length) * 100}%` }}></div>
@@ -186,7 +186,7 @@ export default function Home() {
           )}
         </div>
 
-        <button 
+        <button
           onClick={() => setIsPaused(!isPaused)}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
         >
@@ -195,7 +195,7 @@ export default function Home() {
 
         <div className={styles.liveIndicator}>
           <div className={`${styles.liveDot} ${isPaused ? styles.pausedDot : ''}`}></div>
-          <span>ULTRA AUTOMATED</span>
+          <span>全自動モード</span>
         </div>
       </div>
 
@@ -203,21 +203,21 @@ export default function Home() {
         <div className={`${styles.signalCard} ${styles[`signal${displaySignal.type}`]}`}>
           {/* 現在分析中の生データ表示 */}
           <div className={styles.liveAnalysisStrip}>
-            <div className={styles.liveLabel}>ANALYZING: {scanningSymbol}</div>
+            <div className={styles.liveLabel}>現在分析中: {scanningSymbol}</div>
             <div className={styles.liveStats}>
               <span>RSI: {currentAnalysis?.stats?.rsi || '--'}</span>
               <span>TREND: {currentAnalysis?.stats?.trend || '--'}</span>
               <span>VOL: {currentAnalysis?.stats?.adx || '--'}</span>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => currentAnalysis && toggleWatchlist(scanningSymbol, currentAnalysis.stats.price, currentAnalysis.sentiment)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', marginLeft: 'auto', display: 'flex', alignItems: 'center' }}
             >
-              <Star 
-                size={18} 
-                fill={isInWatchlist ? "#fbbf24" : "none"} 
-                color={isInWatchlist ? "#fbbf24" : "var(--text-muted)"} 
+              <Star
+                size={18}
+                fill={isInWatchlist ? "#fbbf24" : "none"}
+                color={isInWatchlist ? "#fbbf24" : "var(--text-muted)"}
               />
             </button>
 
@@ -226,7 +226,7 @@ export default function Home() {
 
           <div className={styles.signalLabel}>
             <Target size={14} style={{ marginRight: 8 }} />
-            AI OPTIMIZED SIGNAL
+            AI最適化シグナル
           </div>
 
           <div className={styles.signalDisplay}>
@@ -240,28 +240,28 @@ export default function Home() {
           {bestTrade?.history && !isPaused && (
             <div className={styles.chartContainer}>
               <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
-                 <button 
-                   onClick={() => setShowIndicators(!showIndicators)}
-                   style={{ 
-                     background: showIndicators ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)', 
-                     color: showIndicators ? '#000' : '#fff',
-                     border: 'none', 
-                     borderRadius: '4px', 
-                     padding: '4px 8px', 
-                     cursor: 'pointer',
-                     fontSize: '0.7rem',
-                     display: 'flex',
-                     alignItems: 'center',
-                     gap: '4px',
-                     fontWeight: 600
-                   }}
-                 >
-                   <Layers size={12} /> {showIndicators ? 'HIDE INDICATORS' : 'SHOW INDICATORS'}
-                 </button>
+                <button
+                  onClick={() => setShowIndicators(!showIndicators)}
+                  style={{
+                    background: showIndicators ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)',
+                    color: showIndicators ? '#000' : '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    cursor: 'pointer',
+                    fontSize: '0.7rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: 600
+                  }}
+                >
+                  <Layers size={12} /> {showIndicators ? 'インジケーター非表示' : 'インジケーター表示'}
+                </button>
               </div>
-              <StockChart 
-                data={bestTrade.history} 
-                predictionData={bestTrade.predictions} 
+              <StockChart
+                data={bestTrade.history}
+                predictionData={bestTrade.predictions}
                 indicators={showIndicators ? bestTrade.chartIndicators : undefined}
               />
             </div>
@@ -270,66 +270,66 @@ export default function Home() {
           <p className={styles.actionInstruction}>{displaySignal.action}</p>
 
           {!backtestResult && bestTrade && (
-             <button 
-                onClick={handleBacktest}
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  color: 'var(--accent-cyan)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  margin: '0 auto 1.5rem',
-                  fontSize: '0.8rem',
-                  fontWeight: 600
-                }}
-             >
-                <FlaskConical size={14} /> バックテストを実行 (Beta)
-             </button>
+            <button
+              onClick={handleBacktest}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '8px 16px',
+                borderRadius: '20px',
+                color: 'var(--accent-cyan)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                margin: '0 auto 1.5rem',
+                fontSize: '0.8rem',
+                fontWeight: 600
+              }}
+            >
+              <FlaskConical size={14} /> バックテストを実行 (Beta)
+            </button>
           )}
 
           {backtestResult && (
-             <div style={{
-                background: 'rgba(0,0,0,0.3)',
-                padding: '1.5rem',
-                borderRadius: '16px',
-                marginBottom: '2rem',
-                border: '1px solid var(--accent-cyan)',
-                width: '100%'
-             }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                   <FlaskConical size={14} /> BACKTEST RESULTS (Last 100 Days)
+            <div style={{
+              background: 'rgba(0,0,0,0.3)',
+              padding: '1.5rem',
+              borderRadius: '16px',
+              marginBottom: '2rem',
+              border: '1px solid var(--accent-cyan)',
+              width: '100%'
+            }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FlaskConical size={14} /> バックテスト結果 (過去100日)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>純利益</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: backtestResult.profit >= 0 ? '#10b981' : '#ef4444' }}>
+                    {backtestResult.profit >= 0 ? '+' : ''}{backtestResult.profitPercent}%
+                  </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                   <div>
-                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>TOTAL PROFIT</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: backtestResult.profit >= 0 ? '#10b981' : '#ef4444' }}>
-                         {backtestResult.profit >= 0 ? '+' : ''}{backtestResult.profitPercent}%
-                      </div>
-                   </div>
-                   <div>
-                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>WIN RATE</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>
-                         {backtestResult.winRate}%
-                      </div>
-                   </div>
-                   <div>
-                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>TRADES</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
-                         {backtestResult.trades}
-                      </div>
-                   </div>
-                   <div>
-                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>FINAL BALANCE</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
-                         ${backtestResult.finalBalance.toLocaleString()}
-                      </div>
-                   </div>
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>勝率</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>
+                    {backtestResult.winRate}%
+                  </div>
                 </div>
-             </div>
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>トレード数</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
+                    {backtestResult.trades}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>最終残高</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
+                    ${backtestResult.finalBalance.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {isPaused && !backtestResult && (
@@ -353,7 +353,7 @@ export default function Home() {
           )}
 
           <div className={styles.confidenceMeter}>
-            <div className={styles.meterText}>AI CONFIDENCE: {bestTrade?.confidence || 0}%</div>
+            <div className={styles.meterText}>AI信頼度: {bestTrade?.confidence || 0}%</div>
             <div className={styles.meterTrack}>
               <div
                 className={styles.meterBar}
@@ -365,34 +365,34 @@ export default function Home() {
             </div>
           </div>
         </div>
-        
+
         {/* ウォッチリストセクション */}
         {watchlist.length > 0 && (
           <div className={styles.watchlistContainer}>
-             <div className={styles.watchlistTitle}>
-                <Star size={12} fill="currentColor" /> WATCHLIST
-             </div>
-             <div className={styles.watchlistGrid}>
-                {watchlist.map((item) => (
-                  <div key={item.symbol} className={styles.watchItem} onClick={() => {
-                     // クリックでその銘柄にジャンプ
-                     const idx = MONITOR_LIST.indexOf(item.symbol);
-                     if (idx >= 0) {
-                        setBacktestResult(null); // 明示的にリセット
-                        setCurrentScanIndex(idx);
-                        setIsPaused(true); // 詳細を見るために一時停止
-                     }
-                  }}>
-                    <div className={styles.watchSymbol}>{item.symbol}</div>
-                    <div className={styles.watchStats}>
-                       <span>${item.price.toFixed(2)}</span>
-                       <span className={item.sentiment === 'BULLISH' ? styles.bullText : item.sentiment === 'BEARISH' ? styles.bearText : ''}>
-                          {item.sentiment === 'BULLISH' ? '▲' : item.sentiment === 'BEARISH' ? '▼' : '-'}
-                       </span>
-                    </div>
+            <div className={styles.watchlistTitle}>
+              <Star size={12} fill="currentColor" /> ウォッチリスト
+            </div>
+            <div className={styles.watchlistGrid}>
+              {watchlist.map((item) => (
+                <div key={item.symbol} className={styles.watchItem} onClick={() => {
+                  // クリックでその銘柄にジャンプ
+                  const idx = MONITOR_LIST.indexOf(item.symbol);
+                  if (idx >= 0) {
+                    setBacktestResult(null); // 明示的にリセット
+                    setCurrentScanIndex(idx);
+                    setIsPaused(true); // 詳細を見るために一時停止
+                  }
+                }}>
+                  <div className={styles.watchSymbol}>{item.symbol}</div>
+                  <div className={styles.watchStats}>
+                    <span>${item.price.toFixed(2)}</span>
+                    <span className={item.sentiment === 'BULLISH' ? styles.bullText : item.sentiment === 'BEARISH' ? styles.bearText : ''}>
+                      {item.sentiment === 'BULLISH' ? '▲' : item.sentiment === 'BEARISH' ? '▼' : '-'}
+                    </span>
                   </div>
-                ))}
-             </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -420,17 +420,17 @@ export default function Home() {
         {bestTrade && !isPaused && (
           <div className={styles.tradeDetailInfo}>
             <div className={styles.detailItem}>
-              <span>TARGET</span>
+              <span>銘柄</span>
               <strong>{bestTrade.symbol}</strong>
             </div>
             <div className={styles.detailItem}>
-              <span>PRICE</span>
+              <span>現在価格</span>
               <strong>${(bestTrade.price || 0).toFixed(2)}</strong>
             </div>
             <div className={styles.detailItem}>
-              <span>QA</span>
+              <span>データ品質</span>
               <span className={bestTrade.isRealtime ? styles.realBadge : styles.simBadge}>
-                {bestTrade.isRealtime ? 'REALTIME' : 'SIMULATED'}
+                {bestTrade.isRealtime ? 'リアルタイム' : 'シミュレーション'}
               </span>
             </div>
           </div>
