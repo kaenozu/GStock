@@ -1,0 +1,442 @@
+.autoContainer {
+    min-height: 100vh;
+    background: #05070a;
+    display: flex;
+    flex-direction: column;
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    position: relative;
+}
+
+/* 動的背景の演出 */
+.backgroundGlow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80vw;
+    height: 80vw;
+    filter: blur(120px);
+    opacity: 0.15;
+    border-radius: 50%;
+    z-index: 0;
+    transition: all 2s ease;
+}
+
+.bgBUY {
+    background: radial-gradient(circle, #10b981 0%, transparent 70%);
+}
+
+.bgSELL {
+    background: radial-gradient(circle, #ef4444 0%, transparent 70%);
+}
+
+.bgHOLD {
+    background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
+}
+
+.topBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(20px);
+    z-index: 10;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 900;
+    font-size: 1.25rem;
+    letter-spacing: 3px;
+    color: var(--accent-cyan);
+    text-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+
+.scanningStatus {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 6px 16px;
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.scanIcon {
+    color: var(--accent-cyan);
+    animation: rotate 4s linear infinite;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.scanProgress {
+    width: 60px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.scanProgressBar {
+    height: 100%;
+    background: var(--accent-cyan);
+    transition: width 0.5s ease;
+}
+
+.liveIndicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.liveDot {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #10b981;
+}
+
+.mainContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    gap: 4rem;
+    z-index: 5;
+}
+
+.signalCard {
+    width: 100%;
+    max-width: 700px;
+    padding: 4rem;
+    border-radius: 48px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(40px);
+    transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: cardPulse 4s ease-in-out infinite;
+}
+
+@keyframes cardPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    }
+
+    50% {
+        transform: scale(1.01);
+        box-shadow: 0 0 60px rgba(255, 255, 255, 0.05);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    }
+}
+
+.signalBUY {
+    border-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 80px rgba(16, 185, 129, 0.1);
+}
+
+.signalSELL {
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 80px rgba(239, 68, 68, 0.1);
+}
+
+.signalHOLD {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 40px rgba(255, 255, 255, 0.05);
+}
+
+.signalLabel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    margin-bottom: 2rem;
+}
+
+.signalDisplay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.signalIcon {
+    filter: drop-shadow(0 0 20px currentColor);
+}
+
+.signalBUY .signalIcon {
+    color: #10b981;
+}
+
+.signalSELL .signalIcon {
+    color: #ef4444;
+}
+
+.signalHOLD .signalIcon {
+    color: #94a3b8;
+}
+
+.signalText {
+    font-size: 5rem;
+    font-weight: 900;
+    margin: 0;
+    line-height: 1;
+    letter-spacing: -2px;
+}
+
+.signalBUY .signalText {
+    color: #10b981;
+    text-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+}
+
+.signalSELL .signalText {
+    color: #ef4444;
+    text-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+}
+
+.signalHOLD .signalText {
+    color: #fff;
+    opacity: 0.9;
+}
+
+.actionInstruction {
+    font-size: 1.2rem;
+    color: #94a3b8;
+    max-width: 450px;
+    margin: 0 auto 2.5rem;
+}
+
+.reasoningSection {
+    margin-bottom: 2.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1.5rem;
+    border-radius: 20px;
+    text-align: left;
+}
+
+.reasoningTitle {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid var(--accent-cyan);
+}
+
+.reasoningList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reasoningItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.reasonIcon {
+    color: var(--accent-cyan);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.confidenceMeter {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1.5rem;
+    border-radius: 20px;
+}
+
+.meterText {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+}
+
+.meterTrack {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.meterBar {
+    height: 100%;
+    background: var(--accent-cyan);
+    box-shadow: 0 0 10px var(--accent-cyan);
+    transition: width 1s ease;
+}
+
+.tradeDetailInfo {
+    display: flex;
+    gap: 3rem;
+    padding: 1.5rem 3rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.detailItem {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detailItem span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.detailItem strong {
+    font-size: 1.2rem;
+    color: #fff;
+}
+
+.realBadge {
+    color: #10b981;
+}
+
+.simBadge {
+    color: var(--accent-cyan);
+}
+
+.historySection {
+    width: 100%;
+    max-width: 800px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 24px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.historyTitle {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.historyList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.historyItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    font-size: 0.875rem;
+    transition: all 0.3s;
+}
+
+.historyItem:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.historyTag {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.tagBUY {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.tagSELL {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.autoFooter {
+    padding: 2rem;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    z-index: 10;
+}
+
+.footerNote {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.loadingState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(6, 182, 212, 0.1);
+    border-top-color: var(--accent-cyan);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
