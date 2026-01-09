@@ -9,9 +9,13 @@ export const MONITOR_LIST = [
   'COIN', // 暗号資産関連。
   'MSFT', // AI/クラウドの巨人。
   '6758.T', // ソニー。グローバルエンタメ。
+  'GOOGL', // 検索/広告の巨人。
+  'AMZN', // EC/クラウド。
+  'META', // SNS/メタバース。
+  'AMD', // 半導体。NVDAの対抗馬。
 ];
 
 // スキャン設定
-export const SCAN_INTERVAL_MS = 15000; // 1銘柄あたりの滞在時間
+export const SCAN_INTERVAL_MS = 5000; // 高速回転
 export const DATA_REFRESH_INTERVAL_MS = 300000; // データの再取得間隔 (5分)
-export const CONFIDENCE_THRESHOLD = 65; // シグナルとして採用する確信度の閾値
+export const CONFIDENCE_THRESHOLD = 10; // ほぼ全てのシグナルを通す

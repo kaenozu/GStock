@@ -9,7 +9,7 @@ import { runBacktest } from '@/lib/api/backtest';
 import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers, Globe } from 'lucide-react';
 import styles from './page.module.css';
 import { MONITOR_LIST, SCAN_INTERVAL_MS, DATA_REFRESH_INTERVAL_MS, CONFIDENCE_THRESHOLD } from '@/config/constants';
-import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListItem, BacktestResult } from '@/types/market';
+import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListItem, BacktestResult, ChartSettings } from '@/types/market';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -25,16 +25,34 @@ export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
   const [showIndicators, setShowIndicators] = useState(false);
+  
+  const [chartSettings, setChartSettings] = useState<ChartSettings>({
+    showSMA20: true,
+    showSMA50: true,
+    showBollingerBands: true,
+    showPredictions: true,
+  });
 
-  // ウォッチリストの永続化: マウント時に読み込み
+  // 永続化データの読み込み
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('gstock-watchlist');
-      if (saved) {
+      // Watchlist
+      const savedWatchlist = localStorage.getItem('gstock-watchlist');
+      if (savedWatchlist) {
         try {
-          setTimeout(() => setWatchlist(JSON.parse(saved)), 0);
+          setTimeout(() => setWatchlist(JSON.parse(savedWatchlist)), 0);
         } catch (e) {
           console.error('Failed to parse watchlist', e);
+        }
+      }
+      
+      // History
+      const savedHistory = localStorage.getItem('gstock-history');
+      if (savedHistory) {
+        try {
+          setTimeout(() => setHistory(JSON.parse(savedHistory)), 0);
+        } catch (e) {
+          console.error('Failed to parse history', e);
         }
       }
     }
@@ -46,6 +64,13 @@ export default function Home() {
       localStorage.setItem('gstock-watchlist', JSON.stringify(watchlist));
     }
   }, [watchlist]);
+
+  // 履歴の永続化: 変更時に保存
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gstock-history', JSON.stringify(history));
+    }
+  }, [history]);
 
   // 銘柄を定期的に巡回スキャンする
   useEffect(() => {
@@ -62,12 +87,6 @@ export default function Home() {
 
   const scanningSymbol = MONITOR_LIST[currentScanIndex];
 
-  // scanningSymbolが手動操作などで変わった場合もリセットしたいが、
-  // useEffectでやるとLintエラーになるため、スキャンインデックス変更ロジックと連動させるか、
-  // あるいは key prop を使ってコンポーネントをリセットする方法もある。
-  // 今回は scanInterval 内でのリセットで十分カバーできるとし、
-  // 手動操作（ウォッチリストクリック時）はイベントハンドラ内でリセットする。
-
   const { data: stockData, isLoading: isScanLoading } = useSWR(
     `scan-${scanningSymbol}`,
     () => fetchStockData(scanningSymbol),
@@ -81,20 +100,19 @@ export default function Home() {
 
   // 派生データの計算
   const currentAnalysis = useMemo(() => {
+    console.log('StockData Check:', stockData ? stockData.length : 'No Data');
     if (stockData && stockData.length > 50) {
-      const analysis = calculateAdvancedPredictions(stockData);
-      return {
-        symbol: scanningSymbol,
-        ...analysis,
-        price: stockData[stockData.length - 1].close
-      };
+        const analysis = calculateAdvancedPredictions(stockData);
+        console.log('Analysis Result:', analysis);
+        return {
+            symbol: scanningSymbol,
+            ...analysis,
+            price: stockData[stockData.length - 1].close
+        };
     }
     return null;
   }, [stockData, scanningSymbol]);
 
-  // ベストトレードの更新（副作用）
-  // これは条件付きでStateを更新するため useEffect が必要
-  // マニュアルモード(isPaused)時は、信頼度にかかわらず選択した銘柄を表示する
   // ベストトレードの更新（副作用）
   // 以前は閾値(CONFIDENCE_THRESHOLD)を超えた場合のみ更新していたが、
   // ユーザーから「画面が変わらない」という指摘があったため、
@@ -247,32 +265,74 @@ export default function Home() {
             <h1 className={styles.signalText}>{displaySignal.text}</h1>
           </div>
 
-          {bestTrade?.history && !isPaused && (
+          {bestTrade?.history && (
             <div className={styles.chartContainer}>
-              <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
-                <button
-                  onClick={() => setShowIndicators(!showIndicators)}
-                  style={{
-                    background: showIndicators ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)',
-                    color: showIndicators ? '#000' : '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '4px 8px',
-                    cursor: 'pointer',
-                    fontSize: '0.7rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontWeight: 600
-                  }}
-                >
-                  <Layers size={12} /> {showIndicators ? 'インジケーター非表示' : 'インジケーター表示'}
-                </button>
+              <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                 <button 
+                   onClick={() => setShowIndicators(!showIndicators)}
+                   style={{ 
+                     background: showIndicators ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)', 
+                     color: showIndicators ? '#000' : '#fff',
+                     border: 'none', 
+                     borderRadius: '4px', 
+                     padding: '4px 8px', 
+                     cursor: 'pointer',
+                     fontSize: '0.7rem',
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '4px',
+                     fontWeight: 600
+                   }}
+                 >
+                   <Layers size={12} /> {showIndicators ? '設定を隠す' : 'チャート設定'}
+                 </button>
+                 
+                 {showIndicators && (
+                   <div style={{
+                     background: 'rgba(0,0,0,0.8)',
+                     border: '1px solid rgba(255,255,255,0.1)',
+                     borderRadius: '8px',
+                     padding: '8px',
+                     backdropFilter: 'blur(4px)',
+                     minWidth: '150px'
+                   }}>
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '4px', cursor: 'pointer' }}>
+                       <input 
+                         type="checkbox" 
+                         checked={chartSettings.showSMA20} 
+                         onChange={(e) => setChartSettings(prev => ({ ...prev, showSMA20: e.target.checked }))}
+                       /> SMA 20 (黄)
+                     </label>
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '4px', cursor: 'pointer' }}>
+                       <input 
+                         type="checkbox" 
+                         checked={chartSettings.showSMA50} 
+                         onChange={(e) => setChartSettings(prev => ({ ...prev, showSMA50: e.target.checked }))}
+                       /> SMA 50 (青)
+                     </label>
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '4px', cursor: 'pointer' }}>
+                       <input 
+                         type="checkbox" 
+                         checked={chartSettings.showBollingerBands} 
+                         onChange={(e) => setChartSettings(prev => ({ ...prev, showBollingerBands: e.target.checked }))}
+                       /> ボリンジャーバンド
+                     </label>
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#cbd5e1', cursor: 'pointer' }}>
+                       <input 
+                         type="checkbox" 
+                         checked={chartSettings.showPredictions} 
+                         onChange={(e) => setChartSettings(prev => ({ ...prev, showPredictions: e.target.checked }))}
+                       /> AI予測ライン (水色)
+                     </label>
+                   </div>
+                 )}
               </div>
-              <StockChart
-                data={bestTrade.history}
-                predictionData={bestTrade.predictions}
-                indicators={showIndicators ? bestTrade.chartIndicators : undefined}
+              <StockChart 
+                data={bestTrade.history} 
+                predictionData={bestTrade.predictions} 
+                indicators={bestTrade.chartIndicators}
+                markers={backtestResult?.markers}
+                settings={chartSettings}
               />
             </div>
           )}

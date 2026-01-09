@@ -1,10 +1,13 @@
-import { SMA, RSI, MACD, ADX, BollingerBands } from 'technicalindicators';
+import { SMA, RSI, MACD, ADX, BollingerBands, ATR } from 'technicalindicators';
 import { StockDataPoint, AnalysisResult, TradeSentiment, ChartIndicators } from '@/types/market';
 
 /**
  * G-Engine Prime: アンサンブルテクニカル分析による高精度予測
+ * 
+ * 複数のテクニカル指標を動的な重み付けで統合し、市場環境（トレンド/レンジ）に適応した予測を行う。
  */
 export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisResult => {
+    // データ不足時の早期リターン
     if (data.length < 50) return {
         predictions: [],
         confidence: 0,
@@ -14,13 +17,17 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     };
 
     const prices = data.map((d) => d.close);
+    const highPrices = data.map(d => d.high);
+    const lowPrices = data.map(d => d.low);
     const closingPrices = prices;
 
-    // 1. トレンド分析 (Moving Averages)
+    // --- 1. テクニカル指標の計算 ---
+
+    // トレンド (Moving Averages)
     const sma20 = SMA.calculate({ period: 20, values: closingPrices });
     const sma50 = SMA.calculate({ period: 50, values: closingPrices });
 
-    // 2. モメンタム分析 (RSI, MACD)
+    // モメンタム (RSI, MACD)
     const rsi = RSI.calculate({ period: 14, values: closingPrices });
     const macd = MACD.calculate({
         values: closingPrices,
@@ -31,10 +38,10 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
         SimpleMASignal: false,
     });
 
-    // 3. ボラティリティ & 強度分析 (ADX, Bollinger Bands)
+    // ボラティリティ & 強度 (ADX, Bollinger Bands, ATR)
     const adx = ADX.calculate({
-        high: data.map(d => d.high),
-        low: data.map(d => d.low),
+        high: highPrices,
+        low: lowPrices,
         close: closingPrices,
         period: 14
     });
@@ -45,6 +52,14 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
         stdDev: 2
     });
 
+    const atr = ATR.calculate({
+        high: highPrices,
+        low: lowPrices,
+        close: closingPrices,
+        period: 14
+    });
+
+    // 最新データの抽出
     const lastPrice = closingPrices[closingPrices.length - 1];
     const lastRSI = rsi[rsi.length - 1];
     const lastMACD = macd[macd.length - 1];
@@ -52,65 +67,115 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     const lastSMA20 = sma20[sma20.length - 1];
     const lastSMA50 = sma50[sma50.length - 1];
     const lastBB = bb[bb.length - 1];
+    const lastATR = atr[atr.length - 1];
+    
+    const prevMACD = macd[macd.length - 2]; 
+
+    // --- 2. スコアリングロジック ---
 
     let bullScore = 0;
     let bearScore = 0;
     const signals: string[] = [];
 
-    // トレンド: 移動平均の並び (パーフェクトオーダー)
+    // 環境認識: ADXによるトレンド強度の判定
+    const adxValue = lastADX.adx;
+    // トレンド相場度合い (0.5 ~ 2.0)
+    const trendStrength = Math.min(Math.max(adxValue / 20, 0.5), 2.0); 
+    // レンジ相場度合い (トレンドが強いほど下がる)
+    const oscillatorStrength = Math.min(Math.max(25 / adxValue, 0.5), 2.0);
+    // トレンドが発生しているかのフラグ
+    const isTrending = trendStrength > 1.0;
+
+    // ATRによるボラティリティリスク判定
+    const atrPercent = (lastATR / lastPrice) * 100; // ATR比率（価格に対する変動率）
+    const isHighVolatility = atrPercent > 3.0; // 3%以上の変動は高ボラティリティと定義
+
+    if (isHighVolatility) {
+        signals.push(`高ボラティリティ(ATR:${atrPercent.toFixed(1)}%)。リスク管理を徹底してください`);
+    }
+
+    // A. トレンド分析 (SMA) [順張り]
     if (lastPrice > lastSMA20) {
-        bullScore += 15;
-        signals.push("価格が短期移動平均(SMA20)の上方で推移");
+        bullScore += 15 * trendStrength;
+        signals.push("価格が短期SMA(20)の上方で推移");
     } else {
-        bearScore += 15;
-        signals.push("価格が短期移動平均(SMA20)を下回る弱気局面");
+        bearScore += 15 * trendStrength;
+        signals.push("価格が短期SMA(20)を下回る弱気局面");
     }
 
     if (lastSMA20 > lastSMA50) {
-        bullScore += 15;
-        signals.push("移動平均線が上昇トレンドを形成(SMA20>50)");
+        bullScore += 15 * trendStrength;
+        signals.push("SMAゴールデンクロス形成中 (上昇トレンド)");
     } else {
-        bearScore += 15;
-        signals.push("移動平均線が下降トレンドを形成(SMA20<50)");
+        bearScore += 15 * trendStrength;
+        signals.push("SMAデッドクロス形成中 (下降トレンド)");
     }
 
-    // モメンタム: RSI
-    if (lastRSI > 50) bullScore += 10; else bearScore += 10;
-    if (lastRSI < 35) {
-        bullScore += 20;
-        signals.push("RSIが35%を割り込み、歴史的な売られすぎ水準に到達");
+    // B. モメンタム分析 (RSI) [逆張り/過熱感]
+    if (lastRSI > 50) {
+        bullScore += 10 * oscillatorStrength; 
+    } else {
+        bearScore += 10 * oscillatorStrength;
     }
-    if (lastRSI > 65) {
-        bearScore += 20;
-        signals.push("RSIが65%を超え、短期的な過熱感がピークに達しています");
+    
+    if (lastRSI < 30) {
+        // 売られすぎ: トレンド相場では逆張り危険だが、短期反発の可能性大
+        bullScore += 25 * oscillatorStrength;
+        signals.push(`RSI(${Math.round(lastRSI)})が売られすぎ水準。自律反発の可能性`);
+    } else if (lastRSI > 70) {
+        // 買われすぎ
+        bearScore += 25 * oscillatorStrength;
+        signals.push(`RSI(${Math.round(lastRSI)})が買われすぎ水準。調整下落に警戒`);
     }
 
-    // MACD
+    // C. MACD分析 [順張り/モメンタム加速]
+    const currentHist = lastMACD.histogram || 0;
+    const prevHist = prevMACD?.histogram || 0;
+    const isHistGrowing = Math.abs(currentHist) > Math.abs(prevHist);
+
     if (lastMACD.MACD && lastMACD.signal && lastMACD.MACD > lastMACD.signal) {
-        bullScore += 15;
-        signals.push("MACDがゴールデンクロスを維持し上昇の勢いを示唆");
+        let score = 15;
+        if (currentHist > 0 && isHistGrowing) {
+             score += 5; 
+             signals.push("MACD上昇モメンタムが加速中");
+        }
+        bullScore += score * trendStrength;
     } else {
-        bearScore += 15;
-        signals.push("MACDがデッドクロスを維持し下落バイアスが継続");
+        let score = 15;
+        if (currentHist < 0 && isHistGrowing) {
+            score += 5; 
+            signals.push("MACD下落モメンタムが加速中");
+        }
+        bearScore += score * trendStrength;
     }
 
-    // ボリンジャーバンド
+    // D. ボリンジャーバンド [逆張り/ボラティリティ]
+    const bandWidth = (lastBB.upper - lastBB.lower) / lastSMA20;
+    const isSqueeze = bandWidth < 0.05; 
+
+    if (isSqueeze) {
+        signals.push("ボリンジャーバンド収縮(スクイーズ)。エネルギー充填中");
+    }
+
     if (lastPrice > lastBB.upper) {
-        bearScore += 10;
-        signals.push("ボリンジャーバンドの上限を突破。反落のリスクが高まっています");
-    }
-    if (lastPrice < lastBB.lower) {
-        bullScore += 10;
-        signals.push("ボリンジャーバンドの下限を突破。強烈な反発の予兆です");
+        if (adxValue > 30) {
+            bullScore += 10; // バンドウォーク
+            signals.push("バンドウォーク(強い上昇トレンド)発生中");
+        } else {
+            bearScore += 20 * oscillatorStrength; // レンジ上限
+            signals.push("ボリンジャーバンド上限到達。反落警戒");
+        }
+    } else if (lastPrice < lastBB.lower) {
+         if (adxValue > 30) {
+            bearScore += 10; // バンドウォーク
+            signals.push("バンドウォーク(強い下落トレンド)発生中");
+        } else {
+            bullScore += 20 * oscillatorStrength; // レンジ下限
+            signals.push("ボリンジャーバンド下限到達。押し目買い好機");
+        }
     }
 
-    // ADXによるトレンド強度マルチプライヤー
-    const isTrending = lastADX.adx > 25;
-    if (isTrending) {
-        signals.push(`ADXが${Math.round(lastADX.adx)}に到達。非常に強いトレンドが発生しています`);
-    } else {
-        signals.push("ADXが低く、現在は方向感のないレンジ相場と判断");
-    }
+    // --- 3. 総合判定と予測生成 ---
 
     const finalScore = bullScore - bearScore;
 
@@ -125,13 +190,20 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     } else {
         rawConfidence *= 0.85; // レンジ相場でも0.85倍までに留める (急激な低下を防ぐ)
     }
+    
+    // ボラティリティが高すぎる場合は信頼度を少し下げる
+    if (isHighVolatility) {
+        rawConfidence *= 0.8;
+    }
 
     // ベース信頼度を加算 (全体的な底上げ)
     rawConfidence += 20;
 
     let confidence = Math.min(Math.round(rawConfidence), 98); // 100%は胡散臭いので98止め
+
     const sentiment: TradeSentiment = finalScore >= 0 ? 'BULLISH' : 'BEARISH';
 
+    // 未来予測パスの生成 (14日分)
     const predictions = [];
     const lastDate = new Date(data[data.length - 1].time);
 
@@ -144,9 +216,16 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
 
         const dateStr = nextDate.toISOString().split('T')[0];
 
-        // スコアに基づく価格推移（長期になるほど変動幅を抑制しつつトレンドを反映）
-        const volatilityBase = lastPrice * 0.008; // 少し抑えめに調整 (1% -> 0.8%)
-        const change = (finalScore / 100) * volatilityBase * i;
+        // ATRを考慮した予測変動幅
+        // finalScore(方向性) * ATR(変動幅) * 減衰係数
+        // 遠い未来ほど不確実性を加味して変動をマイルドにする
+        const volatilityFactor = lastATR * 0.5; 
+        const directionFactor = finalScore / 100; // -1.0 ~ 1.0
+        
+        // ランダムウォーク要素を少し加えることで、一直線ではないリアルな予測線にする
+        const noise = (Math.random() - 0.5) * (lastATR * 0.2); 
+        
+        const change = (directionFactor * volatilityFactor * i) + noise;
 
         predictions.push({
             time: dateStr,
@@ -154,11 +233,8 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
         });
     }
 
-    // チャート表示用データの生成
-    // technicalindicators の結果配列は、期間(period)分だけ元データより短い
-    // data[0]...data[period-1] までは計算不能のため結果に含まれない
-    // つまり、result[0] は data[period-1] に対応する
-
+    // チャート表示用インジケーター配列の整形
+    // Note: technicalindicatorsの結果配列は期間分ずれているため、元データの日付と合わせる
     const chartIndicators: ChartIndicators = {
         sma20: sma20.map((val, i) => ({ time: data[i + 19].time, value: val })),
         sma50: sma50.map((val, i) => ({ time: data[i + 49].time, value: val })),

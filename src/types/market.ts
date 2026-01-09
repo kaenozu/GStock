@@ -22,6 +22,13 @@ export interface ChartIndicators {
   lowerBand: PredictionPoint[];
 }
 
+export interface ChartSettings {
+  showSMA20: boolean;
+  showSMA50: boolean;
+  showBollingerBands: boolean;
+  showPredictions: boolean;
+}
+
 export interface MarketStats {
   rsi: number;
   trend: StockTrend;
@@ -62,11 +69,21 @@ export interface WatchListItem {
   sentiment: TradeSentiment;
 }
 
+export interface ChartMarker {
+    time: string;
+    position: 'aboveBar' | 'belowBar' | 'inBar';
+    color: string;
+    shape: 'circle' | 'square' | 'arrowUp' | 'arrowDown';
+    text: string;
+    size?: number;
+}
+
 export interface BacktestResult {
-  initialBalance: number;
-  finalBalance: number;
-  profit: number;
-  profitPercent: number;
-  trades: number;
-  winRate: number;
+    initialBalance: number;
+    trades: number;
+    profit: number;
+    profitPercent: number;
+    winRate: number;
+    finalBalance: number;
+    markers: ChartMarker[]; // チャート描画用マーカー
 }
