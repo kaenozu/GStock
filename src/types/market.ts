@@ -36,6 +36,12 @@ export interface MarketStats {
   price: number;
 }
 
+// 循環参照を避けるため簡易的に定義
+export interface OptimalParams {
+  buyThreshold: number;
+  sellThreshold: number;
+}
+
 export interface AnalysisResult {
   symbol?: string;
   predictions: PredictionPoint[];
@@ -47,6 +53,10 @@ export interface AnalysisResult {
   history?: StockDataPoint[]; // チャート表示用
   isRealtime?: boolean;
   chartIndicators?: ChartIndicators;
+  // 自己最適化情報
+  optimalParams?: OptimalParams;
+  optimalProfit?: number; // 最適化した場合の期待利益率
+  optimalWinRate?: number;
 }
 
 export interface TradeHistoryItem {
