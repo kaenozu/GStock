@@ -1,10 +1,17 @@
-import { SMA, EMA, RSI, MACD, ADX, BollingerBands } from 'technicalindicators';
+import { SMA, RSI, MACD, ADX, BollingerBands } from 'technicalindicators';
+import { StockDataPoint, AnalysisResult, TradeSentiment, ChartIndicators } from '@/types/market';
 
 /**
  * G-Engine Prime: アンサンブルテクニカル分析による高精度予測
  */
-export const calculateAdvancedPredictions = (data: any[]) => {
-    if (data.length < 50) return { predictions: [], confidence: 0, signals: [] };
+export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisResult => {
+    if (data.length < 50) return { 
+        predictions: [], 
+        confidence: 0, 
+        sentiment: 'NEUTRAL', 
+        signals: [], 
+        stats: { rsi: 0, trend: 'NEUTRAL', adx: 0, price: 0 } 
+    };
 
     const prices = data.map((d) => d.close);
     const closingPrices = prices;
@@ -48,7 +55,7 @@ export const calculateAdvancedPredictions = (data: any[]) => {
 
     let bullScore = 0;
     let bearScore = 0;
-    const signals = [];
+    const signals: string[] = [];
 
     // トレンド: 移動平均の並び (パーフェクトオーダー)
     if (lastPrice > lastSMA20) {
@@ -79,7 +86,7 @@ export const calculateAdvancedPredictions = (data: any[]) => {
     }
 
     // MACD
-    if (lastMACD.MACD! > lastMACD.signal!) {
+    if (lastMACD.MACD && lastMACD.signal && lastMACD.MACD > lastMACD.signal) {
         bullScore += 15;
         signals.push("MACDがゴールデンクロスを維持し上昇の勢いを示唆");
     } else {
@@ -112,7 +119,7 @@ export const calculateAdvancedPredictions = (data: any[]) => {
     if (isTrending) confidence *= 1.2; else confidence *= 0.7; // トレンドがない時は慎重に
 
     confidence = Math.min(Math.round(confidence), 100);
-    const sentiment = finalScore >= 0 ? 'BULLISH' : 'BEARISH';
+    const sentiment: TradeSentiment = finalScore >= 0 ? 'BULLISH' : 'BEARISH';
 
     const predictions = [];
     const lastDate = new Date(data[data.length - 1].time);
@@ -136,16 +143,29 @@ export const calculateAdvancedPredictions = (data: any[]) => {
         });
     }
 
+    // チャート表示用データの生成
+    // technicalindicators の結果配列は、期間(period)分だけ元データより短い
+    // data[0]...data[period-1] までは計算不能のため結果に含まれない
+    // つまり、result[0] は data[period-1] に対応する
+    
+    const chartIndicators: ChartIndicators = {
+        sma20: sma20.map((val, i) => ({ time: data[i + 19].time, value: val })),
+        sma50: sma50.map((val, i) => ({ time: data[i + 49].time, value: val })),
+        upperBand: bb.map((val, i) => ({ time: data[i + 19].time, value: val.upper })),
+        lowerBand: bb.map((val, i) => ({ time: data[i + 19].time, value: val.lower }))
+    };
+
     return {
         predictions,
         confidence: Math.round(confidence),
-        sentiment: finalScore > 0 ? 'BULLISH' : 'BEARISH',
+        sentiment,
         signals,
         stats: {
             rsi: Math.round(lastRSI),
             trend: lastSMA20 > lastSMA50 ? 'UP' : 'DOWN',
             adx: Math.round(lastADX.adx),
             price: lastPrice
-        }
+        },
+        chartIndicators
     };
 };

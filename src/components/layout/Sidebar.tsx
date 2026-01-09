@@ -4,7 +4,6 @@ import {
     TrendingUp,
     Newspaper,
     Settings,
-    Search,
     Star,
     Zap
 } from 'lucide-react';

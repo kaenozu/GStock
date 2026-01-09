@@ -2,44 +2,71 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
+import dynamic from 'next/dynamic';
 import { fetchStockData } from '@/lib/api/alphavantage';
 import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
-import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { runBacktest } from '@/lib/api/backtest';
+import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers } from 'lucide-react';
 import styles from './page.module.css';
-
-// AIが常に監視するエリート銘柄リスト (ボラティリティとテクニカル妥当性で選定)
-const MONITOR_LIST = [
-  'NVDA', // AI半導体。トレンドが明確。
-  'TSLA', // 高ボラティリティ。テクニカル反発が狙いやすい。
-  'AMD',  // NVDA追随型。半導体セクターの補完。
-  'PLTR', // AIソフトウェア。最近の出来高とボラティリティが優秀。
-  'AAPL', // 指標株。市場全体の方向性確認用。
-  '7203.T', // トヨタ。日本株の横綱。
-  '9984.T', // SBG。日本株で最もボラティリティが高い銘柄の一つ。
-  '6758.T', // ソニー。ハイテク・グローバル。
-];
-
-import dynamic from 'next/dynamic';
+import { MONITOR_LIST, SCAN_INTERVAL_MS, DATA_REFRESH_INTERVAL_MS, CONFIDENCE_THRESHOLD } from '@/config/constants';
+import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListItem, BacktestResult } from '@/types/market';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
 export default function Home() {
   const [currentScanIndex, setCurrentScanIndex] = useState(0);
-  const [bestTrade, setBestTrade] = useState<any>(null);
-  const [scanning, setScanning] = useState(true);
+  const [bestTrade, setBestTrade] = useState<AnalysisResult | null>(null);
+  
+  // currentAnalysis は派生データとして計算（Stateにしない）
+  // history は副作用として更新が必要
 
-  const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
+  const [history, setHistory] = useState<TradeHistoryItem[]>([]);
+  const [watchlist, setWatchlist] = useState<WatchListItem[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
+  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
+  const [showIndicators, setShowIndicators] = useState(false);
 
-  // 銘柄を15秒ごとに巡回スキャンする (API制限 U7X5ERM9E4UYO140 を守るため)
+  // ウォッチリストの永続化: マウント時に読み込み
   useEffect(() => {
-    const scanInterval = setInterval(() => {
-      setCurrentScanIndex((prev) => (prev + 1) % MONITOR_LIST.length);
-    }, 15000); // 1.5秒から15秒へ調整。APIの健全性を優先。
-
-    return () => clearInterval(scanInterval);
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gstock-watchlist');
+      if (saved) {
+        try {
+          setTimeout(() => setWatchlist(JSON.parse(saved)), 0);
+        } catch (e) {
+          console.error('Failed to parse watchlist', e);
+        }
+      }
+    }
   }, []);
 
+  // ウォッチリストの永続化: 変更時に保存
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gstock-watchlist', JSON.stringify(watchlist));
+    }
+  }, [watchlist]);
+
+  // 銘柄を定期的に巡回スキャンする
+  useEffect(() => {
+    if (isPaused) return;
+
+    const scanInterval = setInterval(() => {
+      // スキャン対象が変わるタイミングでバックテスト結果をリセット
+      setBacktestResult(null); 
+      setCurrentScanIndex((prev) => (prev + 1) % MONITOR_LIST.length);
+    }, SCAN_INTERVAL_MS);
+
+    return () => clearInterval(scanInterval);
+  }, [isPaused]);
+
   const scanningSymbol = MONITOR_LIST[currentScanIndex];
+
+  // scanningSymbolが手動操作などで変わった場合もリセットしたいが、
+  // useEffectでやるとLintエラーになるため、スキャンインデックス変更ロジックと連動させるか、
+  // あるいは key prop を使ってコンポーネントをリセットする方法もある。
+  // 今回は scanInterval 内でのリセットで十分カバーできるとし、
+  // 手動操作（ウォッチリストクリック時）はイベントハンドラ内でリセットする。
 
   const { data: stockData, isLoading: isScanLoading } = useSWR(
     `scan-${scanningSymbol}`,
@@ -48,59 +75,65 @@ export default function Home() {
       revalidateOnFocus: false,
       dedupingInterval: 60000,
       focusThrottleInterval: 60000,
-      refreshInterval: 300000 // データの鮮度は5分おきでOK
+      refreshInterval: DATA_REFRESH_INTERVAL_MS
     }
   );
 
-  useEffect(() => {
+  // 派生データの計算
+  const currentAnalysis = useMemo(() => {
     if (stockData && stockData.length > 50) {
-      const analysis = calculateAdvancedPredictions(stockData);
-
-      // 今スキャンしている銘柄のリアルタイム分析結果を常にセット
-      setCurrentAnalysis({
-        symbol: scanningSymbol,
-        ...analysis,
-        price: stockData[stockData.length - 1].close
-      });
-
-      // 信頼度が65%を超える「本命チャンス」のみを更新
-      if (analysis.confidence >= 65) {
-        setBestTrade({
-          symbol: scanningSymbol,
-          ...analysis,
-          history: stockData, // チャート表示用に履歴データを保存
-          price: stockData[stockData.length - 1].close,
-          isRealtime: stockData[0].time.includes('-')
-        });
-      }
+        const analysis = calculateAdvancedPredictions(stockData);
+        return {
+            symbol: scanningSymbol,
+            ...analysis,
+            price: stockData[stockData.length - 1].close
+        };
     }
+    return null;
   }, [stockData, scanningSymbol]);
 
-  const [history, setHistory] = useState<any[]>([]);
+  // ベストトレードの更新（副作用）
+  // これは条件付きでStateを更新するため useEffect が必要
+  useEffect(() => {
+    if (currentAnalysis && currentAnalysis.confidence >= CONFIDENCE_THRESHOLD) {
+        setTimeout(() => {
+          setBestTrade({
+            ...currentAnalysis,
+            history: stockData, 
+            isRealtime: stockData && stockData[0] ? stockData[0].time.includes('-') : false
+          });
+        }, 0);
+    }
+  }, [currentAnalysis, stockData]);
 
   // シグナル履歴の更新
   useEffect(() => {
-    if (bestTrade && (bestTrade.confidence >= 65)) {
-      const newEntry = {
-        symbol: bestTrade.symbol,
-        type: bestTrade.sentiment === 'BULLISH' ? 'BUY' : 'SELL',
+    if (bestTrade && (bestTrade.confidence >= CONFIDENCE_THRESHOLD)) {
+      const type: TradeType = bestTrade.sentiment === 'BULLISH' ? 'BUY' : 'SELL';
+      
+      const newEntry: TradeHistoryItem = {
+        symbol: bestTrade.symbol || '',
+        type,
         time: new Date().toLocaleTimeString(),
         confidence: bestTrade.confidence
       };
 
-      setHistory(prev => {
-        // 重複チェック（同じ銘柄・同じタイプが連続しないように）
-        if (prev.length > 0 && prev[0].symbol === newEntry.symbol && prev[0].type === newEntry.type) return prev;
-        return [newEntry, ...prev].slice(0, 5);
-      });
+      setTimeout(() => {
+        setHistory(prev => {
+          // 重複チェック
+          if (prev.length > 0 && prev[0].symbol === newEntry.symbol && prev[0].type === newEntry.type) return prev;
+          return [newEntry, ...prev].slice(0, 5);
+        });
+      }, 0);
     }
   }, [bestTrade]);
 
   // 現在表示すべき「指示」
-  const displaySignal = useMemo(() => {
+  const displaySignal: DisplaySignal = useMemo(() => {
+    if (isPaused) return { type: 'HOLD', text: '一時停止中', action: 'スキャンを停止しています' };
     if (!bestTrade) return { type: 'HOLD', text: '市場スキャン中...', action: 'チャンスを探しています' };
 
-    if (bestTrade.confidence >= 65) {
+    if (bestTrade.confidence >= CONFIDENCE_THRESHOLD) {
       const isBullish = bestTrade.sentiment === 'BULLISH';
       return {
         type: isBullish ? 'BUY' : 'SELL',
@@ -112,7 +145,26 @@ export default function Home() {
     }
 
     return { type: 'HOLD', text: '異常なし', action: `現在 ${bestTrade?.symbol || '市場'} に明確なシグナルはありません。引き続き全銘柄を監視します。` };
-  }, [bestTrade]);
+  }, [bestTrade, isPaused]);
+
+  const toggleWatchlist = (symbol: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') => {
+    setWatchlist(prev => {
+      if (prev.find(item => item.symbol === symbol)) {
+        return prev.filter(item => item.symbol !== symbol);
+      }
+      return [...prev, { symbol, price, sentiment }];
+    });
+  };
+
+  const handleBacktest = () => {
+    if (bestTrade?.history) {
+      const result = runBacktest(bestTrade.history);
+      setBacktestResult(result);
+      setIsPaused(true); // 結果をゆっくり見るために一時停止
+    }
+  };
+
+  const isInWatchlist = watchlist.some(item => item.symbol === scanningSymbol);
 
   return (
     <div className={styles.autoContainer}>
@@ -125,15 +177,24 @@ export default function Home() {
         </div>
 
         <div className={styles.scanningStatus}>
-          <Search size={16} className={styles.scanIcon} />
-          <span>SCANNING: {scanningSymbol}</span>
-          <div className={styles.scanProgress}>
-            <div className={styles.scanProgressBar} style={{ width: `${((currentScanIndex + 1) / MONITOR_LIST.length) * 100}%` }}></div>
-          </div>
+          {isPaused ? <Pause size={16} className={styles.pausedDot} /> : <Search size={16} className={styles.scanIcon} />}
+          <span>{isPaused ? 'PAUSED' : `SCANNING: ${scanningSymbol}`}</span>
+          {!isPaused && (
+            <div className={styles.scanProgress}>
+              <div className={styles.scanProgressBar} style={{ width: `${((currentScanIndex + 1) / MONITOR_LIST.length) * 100}%` }}></div>
+            </div>
+          )}
         </div>
 
+        <button 
+          onClick={() => setIsPaused(!isPaused)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+        >
+          {isPaused ? <Play size={20} fill="currentColor" /> : <Pause size={20} />}
+        </button>
+
         <div className={styles.liveIndicator}>
-          <div className={styles.liveDot}></div>
+          <div className={`${styles.liveDot} ${isPaused ? styles.pausedDot : ''}`}></div>
           <span>ULTRA AUTOMATED</span>
         </div>
       </div>
@@ -148,7 +209,19 @@ export default function Home() {
               <span>TREND: {currentAnalysis?.stats?.trend || '--'}</span>
               <span>VOL: {currentAnalysis?.stats?.adx || '--'}</span>
             </div>
-            {isScanLoading && <div className={styles.loadingDot}></div>}
+            
+            <button 
+              onClick={() => currentAnalysis && toggleWatchlist(scanningSymbol, currentAnalysis.stats.price, currentAnalysis.sentiment)}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', marginLeft: 'auto', display: 'flex', alignItems: 'center' }}
+            >
+              <Star 
+                size={18} 
+                fill={isInWatchlist ? "#fbbf24" : "none"} 
+                color={isInWatchlist ? "#fbbf24" : "var(--text-muted)"} 
+              />
+            </button>
+
+            {isScanLoading && !isPaused && <div className={styles.loadingDot}></div>}
           </div>
 
           <div className={styles.signalLabel}>
@@ -164,15 +237,108 @@ export default function Home() {
             <h1 className={styles.signalText}>{displaySignal.text}</h1>
           </div>
 
-          {bestTrade?.history && (
+          {bestTrade?.history && !isPaused && (
             <div className={styles.chartContainer}>
-              <StockChart data={bestTrade.history} predictionData={bestTrade.predictions} />
+              <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
+                 <button 
+                   onClick={() => setShowIndicators(!showIndicators)}
+                   style={{ 
+                     background: showIndicators ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)', 
+                     color: showIndicators ? '#000' : '#fff',
+                     border: 'none', 
+                     borderRadius: '4px', 
+                     padding: '4px 8px', 
+                     cursor: 'pointer',
+                     fontSize: '0.7rem',
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '4px',
+                     fontWeight: 600
+                   }}
+                 >
+                   <Layers size={12} /> {showIndicators ? 'HIDE INDICATORS' : 'SHOW INDICATORS'}
+                 </button>
+              </div>
+              <StockChart 
+                data={bestTrade.history} 
+                predictionData={bestTrade.predictions} 
+                indicators={showIndicators ? bestTrade.chartIndicators : undefined}
+              />
             </div>
           )}
 
           <p className={styles.actionInstruction}>{displaySignal.action}</p>
 
-          {bestTrade?.signals && bestTrade.signals.length > 0 && (
+          {!backtestResult && bestTrade && (
+             <button 
+                onClick={handleBacktest}
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  color: 'var(--accent-cyan)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  margin: '0 auto 1.5rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600
+                }}
+             >
+                <FlaskConical size={14} /> バックテストを実行 (Beta)
+             </button>
+          )}
+
+          {backtestResult && (
+             <div style={{
+                background: 'rgba(0,0,0,0.3)',
+                padding: '1.5rem',
+                borderRadius: '16px',
+                marginBottom: '2rem',
+                border: '1px solid var(--accent-cyan)',
+                width: '100%'
+             }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                   <FlaskConical size={14} /> BACKTEST RESULTS (Last 100 Days)
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                   <div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>TOTAL PROFIT</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: backtestResult.profit >= 0 ? '#10b981' : '#ef4444' }}>
+                         {backtestResult.profit >= 0 ? '+' : ''}{backtestResult.profitPercent}%
+                      </div>
+                   </div>
+                   <div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>WIN RATE</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>
+                         {backtestResult.winRate}%
+                      </div>
+                   </div>
+                   <div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>TRADES</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
+                         {backtestResult.trades}
+                      </div>
+                   </div>
+                   <div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>FINAL BALANCE</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
+                         ${backtestResult.finalBalance.toLocaleString()}
+                      </div>
+                   </div>
+                </div>
+             </div>
+          )}
+
+          {isPaused && !backtestResult && (
+            <button className={styles.resumeButton} onClick={() => setIsPaused(false)}>
+              スキャンを再開
+            </button>
+          )}
+
+          {!isPaused && bestTrade?.signals && bestTrade.signals.length > 0 && (
             <div className={styles.reasoningSection}>
               <div className={styles.reasoningTitle}>AIの判断根拠</div>
               <ul className={styles.reasoningList}>
@@ -199,6 +365,36 @@ export default function Home() {
             </div>
           </div>
         </div>
+        
+        {/* ウォッチリストセクション */}
+        {watchlist.length > 0 && (
+          <div className={styles.watchlistContainer}>
+             <div className={styles.watchlistTitle}>
+                <Star size={12} fill="currentColor" /> WATCHLIST
+             </div>
+             <div className={styles.watchlistGrid}>
+                {watchlist.map((item) => (
+                  <div key={item.symbol} className={styles.watchItem} onClick={() => {
+                     // クリックでその銘柄にジャンプ
+                     const idx = MONITOR_LIST.indexOf(item.symbol);
+                     if (idx >= 0) {
+                        setBacktestResult(null); // 明示的にリセット
+                        setCurrentScanIndex(idx);
+                        setIsPaused(true); // 詳細を見るために一時停止
+                     }
+                  }}>
+                    <div className={styles.watchSymbol}>{item.symbol}</div>
+                    <div className={styles.watchStats}>
+                       <span>${item.price.toFixed(2)}</span>
+                       <span className={item.sentiment === 'BULLISH' ? styles.bullText : item.sentiment === 'BEARISH' ? styles.bearText : ''}>
+                          {item.sentiment === 'BULLISH' ? '▲' : item.sentiment === 'BEARISH' ? '▼' : '-'}
+                       </span>
+                    </div>
+                  </div>
+                ))}
+             </div>
+          </div>
+        )}
 
         {history.length > 0 && (
           <div className={styles.historySection}>
@@ -221,7 +417,7 @@ export default function Home() {
           </div>
         )}
 
-        {bestTrade && (
+        {bestTrade && !isPaused && (
           <div className={styles.tradeDetailInfo}>
             <div className={styles.detailItem}>
               <span>TARGET</span>
@@ -229,7 +425,7 @@ export default function Home() {
             </div>
             <div className={styles.detailItem}>
               <span>PRICE</span>
-              <strong>${bestTrade.price.toFixed(2)}</strong>
+              <strong>${(bestTrade.price || 0).toFixed(2)}</strong>
             </div>
             <div className={styles.detailItem}>
               <span>QA</span>
@@ -250,4 +446,3 @@ export default function Home() {
     </div>
   );
 }
-
