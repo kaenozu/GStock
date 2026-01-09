@@ -46,3 +46,19 @@ export interface DisplaySignal {
   text: string;
   action: string;
 }
+
+export interface WatchListItem {
+  symbol: string;
+  price: number;
+  changePercent?: number;
+  sentiment: TradeSentiment;
+}
+
+export interface BacktestResult {
+  initialBalance: number;
+  finalBalance: number;
+  profit: number;
+  profitPercent: number;
+  trades: number;
+  winRate: number;
+}
