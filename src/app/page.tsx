@@ -13,9 +13,22 @@ import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListIt
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
+// ランキング用の型
+interface MarketRankingItem {
+  symbol: string;
+  profit: number;     // バックテスト純利益
+  winRate: number;    // バックテスト勝率
+  confidence: number; // 現在の信頼度
+  price: number;
+  updatedAt: number;
+}
+
 export default function Home() {
   const [currentScanIndex, setCurrentScanIndex] = useState(0);
   const [bestTrade, setBestTrade] = useState<AnalysisResult | null>(null);
+
+  // 全銘柄のスコアを保持するState (ポートフォリオビルダー用)
+  const [marketRanking, setMarketRanking] = useState<Record<string, MarketRankingItem>>({});
 
   // currentAnalysis は派生データとして計算（Stateにしない）
   // history は副作用として更新が必要
@@ -55,6 +68,8 @@ export default function Home() {
           console.error('Failed to parse history', e);
         }
       }
+
+      // Ranking (Reloadしてもある程度維持したいならここに追加可能だが、今回はリセットでOK)
     }
   }, []);
 
@@ -121,6 +136,43 @@ export default function Home() {
     }
     return null;
   }, [stockData, scanningSymbol]);
+
+  // currentAnalysis が更新されたらランキングも更新
+  useEffect(() => {
+    if (currentAnalysis && currentAnalysis.symbol && currentAnalysis.optimalProfit !== undefined) {
+       setMarketRanking(prev => ({
+         ...prev,
+         [currentAnalysis.symbol!]: {
+           symbol: currentAnalysis.symbol!,
+           profit: currentAnalysis.optimalProfit!,
+           winRate: currentAnalysis.optimalWinRate || 0,
+           confidence: currentAnalysis.confidence,
+           price: currentAnalysis.price || 0,
+           updatedAt: Date.now()
+         }
+       }));
+    }
+  }, [currentAnalysis]);
+
+  // ランキング順にソートされたリスト（未スキャンの銘柄もリスト末尾に含める）
+  const sortedRanking = useMemo(() => {
+    // 1. ランキングデータがある銘柄
+    const ranked = Object.values(marketRanking).sort((a, b) => b.profit - a.profit);
+    
+    // 2. まだデータがない銘柄
+    const unranked = MONITOR_LIST
+        .filter(sym => !marketRanking[sym])
+        .map(sym => ({
+            symbol: sym, 
+            profit: -999,
+            winRate: 0,
+            confidence: 0,
+            price: 0,
+            updatedAt: 0
+        }));
+
+    return [...ranked, ...unranked];
+  }, [marketRanking]);
 
   // ベストトレードの更新（副作用）
   useEffect(() => {
@@ -197,9 +249,6 @@ export default function Home() {
 
   const handleBacktest = () => {
     if (bestTrade?.history) {
-      // BacktestResult の計算（既に最適化済みパラメータがあればそれを使う）
-      // 再度 findOptimalStrategy を呼ぶ必要はないが、もしボタン押下時にも再計算したいなら呼んでも良い
-      // ここでは最適化された設定での結果を表示する
       const { result } = findOptimalStrategy(bestTrade.history);
       setBacktestResult(result);
       setIsPaused(true); // 結果をゆっくり見るために一時停止
@@ -242,7 +291,7 @@ export default function Home() {
       </div>
 
       <main className={styles.mainContent}>
-        <div className={`${styles.signalCard} ${styles[`signal${displaySignal.type}`]}`}>
+        <div className={`${styles.signalCard} ${styles[`signal${displaySignal.type}`]}`}>  
           {/* 現在分析中の生データ表示 */}
           <div className={styles.liveAnalysisStrip}>
             <div className={styles.liveLabel}>現在分析中: {scanningSymbol}</div>
@@ -487,16 +536,20 @@ export default function Home() {
           </div>
         )}
 
-        {/* 全銘柄一覧パネル (Global Market List) */}
+        {/* 全銘柄一覧パネル (Global Market List -> AI Portfolio Builder) */}
         <div className={styles.allStocksContainer}>
           <div className={styles.allStocksHeader}>
-            <Globe size={14} /> 全監視銘柄リスト (クリックで即分析)
+            <Globe size={14} /> AI推奨ポートフォリオ (期待値順)
           </div>
           <div className={styles.allStocksGrid}>
-            {MONITOR_LIST.map((symbol) => {
+            {sortedRanking.map((item) => {
+              const symbol = item.symbol;
+              // item.profit が -999 なら未分析
+              const isAnalyzed = item.profit !== -999;
+              
               const isWatched = watchlist.some(w => w.symbol === symbol);
               return (
-                <div key={symbol} className={styles.stockCard}>
+                <div key={symbol} className={styles.stockCard} style={{ order: isAnalyzed ? 0 : 1 }}>
                   <div
                     className={styles.stockName}
                     onClick={() => {
@@ -508,17 +561,16 @@ export default function Home() {
                       }
                     }}
                   >
-                    {symbol}
+                    <div>{symbol}</div>
+                    {isAnalyzed && (
+                        <div style={{ fontSize: '0.7rem', color: item.profit > 0 ? '#10b981' : '#ef4444' }}>
+                            Exp: {item.profit > 0 ? '+' : ''}{item.profit}%
+                        </div>
+                    )}
                   </div>
                   <button
                     className={`${styles.addWatchButton} ${isWatched ? styles.watched : ''}`}
                     onClick={() => {
-                      // priceやsentimentは仮または取得済みデータがあれば使うが、
-                      // ここではシンプルにリスト登録のみ行う（データは次回のスキャン等で更新される）
-                      // ただし toggleWatchlist は引数が必要なので、簡易的に現在の price などを渡すか、
-                      // 既存の toggleWatchlist を調整するか。
-                      // ここでは既存の toggleWatchlist を呼ぶために、
-                      // 現在表示中のデータがあればそれを、なければ0を入れておく（後で更新される想定）
                       toggleWatchlist(symbol, 0, 'NEUTRAL');
                     }}
                   >
