@@ -64,8 +64,12 @@ const StockChart: React.FC<ChartProps> = ({ data, predictionData, indicators, ma
                         (candlestickSeries as any).setMarkers(markers);
                     }
 
-                    // 最新のローソク足が見えるように調整
-                    chart.timeScale().fitContent();
+                    // ユーザー要望: 予測線（未来14日分）が見えるところまで表示範囲を調整
+                    // 過去15日 + 未来15日（予測期間＋余白）を表示
+                    chart.timeScale().setVisibleLogicalRange({
+                        from: data.length - 20,
+                        to: data.length + 15,
+                    });
                 }
 
                 // デフォルト設定（settingsが未指定の場合）
