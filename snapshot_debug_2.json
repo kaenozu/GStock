@@ -1,0 +1,24 @@
+uid=3_0 RootWebArea "GStock | 次世代株価予想ダッシュボード" url="http://localhost:3000/"
+  uid=3_1 StaticText "GSTOCK PRIME"
+  uid=3_2 StaticText "市場監視中: TSLA"
+  uid=3_3 button
+  uid=3_4 StaticText "全自動モード"
+  uid=3_5 main
+    uid=3_6 StaticText "現在分析中: "
+    uid=3_7 StaticText "TSLA"
+    uid=3_8 StaticText "RSI: "
+    uid=3_9 StaticText "43"
+    uid=3_10 StaticText "TREND: "
+    uid=3_11 StaticText "UP"
+    uid=3_12 StaticText "VOL: "
+    uid=3_13 StaticText "22"
+    uid=3_14 button
+    uid=3_15 StaticText "AI最適化シグナル"
+    uid=3_16 heading "市場スキャン中..." level="1"
+    uid=3_17 StaticText "チャンスを探しています"
+    uid=3_18 StaticText "AI信頼度: "
+    uid=3_19 StaticText "0"
+    uid=3_20 StaticText "%"
+  uid=3_21 contentinfo
+    uid=3_22 StaticText "人間はAIの指示に従って証券口座で注文を出すだけです。分析はすべて完了しています。"
+  uid=3_23 button "Open Next.js Dev Tools" expandable haspopup="menu"
