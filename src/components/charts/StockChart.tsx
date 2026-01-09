@@ -2,14 +2,15 @@
 
 import React, { useEffect, useRef } from 'react';
 import { createChart, ColorType, IChartApi, CandlestickSeries, LineSeries } from 'lightweight-charts';
-import { StockDataPoint, PredictionPoint } from '@/types/market';
+import { StockDataPoint, PredictionPoint, ChartIndicators } from '@/types/market';
 
 interface ChartProps {
     data: StockDataPoint[];
     predictionData?: PredictionPoint[];
+    indicators?: ChartIndicators;
 }
 
-const StockChart: React.FC<ChartProps> = ({ data, predictionData }) => {
+const StockChart: React.FC<ChartProps> = ({ data, predictionData, indicators }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
 
@@ -59,6 +60,28 @@ const StockChart: React.FC<ChartProps> = ({ data, predictionData }) => {
                     chart.timeScale().fitContent();
                 }
 
+                if (indicators) {
+                    // SMA20
+                    if (indicators.sma20.length > 0) {
+                        const sma20Series = chart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 1 });
+                        sma20Series.setData(indicators.sma20);
+                    }
+                    // SMA50
+                    if (indicators.sma50.length > 0) {
+                        const sma50Series = chart.addSeries(LineSeries, { color: '#6366f1', lineWidth: 1 });
+                        sma50Series.setData(indicators.sma50);
+                    }
+                    // Bollinger Bands
+                    if (indicators.upperBand.length > 0) {
+                        const upperSeries = chart.addSeries(LineSeries, { color: 'rgba(139, 92, 246, 0.5)', lineWidth: 1, lineStyle: 2 });
+                        upperSeries.setData(indicators.upperBand);
+                    }
+                    if (indicators.lowerBand.length > 0) {
+                        const lowerSeries = chart.addSeries(LineSeries, { color: 'rgba(139, 92, 246, 0.5)', lineWidth: 1, lineStyle: 2 });
+                        lowerSeries.setData(indicators.lowerBand);
+                    }
+                }
+
                 if (predictionData && predictionData.length > 0) {
                     const predictionSeries = chart.addSeries(LineSeries, {
                         color: '#06b6d4',
@@ -86,7 +109,7 @@ const StockChart: React.FC<ChartProps> = ({ data, predictionData }) => {
                 }
             }
         };
-    }, [data, predictionData]);
+    }, [data, predictionData, indicators]);
 
     return <div ref={chartContainerRef} style={{ width: '100%', height: '400px' }} />;
 };

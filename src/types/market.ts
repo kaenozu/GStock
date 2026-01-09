@@ -15,6 +15,13 @@ export interface PredictionPoint {
   value: number;
 }
 
+export interface ChartIndicators {
+  sma20: PredictionPoint[];
+  sma50: PredictionPoint[];
+  upperBand: PredictionPoint[];
+  lowerBand: PredictionPoint[];
+}
+
 export interface MarketStats {
   rsi: number;
   trend: StockTrend;
@@ -32,6 +39,7 @@ export interface AnalysisResult {
   price?: number;
   history?: StockDataPoint[]; // チャート表示用
   isRealtime?: boolean;
+  chartIndicators?: ChartIndicators;
 }
 
 export interface TradeHistoryItem {

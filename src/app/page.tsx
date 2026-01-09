@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { fetchStockData } from '@/lib/api/alphavantage';
 import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
 import { runBacktest } from '@/lib/api/backtest';
-import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers } from 'lucide-react';
 import styles from './page.module.css';
 import { MONITOR_LIST, SCAN_INTERVAL_MS, DATA_REFRESH_INTERVAL_MS, CONFIDENCE_THRESHOLD } from '@/config/constants';
 import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListItem, BacktestResult } from '@/types/market';
@@ -21,6 +21,24 @@ export default function Home() {
   const [watchlist, setWatchlist] = useState<WatchListItem[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
+  const [showIndicators, setShowIndicators] = useState(false);
+
+  // ウォッチリストの永続化: マウント時に読み込み
+  useEffect(() => {
+    const saved = localStorage.getItem('gstock-watchlist');
+    if (saved) {
+      try {
+        setWatchlist(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse watchlist', e);
+      }
+    }
+  }, []);
+
+  // ウォッチリストの永続化: 変更時に保存
+  useEffect(() => {
+    localStorage.setItem('gstock-watchlist', JSON.stringify(watchlist));
+  }, [watchlist]);
 
   // 銘柄を定期的に巡回スキャンする
   useEffect(() => {
@@ -206,7 +224,31 @@ export default function Home() {
 
           {bestTrade?.history && !isPaused && (
             <div className={styles.chartContainer}>
-              <StockChart data={bestTrade.history} predictionData={bestTrade.predictions} />
+              <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
+                 <button 
+                   onClick={() => setShowIndicators(!showIndicators)}
+                   style={{ 
+                     background: showIndicators ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)', 
+                     color: showIndicators ? '#000' : '#fff',
+                     border: 'none', 
+                     borderRadius: '4px', 
+                     padding: '4px 8px', 
+                     cursor: 'pointer',
+                     fontSize: '0.7rem',
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '4px',
+                     fontWeight: 600
+                   }}
+                 >
+                   <Layers size={12} /> {showIndicators ? 'HIDE INDICATORS' : 'SHOW INDICATORS'}
+                 </button>
+              </div>
+              <StockChart 
+                data={bestTrade.history} 
+                predictionData={bestTrade.predictions} 
+                indicators={showIndicators ? bestTrade.chartIndicators : undefined}
+              />
             </div>
           )}
 

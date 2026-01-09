@@ -1,5 +1,5 @@
 import { SMA, EMA, RSI, MACD, ADX, BollingerBands } from 'technicalindicators';
-import { StockDataPoint, AnalysisResult, TradeSentiment } from '@/types/market';
+import { StockDataPoint, AnalysisResult, TradeSentiment, ChartIndicators } from '@/types/market';
 
 /**
  * G-Engine Prime: アンサンブルテクニカル分析による高精度予測
@@ -143,6 +143,18 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
         });
     }
 
+    // チャート表示用データの生成
+    // technicalindicators の結果配列は、期間(period)分だけ元データより短い
+    // data[0]...data[period-1] までは計算不能のため結果に含まれない
+    // つまり、result[0] は data[period-1] に対応する
+    
+    const chartIndicators: ChartIndicators = {
+        sma20: sma20.map((val, i) => ({ time: data[i + 19].time, value: val })),
+        sma50: sma50.map((val, i) => ({ time: data[i + 49].time, value: val })),
+        upperBand: bb.map((val, i) => ({ time: data[i + 19].time, value: val.upper })),
+        lowerBand: bb.map((val, i) => ({ time: data[i + 19].time, value: val.lower }))
+    };
+
     return {
         predictions,
         confidence: Math.round(confidence),
@@ -153,6 +165,7 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
             trend: lastSMA20 > lastSMA50 ? 'UP' : 'DOWN',
             adx: Math.round(lastADX.adx),
             price: lastPrice
-        }
+        },
+        chartIndicators
     };
 };
