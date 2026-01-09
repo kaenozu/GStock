@@ -17,8 +17,13 @@ const generateMockData = (symbol: string): StockDataPoint[] => {
         // NVDAは右肩上がり、その他はランダム/下落気味
         let dayPrice;
         if (isBullish) {
-            // 強力な上昇トレンド: iが減るにつれて価格が上昇
-            dayPrice = basePrice + (100 - i) * 1.5 + Math.sin(i / 5) * 5;
+            // 超強力な上昇トレンド: 毎日確実に上昇させる
+            // i=100 (過去) -> i=0 (現在)
+            // basePrice から毎日 3% 程度上昇する複利計算のようなイメージで
+            dayPrice = basePrice * Math.pow(1.01, 100 - i);
+            
+            // 少しノイズを入れないと計算エラーになる指標があるかもしれないので微小な乱数
+            dayPrice += Math.random() * 0.5;
         } else {
             // レンジ〜下落
             dayPrice = basePrice + Math.sin(i / 10) * 10 + (i * 0.2);

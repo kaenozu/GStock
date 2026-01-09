@@ -1,4 +1,4 @@
-import { StockDataPoint, BacktestResult } from '@/types/market';
+import { StockDataPoint, BacktestResult, ChartMarker } from '@/types/market';
 import { SMA, RSI } from 'technicalindicators';
 
 /**
@@ -9,11 +9,12 @@ export const runBacktest = (data: StockDataPoint[], initialBalance: number = 100
   if (data.length < 50) {
     return {
       initialBalance,
-      finalBalance: initialBalance,
+      trades: 0,
       profit: 0,
       profitPercent: 0,
-      trades: 0,
-      winRate: 0
+      winRate: 0,
+      finalBalance: initialBalance,
+      markers: []
     };
   }
 
@@ -32,6 +33,7 @@ export const runBacktest = (data: StockDataPoint[], initialBalance: number = 100
   let position: { entryPrice: number, amount: number } | null = null;
   let winCount = 0;
   let tradeCount = 0;
+  const markers: ChartMarker[] = [];
 
   for (let i = startIndex; i < data.length; i++) {
     // インデックス調整 (indicatorの配列は data より短い)
@@ -43,6 +45,7 @@ export const runBacktest = (data: StockDataPoint[], initialBalance: number = 100
     if (sma20Idx < 0 || sma50Idx < 0 || rsiIdx < 0) continue;
 
     const currentPrice = data[i].close;
+    const currentTime = data[i].time;
     const currentSMA20 = sma20[sma20Idx];
     const currentSMA50 = sma50[sma50Idx];
     const currentRSI = rsi[rsiIdx];
@@ -64,6 +67,15 @@ export const runBacktest = (data: StockDataPoint[], initialBalance: number = 100
       const amount = balance / currentPrice;
       position = { entryPrice: currentPrice, amount };
       balance = 0; // 全額ベット
+      
+      markers.push({
+        time: currentTime,
+        position: 'belowBar',
+        color: '#2196F3',
+        shape: 'arrowUp',
+        text: 'BUY',
+        size: 2
+      });
     }
     // エグジット (売り)
     else if (position !== null && (isDeadCross || isOverbought)) {
@@ -75,6 +87,15 @@ export const runBacktest = (data: StockDataPoint[], initialBalance: number = 100
       
       balance = sellValue;
       position = null;
+
+      markers.push({
+        time: currentTime,
+        position: 'aboveBar',
+        color: profit > 0 ? '#4CAF50' : '#FF5252',
+        shape: 'arrowDown',
+        text: `SELL (${profit > 0 ? '+' : ''}${profit.toFixed(2)})`,
+        size: 2
+      });
     }
   }
 
@@ -92,6 +113,7 @@ export const runBacktest = (data: StockDataPoint[], initialBalance: number = 100
     profit: Math.round(profit),
     profitPercent: parseFloat(((profit / initialBalance) * 100).toFixed(2)),
     trades: tradeCount,
-    winRate: tradeCount > 0 ? Math.round((winCount / tradeCount) * 100) : 0
+    winRate: tradeCount > 0 ? Math.round((winCount / tradeCount) * 100) : 0,
+    markers
   };
 };

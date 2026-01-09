@@ -9,7 +9,7 @@ import { runBacktest } from '@/lib/api/backtest';
 import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers } from 'lucide-react';
 import styles from './page.module.css';
 import { MONITOR_LIST, SCAN_INTERVAL_MS, DATA_REFRESH_INTERVAL_MS, CONFIDENCE_THRESHOLD } from '@/config/constants';
-import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListItem, BacktestResult } from '@/types/market';
+import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListItem, BacktestResult, ChartSettings } from '@/types/market';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -25,16 +25,34 @@ export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
   const [showIndicators, setShowIndicators] = useState(false);
+  
+  const [chartSettings, setChartSettings] = useState<ChartSettings>({
+    showSMA20: true,
+    showSMA50: true,
+    showBollingerBands: true,
+    showPredictions: true,
+  });
 
-  // ウォッチリストの永続化: マウント時に読み込み
+  // 永続化データの読み込み
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('gstock-watchlist');
-      if (saved) {
+      // Watchlist
+      const savedWatchlist = localStorage.getItem('gstock-watchlist');
+      if (savedWatchlist) {
         try {
-          setTimeout(() => setWatchlist(JSON.parse(saved)), 0);
+          setTimeout(() => setWatchlist(JSON.parse(savedWatchlist)), 0);
         } catch (e) {
           console.error('Failed to parse watchlist', e);
+        }
+      }
+      
+      // History
+      const savedHistory = localStorage.getItem('gstock-history');
+      if (savedHistory) {
+        try {
+          setTimeout(() => setHistory(JSON.parse(savedHistory)), 0);
+        } catch (e) {
+          console.error('Failed to parse history', e);
         }
       }
     }
@@ -46,6 +64,13 @@ export default function Home() {
       localStorage.setItem('gstock-watchlist', JSON.stringify(watchlist));
     }
   }, [watchlist]);
+
+  // 履歴の永続化: 変更時に保存
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gstock-history', JSON.stringify(history));
+    }
+  }, [history]);
 
   // 銘柄を定期的に巡回スキャンする
   useEffect(() => {
@@ -81,8 +106,10 @@ export default function Home() {
 
   // 派生データの計算
   const currentAnalysis = useMemo(() => {
+    console.log('StockData Check:', stockData ? stockData.length : 'No Data');
     if (stockData && stockData.length > 50) {
         const analysis = calculateAdvancedPredictions(stockData);
+        console.log('Analysis Result:', analysis);
         return {
             symbol: scanningSymbol,
             ...analysis,
@@ -237,9 +264,9 @@ export default function Home() {
             <h1 className={styles.signalText}>{displaySignal.text}</h1>
           </div>
 
-          {bestTrade?.history && !isPaused && (
+          {bestTrade?.history && (
             <div className={styles.chartContainer}>
-              <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
+              <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                  <button 
                    onClick={() => setShowIndicators(!showIndicators)}
                    style={{ 
@@ -256,13 +283,55 @@ export default function Home() {
                      fontWeight: 600
                    }}
                  >
-                   <Layers size={12} /> {showIndicators ? 'HIDE INDICATORS' : 'SHOW INDICATORS'}
+                   <Layers size={12} /> {showIndicators ? 'HIDE SETTINGS' : 'CHART SETTINGS'}
                  </button>
+                 
+                 {showIndicators && (
+                   <div style={{
+                     background: 'rgba(0,0,0,0.8)',
+                     border: '1px solid rgba(255,255,255,0.1)',
+                     borderRadius: '8px',
+                     padding: '8px',
+                     backdropFilter: 'blur(4px)',
+                     minWidth: '150px'
+                   }}>
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '4px', cursor: 'pointer' }}>
+                       <input 
+                         type="checkbox" 
+                         checked={chartSettings.showSMA20} 
+                         onChange={(e) => setChartSettings(prev => ({ ...prev, showSMA20: e.target.checked }))}
+                       /> SMA 20 (Orange)
+                     </label>
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '4px', cursor: 'pointer' }}>
+                       <input 
+                         type="checkbox" 
+                         checked={chartSettings.showSMA50} 
+                         onChange={(e) => setChartSettings(prev => ({ ...prev, showSMA50: e.target.checked }))}
+                       /> SMA 50 (Blue)
+                     </label>
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '4px', cursor: 'pointer' }}>
+                       <input 
+                         type="checkbox" 
+                         checked={chartSettings.showBollingerBands} 
+                         onChange={(e) => setChartSettings(prev => ({ ...prev, showBollingerBands: e.target.checked }))}
+                       /> Bollinger Bands
+                     </label>
+                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#cbd5e1', cursor: 'pointer' }}>
+                       <input 
+                         type="checkbox" 
+                         checked={chartSettings.showPredictions} 
+                         onChange={(e) => setChartSettings(prev => ({ ...prev, showPredictions: e.target.checked }))}
+                       /> AI Prediction (Cyan)
+                     </label>
+                   </div>
+                 )}
               </div>
               <StockChart 
                 data={bestTrade.history} 
                 predictionData={bestTrade.predictions} 
-                indicators={showIndicators ? bestTrade.chartIndicators : undefined}
+                indicators={bestTrade.chartIndicators}
+                markers={backtestResult?.markers}
+                settings={chartSettings}
               />
             </div>
           )}

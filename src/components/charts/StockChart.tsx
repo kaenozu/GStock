@@ -2,15 +2,17 @@
 
 import React, { useEffect, useRef } from 'react';
 import { createChart, ColorType, IChartApi, CandlestickSeries, LineSeries } from 'lightweight-charts';
-import { StockDataPoint, PredictionPoint, ChartIndicators } from '@/types/market';
+import { StockDataPoint, PredictionPoint, ChartIndicators, ChartMarker, ChartSettings } from '@/types/market';
 
 interface ChartProps {
     data: StockDataPoint[];
     predictionData?: PredictionPoint[];
     indicators?: ChartIndicators;
+    markers?: ChartMarker[];
+    settings?: ChartSettings;
 }
 
-const StockChart: React.FC<ChartProps> = ({ data, predictionData, indicators }) => {
+const StockChart: React.FC<ChartProps> = ({ data, predictionData, indicators, markers, settings }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
 
@@ -56,33 +58,47 @@ const StockChart: React.FC<ChartProps> = ({ data, predictionData, indicators }) 
 
                 if (data && data.length > 0) {
                     candlestickSeries.setData(data);
+
+                    if (markers && markers.length > 0) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (candlestickSeries as any).setMarkers(markers);
+                    }
+
                     // 最新のローソク足が見えるように調整
                     chart.timeScale().fitContent();
                 }
 
+                // デフォルト設定（settingsが未指定の場合）
+                const showSMA20 = settings ? settings.showSMA20 : true;
+                const showSMA50 = settings ? settings.showSMA50 : true;
+                const showBB = settings ? settings.showBollingerBands : true;
+                const showPred = settings ? settings.showPredictions : true;
+
                 if (indicators) {
                     // SMA20
-                    if (indicators.sma20.length > 0) {
+                    if (showSMA20 && indicators.sma20.length > 0) {
                         const sma20Series = chart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 1 });
                         sma20Series.setData(indicators.sma20);
                     }
                     // SMA50
-                    if (indicators.sma50.length > 0) {
+                    if (showSMA50 && indicators.sma50.length > 0) {
                         const sma50Series = chart.addSeries(LineSeries, { color: '#6366f1', lineWidth: 1 });
                         sma50Series.setData(indicators.sma50);
                     }
                     // Bollinger Bands
-                    if (indicators.upperBand.length > 0) {
-                        const upperSeries = chart.addSeries(LineSeries, { color: 'rgba(139, 92, 246, 0.5)', lineWidth: 1, lineStyle: 2 });
-                        upperSeries.setData(indicators.upperBand);
-                    }
-                    if (indicators.lowerBand.length > 0) {
-                        const lowerSeries = chart.addSeries(LineSeries, { color: 'rgba(139, 92, 246, 0.5)', lineWidth: 1, lineStyle: 2 });
-                        lowerSeries.setData(indicators.lowerBand);
+                    if (showBB) {
+                        if (indicators.upperBand.length > 0) {
+                            const upperSeries = chart.addSeries(LineSeries, { color: 'rgba(139, 92, 246, 0.5)', lineWidth: 1, lineStyle: 2 });
+                            upperSeries.setData(indicators.upperBand);
+                        }
+                        if (indicators.lowerBand.length > 0) {
+                            const lowerSeries = chart.addSeries(LineSeries, { color: 'rgba(139, 92, 246, 0.5)', lineWidth: 1, lineStyle: 2 });
+                            lowerSeries.setData(indicators.lowerBand);
+                        }
                     }
                 }
 
-                if (predictionData && predictionData.length > 0) {
+                if (showPred && predictionData && predictionData.length > 0) {
                     const predictionSeries = chart.addSeries(LineSeries, {
                         color: '#06b6d4',
                         lineWidth: 2,
@@ -109,7 +125,7 @@ const StockChart: React.FC<ChartProps> = ({ data, predictionData, indicators }) 
                 }
             }
         };
-    }, [data, predictionData, indicators]);
+    }, [data, predictionData, indicators, markers, settings]);
 
     return <div ref={chartContainerRef} style={{ width: '100%', height: '400px' }} />;
 };
