@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { fetchStockData } from '@/lib/api/alphavantage';
 import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
 import { runBacktest } from '@/lib/api/backtest';
-import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers, Globe } from 'lucide-react';
 import styles from './page.module.css';
 import { MONITOR_LIST, SCAN_INTERVAL_MS, DATA_REFRESH_INTERVAL_MS, CONFIDENCE_THRESHOLD } from '@/config/constants';
 import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListItem, BacktestResult } from '@/types/market';
@@ -94,8 +94,9 @@ export default function Home() {
 
   // ベストトレードの更新（副作用）
   // これは条件付きでStateを更新するため useEffect が必要
+  // マニュアルモード(isPaused)時は、信頼度にかかわらず選択した銘柄を表示する
   useEffect(() => {
-    if (currentAnalysis && currentAnalysis.confidence >= CONFIDENCE_THRESHOLD) {
+    if (currentAnalysis && (currentAnalysis.confidence >= CONFIDENCE_THRESHOLD || isPaused)) {
       setTimeout(() => {
         setBestTrade({
           ...currentAnalysis,
@@ -104,7 +105,7 @@ export default function Home() {
         });
       }, 0);
     }
-  }, [currentAnalysis, stockData]);
+  }, [currentAnalysis, stockData, isPaused]);
 
   // シグナル履歴の更新
   useEffect(() => {
@@ -395,6 +396,49 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* 全銘柄一覧パネル (Global Market List) */}
+        <div className={styles.allStocksContainer}>
+          <div className={styles.allStocksHeader}>
+            <Globe size={14} /> 全監視銘柄リスト (クリックで即分析)
+          </div>
+          <div className={styles.allStocksGrid}>
+            {MONITOR_LIST.map((symbol) => {
+              const isWatched = watchlist.some(w => w.symbol === symbol);
+              return (
+                <div key={symbol} className={styles.stockCard}>
+                  <div
+                    className={styles.stockName}
+                    onClick={() => {
+                      const idx = MONITOR_LIST.indexOf(symbol);
+                      if (idx >= 0) {
+                        setBacktestResult(null);
+                        setCurrentScanIndex(idx);
+                        setIsPaused(true);
+                      }
+                    }}
+                  >
+                    {symbol}
+                  </div>
+                  <button
+                    className={`${styles.addWatchButton} ${isWatched ? styles.watched : ''}`}
+                    onClick={() => {
+                      // priceやsentimentは仮または取得済みデータがあれば使うが、
+                      // ここではシンプルにリスト登録のみ行う（データは次回のスキャン等で更新される）
+                      // ただし toggleWatchlist は引数が必要なので、簡易的に現在の price などを渡すか、
+                      // 既存の toggleWatchlist を調整するか。
+                      // ここでは既存の toggleWatchlist を呼ぶために、
+                      // 現在表示中のデータがあればそれを、なければ0を入れておく（後で更新される想定）
+                      toggleWatchlist(symbol, 0, 'NEUTRAL');
+                    }}
+                  >
+                    <Star size={14} fill={isWatched ? "currentColor" : "none"} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {history.length > 0 && (
           <div className={styles.historySection}>
