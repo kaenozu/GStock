@@ -114,11 +114,22 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
 
     const finalScore = bullScore - bearScore;
 
-    // 信頼度の計算 (0-100にスケーリング)
-    let confidence = (Math.abs(finalScore) / 50) * 100;
-    if (isTrending) confidence *= 1.2; else confidence *= 0.7; // トレンドがない時は慎重に
+    // 信頼度の計算チューニング (ユーザーFB: 「低すぎる」に対応)
+    // 1. スコア正規化係数を緩和 (50 -> 35): 少ないシグナルでも反応しやすくする
+    // 2. ベース信頼度 (+20): 何もなくてもある程度の期待値を担保
+    let rawConfidence = (Math.abs(finalScore) / 35) * 100;
 
-    confidence = Math.min(Math.round(confidence), 100);
+    // トレンド強度による補正
+    if (isTrending) {
+        rawConfidence *= 1.3; // トレンド時は1.3倍に攻める
+    } else {
+        rawConfidence *= 0.85; // レンジ相場でも0.85倍までに留める (急激な低下を防ぐ)
+    }
+
+    // ベース信頼度を加算 (全体的な底上げ)
+    rawConfidence += 20;
+
+    let confidence = Math.min(Math.round(rawConfidence), 98); // 100%は胡散臭いので98止め
     const sentiment: TradeSentiment = finalScore >= 0 ? 'BULLISH' : 'BEARISH';
 
     const predictions = [];

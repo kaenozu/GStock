@@ -95,8 +95,12 @@ export default function Home() {
   // ベストトレードの更新（副作用）
   // これは条件付きでStateを更新するため useEffect が必要
   // マニュアルモード(isPaused)時は、信頼度にかかわらず選択した銘柄を表示する
+  // ベストトレードの更新（副作用）
+  // 以前は閾値(CONFIDENCE_THRESHOLD)を超えた場合のみ更新していたが、
+  // ユーザーから「画面が変わらない」という指摘があったため、
+  // スキャン中の銘柄を常に表示するように変更する。
   useEffect(() => {
-    if (currentAnalysis && (currentAnalysis.confidence >= CONFIDENCE_THRESHOLD || isPaused)) {
+    if (currentAnalysis) {
       setTimeout(() => {
         setBestTrade({
           ...currentAnalysis,
@@ -105,7 +109,7 @@ export default function Home() {
         });
       }, 0);
     }
-  }, [currentAnalysis, stockData, isPaused]);
+  }, [currentAnalysis, stockData]);
 
   // シグナル履歴の更新
   useEffect(() => {
@@ -143,9 +147,14 @@ export default function Home() {
           ? '上昇の波が来ています。新規買い（ロング）のタイミングです。'
           : '下落の予兆です。保有株は売却し、空売りでの利益を狙えます。'
       };
+    } else {
+      // 閾値未満でも分析結果を表示する（スキャン中の様子を見せるため）
+      return {
+        type: 'HOLD',
+        text: `分析中: ${bestTrade.symbol} (Wait)`,
+        action: `信頼度(${bestTrade.confidence}%)が閾値(${CONFIDENCE_THRESHOLD}%)未満です。明確なシグナル待ち。`
+      };
     }
-
-    return { type: 'HOLD', text: '異常なし', action: `現在 ${bestTrade?.symbol || '市場'} に明確なシグナルはありません。引き続き全銘柄を監視します。` };
   }, [bestTrade, isPaused]);
 
   const toggleWatchlist = (symbol: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') => {
