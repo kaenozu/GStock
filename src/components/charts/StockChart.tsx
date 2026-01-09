@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickSeries, LineSeries } from 'lightweight-charts';
 
 interface ChartProps {
     data: any[];
@@ -43,7 +43,8 @@ const StockChart: React.FC<ChartProps> = ({ data, predictionData }) => {
             if (!chart) return;
 
             try {
-                const candlestickSeries = chart.addCandlestickSeries({
+                // v5 API: addSeriesを使用
+                const candlestickSeries = chart.addSeries(CandlestickSeries, {
                     upColor: '#10b981',
                     downColor: '#ef4444',
                     borderVisible: false,
@@ -53,10 +54,12 @@ const StockChart: React.FC<ChartProps> = ({ data, predictionData }) => {
 
                 if (data && data.length > 0) {
                     candlestickSeries.setData(data);
+                    // 最新のローソク足が見えるように調整
+                    chart.timeScale().fitContent();
                 }
 
                 if (predictionData && predictionData.length > 0) {
-                    const predictionSeries = chart.addLineSeries({
+                    const predictionSeries = chart.addSeries(LineSeries, {
                         color: '#06b6d4',
                         lineWidth: 2,
                         lineStyle: 2, // Dotted

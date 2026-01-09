@@ -19,6 +19,10 @@ const MONITOR_LIST = [
   '6758.T', // ソニー。ハイテク・グローバル。
 ];
 
+import dynamic from 'next/dynamic';
+
+const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
+
 export default function Home() {
   const [currentScanIndex, setCurrentScanIndex] = useState(0);
   const [bestTrade, setBestTrade] = useState<any>(null);
@@ -64,6 +68,7 @@ export default function Home() {
         setBestTrade({
           symbol: scanningSymbol,
           ...analysis,
+          history: stockData, // チャート表示用に履歴データを保存
           price: stockData[stockData.length - 1].close,
           isRealtime: stockData[0].time.includes('-')
         });
@@ -106,7 +111,7 @@ export default function Home() {
       };
     }
 
-    return { type: 'HOLD', text: '待機・維持', action: '現在は静観。AIが次の獲物を追っています。' };
+    return { type: 'HOLD', text: '異常なし', action: `現在 ${bestTrade?.symbol || '市場'} に明確なシグナルはありません。引き続き全銘柄を監視します。` };
   }, [bestTrade]);
 
   return (
@@ -158,6 +163,12 @@ export default function Home() {
 
             <h1 className={styles.signalText}>{displaySignal.text}</h1>
           </div>
+
+          {bestTrade?.history && (
+            <div className={styles.chartContainer}>
+              <StockChart data={bestTrade.history} predictionData={bestTrade.predictions} />
+            </div>
+          )}
 
           <p className={styles.actionInstruction}>{displaySignal.action}</p>
 
