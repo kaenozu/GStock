@@ -1,9 +1,11 @@
 import { StockDataPoint, BacktestResult, ChartMarker } from '@/types/market';
-import { SMA, RSI } from 'technicalindicators';
+import { calculateHistoricalSignals } from './prediction-engine';
 
 /**
- * 簡易バックテストエンジン
- * 過去のデータに基づいて、ゴールデンクロス/デッドクロス + RSIフィルターで売買をシミュレーションする
+ * 高精度バックテストエンジン (G-Engine AI連動版)
+ * 
+ * 従来の単純なSMAクロスではなく、AI予測エンジンが弾き出した「信頼度スコア」に基づいて
+ * 売買シミュレーションを行う。これにより、表示される信頼度の実効性を証明する。
  */
 export const runBacktest = (data: StockDataPoint[], initialBalance: number = 10000): BacktestResult => {
   if (data.length < 50) {
@@ -18,16 +20,8 @@ export const runBacktest = (data: StockDataPoint[], initialBalance: number = 100
     };
   }
 
-  const closes = data.map(d => d.close);
-  
-  // テクニカル指標の計算
-  const sma20 = SMA.calculate({ period: 20, values: closes });
-  const sma50 = SMA.calculate({ period: 50, values: closes });
-  const rsi = RSI.calculate({ period: 14, values: closes });
-
-  // 計算結果の配列長を合わせるためのオフセット
-  // SMA50が一番長いので、そこから開始
-  const startIndex = 50;
+  // 1. 全期間のAI判断を取得
+  const aiSignals = calculateHistoricalSignals(data);
   
   let balance = initialBalance;
   let position: { entryPrice: number, amount: number } | null = null;
@@ -35,70 +29,60 @@ export const runBacktest = (data: StockDataPoint[], initialBalance: number = 100
   let tradeCount = 0;
   const markers: ChartMarker[] = [];
 
-  for (let i = startIndex; i < data.length; i++) {
-    // インデックス調整 (indicatorの配列は data より短い)
-    const sma20Idx = i - 20;
-    const sma50Idx = i - 50;
-    const rsiIdx = i - 14;
+  // 売買ルールの定義
+  const BUY_THRESHOLD = 75; // 信頼度75%以上で買い
+  const SELL_THRESHOLD = 40; // 信頼度40%以下で手仕舞い（または損切り）
 
-    // 安全策
-    if (sma20Idx < 0 || sma50Idx < 0 || rsiIdx < 0) continue;
+  // AIシグナルのループ
+  for (const signal of aiSignals) {
+    const currentPrice = signal.price;
+    const currentTime = signal.time;
+    const confidence = signal.confidence;
+    const sentiment = signal.sentiment;
 
-    const currentPrice = data[i].close;
-    const currentTime = data[i].time;
-    const currentSMA20 = sma20[sma20Idx];
-    const currentSMA50 = sma50[sma50Idx];
-    const currentRSI = rsi[rsiIdx];
-
-    const prevSMA20 = sma20[sma20Idx - 1];
-    const prevSMA50 = sma50[sma50Idx - 1];
-
-    if (!currentSMA20 || !currentSMA50 || !prevSMA20 || !prevSMA50) continue;
-
-    // BUY条件: 
-    // 1. ゴールデンクロス (SMA20 が SMA50 を下から上に抜ける) かつ RSI < 70
-    // 2. トレンド継続中 (SMA20 > SMA50) かつ 押し目買い (RSI < 60)
-    const isGoldenCross = prevSMA20 <= prevSMA50 && currentSMA20 > currentSMA50;
-    const isTrendFollowing = currentSMA20 > currentSMA50 && currentRSI < 60;
-    
-    // SELL条件: デッドクロス (SMA20 が SMA50 を上から下に抜ける) または RSI > 75 (過熱)
-    const isDeadCross = prevSMA20 >= prevSMA50 && currentSMA20 < currentSMA50;
-    const isOverbought = currentRSI > 75;
-
-    // エントリー (買い)
-    if (position === null && (isGoldenCross || isTrendFollowing)) {
+    // ENTRY (買い)
+    // ポジションなし、かつ強気の信頼度が閾値を超えた場合
+    if (position === null && sentiment === 'BULLISH' && confidence >= BUY_THRESHOLD) {
       const amount = balance / currentPrice;
       position = { entryPrice: currentPrice, amount };
-      balance = 0; // 全額ベット
-      
+      balance = 0; // 全力買い
+
       markers.push({
         time: currentTime,
         position: 'belowBar',
         color: '#2196F3',
         shape: 'arrowUp',
-        text: 'BUY',
+        text: `BUY (AI:${confidence}%)`,
         size: 2
       });
     }
-    // エグジット (売り)
-    else if (position !== null && (isDeadCross || isOverbought)) {
-      const sellValue = position.amount * currentPrice;
-      const profit = sellValue - (position.amount * position.entryPrice);
-      
-      if (profit > 0) winCount++;
-      tradeCount++;
-      
-      balance = sellValue;
-      position = null;
 
-      markers.push({
-        time: currentTime,
-        position: 'aboveBar',
-        color: profit > 0 ? '#4CAF50' : '#FF5252',
-        shape: 'arrowDown',
-        text: `SELL (${profit > 0 ? '+' : ''}${profit.toFixed(2)})`,
-        size: 2
-      });
+    // EXIT (売り)
+    // ポジションあり、かつ
+    // 1. 弱気に転換して信頼度が閾値を下回った (明確な売りシグナル)
+    // 2. 強気だが信頼度が急激に低下した (トレンド終了の疑い)
+    else if (position !== null) {
+        const shouldSell = (sentiment === 'BEARISH') || (sentiment === 'BULLISH' && confidence <= SELL_THRESHOLD);
+
+        if (shouldSell) {
+            const sellValue = position.amount * currentPrice;
+            const profit = sellValue - (position.amount * position.entryPrice);
+            
+            if (profit > 0) winCount++;
+            tradeCount++;
+            
+            balance = sellValue;
+            position = null;
+
+            markers.push({
+                time: currentTime,
+                position: 'aboveBar',
+                color: profit > 0 ? '#4CAF50' : '#FF5252',
+                shape: 'arrowDown',
+                text: `SELL (${profit > 0 ? '+' : ''}${Math.round(profit)})`,
+                size: 2
+            });
+        }
     }
   }
 
