@@ -2,39 +2,27 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
+import dynamic from 'next/dynamic';
 import { fetchStockData } from '@/lib/api/alphavantage';
 import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
 import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2 } from 'lucide-react';
 import styles from './page.module.css';
-
-// AIが常に監視するエリート銘柄リスト (ボラティリティとテクニカル妥当性で選定)
-const MONITOR_LIST = [
-  'NVDA', // AI半導体。トレンドが明確。
-  'TSLA', // 高ボラティリティ。テクニカル反発が狙いやすい。
-  'AMD',  // NVDA追随型。半導体セクターの補完。
-  'PLTR', // AIソフトウェア。最近の出来高とボラティリティが優秀。
-  'AAPL', // 指標株。市場全体の方向性確認用。
-  '7203.T', // トヨタ。日本株の横綱。
-  '9984.T', // SBG。日本株で最もボラティリティが高い銘柄の一つ。
-  '6758.T', // ソニー。ハイテク・グローバル。
-];
-
-import dynamic from 'next/dynamic';
+import { MONITOR_LIST, SCAN_INTERVAL_MS, DATA_REFRESH_INTERVAL_MS, CONFIDENCE_THRESHOLD } from '@/config/constants';
+import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType } from '@/types/market';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
 export default function Home() {
   const [currentScanIndex, setCurrentScanIndex] = useState(0);
-  const [bestTrade, setBestTrade] = useState<any>(null);
-  const [scanning, setScanning] = useState(true);
+  const [bestTrade, setBestTrade] = useState<AnalysisResult | null>(null);
+  const [currentAnalysis, setCurrentAnalysis] = useState<AnalysisResult | null>(null);
+  const [history, setHistory] = useState<TradeHistoryItem[]>([]);
 
-  const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
-
-  // 銘柄を15秒ごとに巡回スキャンする (API制限 U7X5ERM9E4UYO140 を守るため)
+  // 銘柄を定期的に巡回スキャンする
   useEffect(() => {
     const scanInterval = setInterval(() => {
       setCurrentScanIndex((prev) => (prev + 1) % MONITOR_LIST.length);
-    }, 15000); // 1.5秒から15秒へ調整。APIの健全性を優先。
+    }, SCAN_INTERVAL_MS);
 
     return () => clearInterval(scanInterval);
   }, []);
@@ -48,7 +36,7 @@ export default function Home() {
       revalidateOnFocus: false,
       dedupingInterval: 60000,
       focusThrottleInterval: 60000,
-      refreshInterval: 300000 // データの鮮度は5分おきでOK
+      refreshInterval: DATA_REFRESH_INTERVAL_MS
     }
   );
 
@@ -63,8 +51,8 @@ export default function Home() {
         price: stockData[stockData.length - 1].close
       });
 
-      // 信頼度が65%を超える「本命チャンス」のみを更新
-      if (analysis.confidence >= 65) {
+      // 信頼度が閾値を超える「本命チャンス」のみを更新
+      if (analysis.confidence >= CONFIDENCE_THRESHOLD) {
         setBestTrade({
           symbol: scanningSymbol,
           ...analysis,
@@ -76,14 +64,14 @@ export default function Home() {
     }
   }, [stockData, scanningSymbol]);
 
-  const [history, setHistory] = useState<any[]>([]);
-
   // シグナル履歴の更新
   useEffect(() => {
-    if (bestTrade && (bestTrade.confidence >= 65)) {
-      const newEntry = {
-        symbol: bestTrade.symbol,
-        type: bestTrade.sentiment === 'BULLISH' ? 'BUY' : 'SELL',
+    if (bestTrade && (bestTrade.confidence >= CONFIDENCE_THRESHOLD)) {
+      const type: TradeType = bestTrade.sentiment === 'BULLISH' ? 'BUY' : 'SELL';
+      
+      const newEntry: TradeHistoryItem = {
+        symbol: bestTrade.symbol || '',
+        type,
         time: new Date().toLocaleTimeString(),
         confidence: bestTrade.confidence
       };
@@ -97,10 +85,10 @@ export default function Home() {
   }, [bestTrade]);
 
   // 現在表示すべき「指示」
-  const displaySignal = useMemo(() => {
+  const displaySignal: DisplaySignal = useMemo(() => {
     if (!bestTrade) return { type: 'HOLD', text: '市場スキャン中...', action: 'チャンスを探しています' };
 
-    if (bestTrade.confidence >= 65) {
+    if (bestTrade.confidence >= CONFIDENCE_THRESHOLD) {
       const isBullish = bestTrade.sentiment === 'BULLISH';
       return {
         type: isBullish ? 'BUY' : 'SELL',
@@ -229,7 +217,7 @@ export default function Home() {
             </div>
             <div className={styles.detailItem}>
               <span>PRICE</span>
-              <strong>${bestTrade.price.toFixed(2)}</strong>
+              <strong>${(bestTrade.price || 0).toFixed(2)}</strong>
             </div>
             <div className={styles.detailItem}>
               <span>QA</span>
@@ -250,4 +238,3 @@ export default function Home() {
     </div>
   );
 }
-

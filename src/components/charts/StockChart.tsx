@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickSeries, LineSeries } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, CandlestickSeries, LineSeries } from 'lightweight-charts';
+import { StockDataPoint, PredictionPoint } from '@/types/market';
 
 interface ChartProps {
-    data: any[];
-    predictionData?: any[];
+    data: StockDataPoint[];
+    predictionData?: PredictionPoint[];
 }
 
 const StockChart: React.FC<ChartProps> = ({ data, predictionData }) => {

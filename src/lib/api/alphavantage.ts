@@ -1,28 +1,41 @@
 import axios from 'axios';
+import { StockDataPoint } from '@/types/market';
 
 const ALPHA_VANTAGE_API_KEY = process.env.NEXT_PUBLIC_ALPHA_VANTAGE_KEY || 'demo';
 
 // 開発/デモ用のダミーデータを生成するヘルパー
-const generateMockData = (symbol: string) => {
-    const data = [];
-    const basePrice = symbol.includes('NVDA') ? 140 : symbol.includes('TSLA') ? 250 : 200;
+const generateMockData = (symbol: string): StockDataPoint[] => {
+    const data: StockDataPoint[] = [];
+    // NVDAを強力な上昇トレンド（BUYシグナル）として設定
+    const isBullish = symbol.includes('NVDA');
+    const basePrice = symbol.includes('NVDA') ? 100 : symbol.includes('TSLA') ? 250 : 200;
 
     for (let i = 100; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        const dayPrice = basePrice + Math.sin(i / 10) * 10 + (100 - i) * 0.5;
+
+        // NVDAは右肩上がり、その他はランダム/下落気味
+        let dayPrice;
+        if (isBullish) {
+            // 強力な上昇トレンド: iが減るにつれて価格が上昇
+            dayPrice = basePrice + (100 - i) * 1.5 + Math.sin(i / 5) * 5;
+        } else {
+            // レンジ〜下落
+            dayPrice = basePrice + Math.sin(i / 10) * 10 + (i * 0.2);
+        }
+
         data.push({
             time: date.toISOString().split('T')[0],
-            open: dayPrice - 2,
-            high: dayPrice + 5,
-            low: dayPrice - 4,
-            close: dayPrice,
+            open: parseFloat((dayPrice - 2).toFixed(2)),
+            high: parseFloat((dayPrice + 5).toFixed(2)),
+            low: parseFloat((dayPrice - 4).toFixed(2)),
+            close: parseFloat(dayPrice.toFixed(2)),
         });
     }
     return data;
 };
 
-export const fetchStockData = async (symbol: string) => {
+export const fetchStockData = async (symbol: string): Promise<StockDataPoint[]> => {
     try {
         const response = await axios.get(`https://www.alphavantage.co/query`, {
             params: {
