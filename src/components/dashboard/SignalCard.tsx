@@ -2,6 +2,7 @@ import React from 'react';
 import { Target, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { AnalysisResult, DisplaySignal } from '@/types/market';
+import { Skeleton, SkeletonCard } from '@/components/common/Skeleton';
 
 interface SignalCardProps {
   scanningSymbol: string | null;
@@ -41,6 +42,21 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
       default: return styles.signalHold;
     }
   };
+
+  // Show skeleton while loading initial data
+  const isInitialLoading = isScanLoading && !currentAnalysis;
+
+  if (isInitialLoading) {
+    return (
+      <div className={styles.signalCard}>
+        <div className={styles.liveAnalysisStrip}>
+          <Skeleton width="120px" height="1rem" />
+          <Skeleton width="80px" height="1rem" />
+        </div>
+        <SkeletonCard />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.signalCard}>

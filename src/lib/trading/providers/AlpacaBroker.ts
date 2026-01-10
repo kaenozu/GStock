@@ -36,6 +36,7 @@ export class AlpacaBroker implements BrokerProvider {
         const account = await accRes.json();
         const alpacaPositions = await posRes.json();
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const positions: Position[] = alpacaPositions.map((p: any) => ({
             symbol: p.symbol,
             quantity: Number(p.qty),

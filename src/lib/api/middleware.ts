@@ -36,6 +36,7 @@ export function validateSymbol(symbol: string): boolean {
     return /^[A-Z]{1,5}(\.[A-Z]{1,3})?$/.test(symbol.toUpperCase());
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function validateTradeRequest(data: any): { valid: boolean; errors?: string[] } {
     const errors: string[] = [];
 
