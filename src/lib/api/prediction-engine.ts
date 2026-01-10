@@ -1,5 +1,9 @@
 import { SMA, RSI, MACD, ADX, BollingerBands, ATR } from 'technicalindicators';
-import { StockDataPoint, AnalysisResult, TradeSentiment, ChartIndicators } from '@/types/market';
+import { StockDataPoint, AnalysisResult, TradeSentiment, ChartIndicators, MarketRegime } from '@/types/market';
+import { ChairmanAgent } from '@/lib/agents/ChairmanAgent';
+import { TrendAgent } from '@/lib/agents/TrendAgent';
+import { ReversalAgent } from '@/lib/agents/ReversalAgent';
+import { VolatilityAgent } from '@/lib/agents/VolatilityAgent';
 
 /**
  * 内部用: 単一時点の指標値からスコアとシグナルを算出する
@@ -14,8 +18,8 @@ const calculateScore = (
     adx: any,
     bb: any,
     atr: number
-): { confidence: number, sentiment: 'BULLISH' | 'BEARISH', signals: string[], finalScore: number } => {
-    
+): { confidence: number, sentiment: 'BULLISH' | 'BEARISH', signals: string[], finalScore: number, regime: MarketRegime } => {
+
     let bullScore = 0;
     let bearScore = 0;
     const signals: string[] = [];
@@ -23,19 +27,39 @@ const calculateScore = (
     // 環境認識: ADXによるトレンド強度の判定
     const adxValue = adx.adx;
     // トレンド相場度合い (0.5 ~ 2.0)
-    const trendStrength = Math.min(Math.max(adxValue / 20, 0.5), 2.0); 
+    const trendStrength = Math.min(Math.max(adxValue / 20, 0.5), 2.0);
     // レンジ相場度合い (トレンドが強いほど下がる)
     const oscillatorStrength = Math.min(Math.max(25 / adxValue, 0.5), 2.0);
     // トレンドが発生しているかのフラグ
-    const isTrending = trendStrength > 1.0;
+    const isTrending = adxValue > 25;
 
     // ATRによるボラティリティリスク判定
-    const atrPercent = (atr / price) * 100; 
+    const atrPercent = (atr / price) * 100;
     const isHighVolatility = atrPercent > 3.0;
 
-    if (isHighVolatility) {
+    // D. ボリンジャーバンド [逆張り/ボラティリティ]
+    const bandWidth = (bb.upper - bb.lower) / sma20;
+    const isSqueeze = bandWidth < 0.05;
+
+    // --- Market Regime判定 ---
+    let regime: MarketRegime = 'SIDEWAYS';
+    if (isSqueeze) {
+        regime = 'SQUEEZE';
+    } else if (isHighVolatility) {
+        regime = 'VOLATILE';
         signals.push(`高ボラティリティ(ATR:${atrPercent.toFixed(1)}%)`);
+    } else if (isTrending) {
+        if (price > sma20 && sma20 > sma50) {
+            regime = 'BULL_TREND';
+        } else if (price < sma20 && sma20 < sma50) {
+            regime = 'BEAR_TREND';
+        }
     }
+
+    // Signalsに追加
+    if (regime === 'SQUEEZE') signals.push("BBスクイーズ(爆発前夜)");
+    if (regime === 'BULL_TREND') signals.push("明確な上昇トレンド");
+    if (regime === 'BEAR_TREND') signals.push("明確な下落トレンド");
 
     // A. トレンド分析 (SMA) [順張り]
     if (price > sma20) {
@@ -52,11 +76,11 @@ const calculateScore = (
 
     // B. モメンタム分析 (RSI) [逆張り/過熱感]
     if (rsi > 50) {
-        bullScore += 10 * oscillatorStrength; 
+        bullScore += 10 * oscillatorStrength;
     } else {
         bearScore += 10 * oscillatorStrength;
     }
-    
+
     if (rsi < 30) {
         bullScore += 25 * oscillatorStrength;
         signals.push(`RSI売られすぎ(${Math.round(rsi)})`);
@@ -73,39 +97,34 @@ const calculateScore = (
     if (macd.MACD && macd.signal && macd.MACD > macd.signal) {
         let score = 15;
         if (currentHist > 0 && isHistGrowing) {
-             score += 5; 
+            score += 5;
         }
         bullScore += score * trendStrength;
     } else {
         let score = 15;
         if (currentHist < 0 && isHistGrowing) {
-            score += 5; 
+            score += 5;
         }
         bearScore += score * trendStrength;
     }
 
     // D. ボリンジャーバンド [逆張り/ボラティリティ]
-    const bandWidth = (bb.upper - bb.lower) / sma20;
-    const isSqueeze = bandWidth < 0.05; 
 
-    if (isSqueeze) {
-        signals.push("BBスクイーズ");
-    }
 
     if (price > bb.upper) {
         if (adxValue > 30) {
-            bullScore += 10; 
+            bullScore += 10;
             signals.push("バンドウォーク(上昇)");
         } else {
-            bearScore += 20 * oscillatorStrength; 
+            bearScore += 20 * oscillatorStrength;
             signals.push("BB上限到達");
         }
     } else if (price < bb.lower) {
-         if (adxValue > 30) {
-            bearScore += 10; 
+        if (adxValue > 30) {
+            bearScore += 10;
             signals.push("バンドウォーク(下落)");
         } else {
-            bullScore += 20 * oscillatorStrength; 
+            bullScore += 20 * oscillatorStrength;
             signals.push("BB下限到達");
         }
     }
@@ -118,11 +137,11 @@ const calculateScore = (
     let rawConfidence = (Math.abs(finalScore) / 35) * 100;
 
     if (isTrending) {
-        rawConfidence *= 1.3; 
+        rawConfidence *= 1.3;
     } else {
-        rawConfidence *= 0.85; 
+        rawConfidence *= 0.85;
     }
-    
+
     if (isHighVolatility) {
         rawConfidence *= 0.8;
     }
@@ -132,7 +151,7 @@ const calculateScore = (
     const confidence = Math.min(Math.round(rawConfidence), 98);
     const sentiment: TradeSentiment = finalScore >= 0 ? 'BULLISH' : 'BEARISH';
 
-    return { confidence, sentiment, signals, finalScore };
+    return { confidence, sentiment, signals, finalScore, regime };
 };
 
 /**
@@ -143,8 +162,9 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
         predictions: [],
         confidence: 0,
         sentiment: 'NEUTRAL',
+        marketRegime: 'SIDEWAYS',
         signals: [],
-        stats: { rsi: 0, trend: 'NEUTRAL', adx: 0, price: 0 }
+        stats: { rsi: 0, trend: 'NEUTRAL', adx: 0, price: 0, regime: 'SIDEWAYS' }
     };
 
     const closingPrices = data.map((d) => d.close);
@@ -167,14 +187,94 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     const lastSMA50 = sma50[sma50.length - 1];
     const lastBB = bb[bb.length - 1];
     const lastATR = atr[atr.length - 1];
-    const prevMACD = macd[macd.length - 2]; 
+    const prevMACD = macd[macd.length - 2];
 
-    // スコア計算の分離呼び出し
-    const { confidence, sentiment, signals, finalScore } = calculateScore(
+    // --- Refactor: Use ChairmanAgent ---
+    const chairman = new ChairmanAgent();
+    const trendAgent = new TrendAgent();
+    const reversalAgent = new ReversalAgent();
+    const volatilityAgent = new VolatilityAgent();
+
+    // Calculate Regime First
+    const legacyResult = calculateScore(
         lastPrice, lastSMA20, lastSMA50, lastRSI, lastMACD, prevMACD, lastADX, lastBB, lastATR
     );
+    const regime = legacyResult.regime;
 
-    // 未来予測パスの生成
+    // Agent Analysis (The Council Votes)
+    const chairmanResult = chairman.analyze(data, regime);
+    const trendResult = trendAgent.analyze(data, regime);
+    const reversalResult = reversalAgent.analyze(data, regime);
+    const volResult = volatilityAgent.analyze(data, regime);
+
+    // --- Consensus Engine (Phase 7.3) ---
+
+    // Define Weights
+    const weights = {
+        'CHAIRMAN': 2.0,
+        'VOLATILE': 1.5,
+        'TREND': 1.0,
+        'REVERSAL': 1.0
+    };
+
+    // Helper: Convert Agent Result to Numerical Score (-100 to 100)
+    const getAgentScore = (res: any): number => {
+        let dir = 0;
+        if (res.signal === 'BUY') dir = 1;
+        else if (res.signal === 'SELL') dir = -1;
+        return dir * res.confidence;
+    };
+
+    const results = [chairmanResult, volResult, trendResult, reversalResult];
+    let totalScore = 0;
+    let totalWeight = 0;
+    const votes: string[] = [];
+
+    results.forEach(res => {
+        const weight = weights[res.role as keyof typeof weights] || 1.0;
+
+        // Skip silent agents (HOLD with 0 confidence) from weighting? 
+        // No, HOLD is a vote for Neutral (0). But if confidence is high and HOLD, it pulls towards 0.
+        // Current agents return confidence 0 for neutral HOLD.
+        // If an agent says BUY with 50 confidence, and another says HOLD 0 confidence (weight 1),
+        // Score = (50*W1 + 0*W2) / (W1+W2). Correctly dilutes the signal.
+
+        const score = getAgentScore(res);
+        totalScore += score * weight;
+        totalWeight += weight;
+
+        // Log significant votes for display
+        if (res.signal !== 'HOLD') {
+            votes.push(`${res.name}: ${res.signal} (${res.reason})`);
+        } else if (res.role === 'CHAIRMAN') {
+            // Always hear the Chairman
+            votes.push(`${res.name}: ${res.reason}`);
+        }
+    });
+
+    const consensusScore = totalWeight > 0 ? totalScore / totalWeight : 0; // -100 to 100
+
+    // Final Consensus Derivation
+    const finalConfidence = Math.min(Math.abs(consensusScore), 100);
+    let finalSentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' = 'NEUTRAL';
+    if (consensusScore >= 20) finalSentiment = 'BULLISH';
+    else if (consensusScore <= -20) finalSentiment = 'BEARISH';
+
+    // Construct Signals
+    const signals = legacyResult.signals; // Tech signals
+
+    // 1. Add Consensus Summary
+    const consensusSignal = `Council Consensus: ${finalSentiment} (Score: ${Math.round(consensusScore)})`;
+    signals.unshift(consensusSignal);
+
+    // 2. Add Detailed Votes (Top 3)
+    votes.slice(0, 3).forEach(v => signals.push(v));
+
+    // Map Consensus to Visualization
+    const confidence = Math.round(finalConfidence);
+    const sentiment = finalSentiment === 'NEUTRAL' ? 'NEUTRAL' : finalSentiment as TradeSentiment;
+
+    // ... Predictions loop ...
     const predictions = [];
     const lastDate = new Date(data[data.length - 1].time);
     predictions.push({ time: data[data.length - 1].time, value: lastPrice });
@@ -184,11 +284,16 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
         nextDate.setDate(lastDate.getDate() + i);
         if (nextDate.getDay() === 0 || nextDate.getDay() === 6) continue;
         const dateStr = nextDate.toISOString().split('T')[0];
-        
-        const volatilityFactor = lastATR * 0.5; 
-        const directionFactor = finalScore / 100;
-        const noise = (Math.random() - 0.5) * (lastATR * 0.2); 
-        const change = (directionFactor * volatilityFactor * i) + noise;
+
+        const volatilityFactor = lastATR * 0.5;
+        // Map sentiment to direction
+        const directionFactor = sentiment === 'BULLISH' ? 0.3 : sentiment === 'BEARISH' ? -0.3 : 0;
+
+        // Adjust direction intensity based on Consensus Score strength
+        const intensity = Math.abs(consensusScore) / 100;
+
+        const noise = (Math.random() - 0.5) * (lastATR * 0.2);
+        const change = (directionFactor * intensity * volatilityFactor * i) + noise;
 
         predictions.push({
             time: dateStr,
@@ -212,8 +317,10 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
             rsi: Math.round(lastRSI),
             trend: lastSMA20 > lastSMA50 ? 'UP' : 'DOWN',
             adx: Math.round(lastADX.adx),
-            price: lastPrice
+            price: lastPrice,
+            regime: regime
         },
+        marketRegime: regime,
         chartIndicators
     };
 };
@@ -237,7 +344,7 @@ export const calculateHistoricalSignals = (data: StockDataPoint[]) => {
     const atr = ATR.calculate({ high: highPrices, low: lowPrices, close: closingPrices, period: 14 });
 
     // インジケーター計算開始位置（最大期間の50日目から）
-    const startIndex = 50; 
+    const startIndex = 50;
     const results = [];
 
     for (let i = startIndex; i < data.length; i++) {
@@ -254,7 +361,7 @@ export const calculateHistoricalSignals = (data: StockDataPoint[]) => {
         if (sma50Idx < 0 || macdIdx < 0) continue;
 
         const currentPrice = closingPrices[i];
-        
+
         try {
             const { confidence, sentiment, signals } = calculateScore(
                 currentPrice,

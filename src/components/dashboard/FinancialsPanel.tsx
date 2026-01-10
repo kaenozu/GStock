@@ -1,0 +1,122 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, DollarSign, BarChart2, AlertCircle } from 'lucide-react';
+import styles from '@/app/page.module.css';
+
+interface FinancialData {
+    pe: number | null;
+    eps: number | null;
+    epsGrowth: number | null;
+    roe: number | null;
+    revenueGrowth: number | null;
+    marketCap: number | null;
+    _52wHigh: number | null;
+    _52wLow: number | null;
+}
+
+interface FinancialsPanelProps {
+    symbol: string;
+}
+
+export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
+    const [data, setData] = useState<FinancialData | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!symbol) return;
+
+        const fetchData = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await fetch(`/api/financials?symbol=${symbol}`);
+                if (!res.ok) throw new Error('Failed to fetch');
+                const json = await res.json();
+                setData(json);
+            } catch (e: any) {
+                setError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [symbol]);
+
+    if (!symbol) return null;
+    if (loading) return <div className={styles.financialsPanel}>Loading Financials...</div>;
+    if (error) return <div className={styles.financialsPanel}><AlertCircle size={16} /> {error}</div>;
+    if (!data) return null;
+
+    const formatNum = (n: number | null, suffix = '') => {
+        if (n === null) return 'N/A';
+        return n.toFixed(2) + suffix;
+    };
+
+    const formatMktCap = (n: number | null) => {
+        if (n === null) return 'N/A';
+        if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+        if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+        if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+        return `$${n.toFixed(0)}`;
+    };
+
+    const getScoreColor = (val: number | null, goodAbove: number, badBelow: number) => {
+        if (val === null) return '#6b7280';
+        if (val >= goodAbove) return '#10b981';
+        if (val <= badBelow) return '#ef4444';
+        return '#f59e0b';
+    };
+
+    return (
+        <div className={styles.financialsPanel}>
+            <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 12px 0', fontSize: '0.9rem' }}>
+                <BarChart2 size={16} /> Fundamentals: {symbol}
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '0.8rem' }}>
+                <div>
+                    <span style={{ color: '#9ca3af' }}>P/E Ratio</span>
+                    <div style={{ fontWeight: 'bold', color: getScoreColor(data.pe, 15, 0) }}>
+                        {formatNum(data.pe)}
+                    </div>
+                </div>
+                <div>
+                    <span style={{ color: '#9ca3af' }}>EPS (TTM)</span>
+                    <div style={{ fontWeight: 'bold' }}>${formatNum(data.eps)}</div>
+                </div>
+                <div>
+                    <span style={{ color: '#9ca3af' }}>EPS Growth</span>
+                    <div style={{ fontWeight: 'bold', color: getScoreColor(data.epsGrowth, 10, 0) }}>
+                        {formatNum(data.epsGrowth, '%')}
+                    </div>
+                </div>
+                <div>
+                    <span style={{ color: '#9ca3af' }}>ROE</span>
+                    <div style={{ fontWeight: 'bold', color: getScoreColor(data.roe, 15, 5) }}>
+                        {formatNum(data.roe, '%')}
+                    </div>
+                </div>
+                <div>
+                    <span style={{ color: '#9ca3af' }}>Revenue Growth</span>
+                    <div style={{ fontWeight: 'bold', color: getScoreColor(data.revenueGrowth, 10, 0) }}>
+                        {formatNum(data.revenueGrowth, '%')}
+                    </div>
+                </div>
+                <div>
+                    <span style={{ color: '#9ca3af' }}>Market Cap</span>
+                    <div style={{ fontWeight: 'bold' }}>{formatMktCap(data.marketCap)}</div>
+                </div>
+                <div>
+                    <span style={{ color: '#9ca3af' }}>52W High</span>
+                    <div style={{ fontWeight: 'bold', color: '#10b981' }}>${formatNum(data._52wHigh)}</div>
+                </div>
+                <div>
+                    <span style={{ color: '#9ca3af' }}>52W Low</span>
+                    <div style={{ fontWeight: 'bold', color: '#ef4444' }}>${formatNum(data._52wLow)}</div>
+                </div>
+            </div>
+        </div>
+    );
+};

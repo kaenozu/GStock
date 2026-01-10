@@ -1,0 +1,81 @@
+# GStock: Grand Unified Roadmap (The Council's Decree)
+
+*Ratified by the Council of Ten (Alpha, Omega, Trader, Quant, Hacker, et al.)*
+
+## 🧭 Philosophy
+> **Alpha (Visionary)**: "We have awakened the eye (Regime) and the reflex (Auto-Tuning). Now we build the brain."
+> **Trader (Pragmatist)**: "Real data only. No toys. We trade to win."
+> **Omega (Guardian)**: "Complexity implies risk. The Council must vote to ensure safety."
+
+---
+
+## ✅ Phase 1: The Foundation (UI & Stability)
+**Status: Complete**
+- [x] **Neural Monitor v2.0**: Graphical visualization of AI logic.
+- [x] **Refactored Dashboard**: `SignalCard`, `SignalGrid` architecture.
+- [x] **CI/CD Pipeline**: 100% Type Safety & Test Coverage.
+
+## ✅ Phase 4: Cognitive Awakening (The Eye)
+**Status: Complete**
+- [x] **Market Regime Detector**:
+    - Identifies `BULL`, `BEAR`, `SIDEWAYS`, `VOLATILE`, `SQUEEZE`.
+- [x] **Real-Data Hardening**:
+    - **Yahoo Finance v8 Proxy**: Replaced unreliable APIs with robust raw fetch.
+    - **Mock Data Elimination**: Fallback only.
+
+## ✅ Phase 5: Adaptive Autonomy (The Reflex)
+**Status: Complete**
+- [x] **Auto-Tuning Engine**:
+    - **Regime-Aware Grid Search**:
+        - *Volatile*: Defensive (Buy > 80%).
+        - *Bull*: Aggressive (Buy > 55%).
+    - Automatic parameter optimization based on historical backtest.
+
+---
+
+## ✅ Phase 7: The Council of Algorithms (The Brain)
+**Status: Complete**
+- [x] **Agent Specialization**: Trend, Reversal, Volatility.
+- [x] **Consensus Logic**: Weighted Voting System.
+
+## ✅ Phase 8: The Iron Dome (Execution)
+**Status: Complete**
+- [x] **Circuit Breakers**: Safety Locks.
+- [x] **Paper Trading Engine**: Virtual Portfolio.
+- [x] **Dashboard V2**: Componentized & Stabilized UI.
+
+## ✅ Phase 10: Deep Backtesting (Strategy Explorer)
+**Status: Complete**
+- [x] **Historic Data Loader**: Fetch & Cache 1-5 years of data.
+- [x] **Agent Arena**: Pit agents against each other.
+- [x] **Deep Analysis**: Drawdown, Sharpe Ratio, Profit Factor.
+
+## 💤 Phase 11: Omni-Channel Notifications
+**Status: Skipped (User Decision)**
+- [ ] Webhook Integration.
+
+## ✅ Phase 14: Data Reliability (The Sensory System)
+**Status: Complete**
+- [x] **Hybrid Provider System**: Finnhub (API) + Yahoo (Fallback).
+- [x] **Smart Caching**: `withStockCache` middleware for reduced API usage.
+- [x] **Broker Integration readiness**: Clean `StockProvider` architecture.
+
+## ✅ Phase 13: Live Execution Bridge (The Hand)
+**Status: Complete**
+- [x] **Broker Adapter Pattern**: Interface for generic execution.
+- [x] **Alpaca Integration**: Live/Paper trading capability via REST API.
+- [x] **Switch**: Toggle between `Internal Paper` and `Alpaca`.
+
+## ✅ Phase 15: Fundamental Intelligence (The Third Eye)
+**Status: Complete**
+- [x] **Fundamental Agent**: Analysis of EPS, Revenue, and P/E.
+- [x] **Financials Panel**: Dashboard display of key metrics.
+- [ ] **Earnings Tracker**: Visualize upcoming earnings on the chart. (Future)
+- [ ] **Insider Sentiment**: Track CEO/CFO buying activity. (Future)
+
+## 🌌 Phase 16: G-DAO (Infinite Scale)
+**Timeline: 2028+**
+- [ ] **Strategy Staking**: Tokenized strategy bets.
+
+---
+> *Status Update: The system runs on Real Data + Algorithms. No LLMs are currently planned to ensure maximum speed and reliability.*
