@@ -6,7 +6,10 @@ import dynamic from 'next/dynamic';
 import { fetchStockData } from '@/lib/api/alphavantage';
 import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
 import { runBacktest, findOptimalStrategy } from '@/lib/api/backtest';
-import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, History, AlertCircle, CheckCircle2, Star, Play, Pause, FlaskConical, Layers, Globe } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Zap, Search, Target, AlertCircle, CheckCircle2, Star, Play, Pause, Layers } from 'lucide-react';
+import { TradeHistory } from '@/components/history/TradeHistory';
+import { BacktestPanel } from '@/components/backtest/BacktestPanel';
+import { MarketRanking } from '@/components/market/MarketRanking';
 import styles from './page.module.css';
 import { MONITOR_LIST, SCAN_INTERVAL_MS, DATA_REFRESH_INTERVAL_MS, CONFIDENCE_THRESHOLD } from '@/config/constants';
 import { AnalysisResult, TradeHistoryItem, DisplaySignal, TradeType, WatchListItem, BacktestResult, ChartSettings } from '@/types/market';
@@ -255,6 +258,19 @@ export default function Home() {
     }
   };
 
+  const handleSymbolClick = (symbol: string) => {
+    const idx = MONITOR_LIST.indexOf(symbol);
+    if (idx >= 0) {
+      setBacktestResult(null);
+      setCurrentScanIndex(idx);
+      setIsPaused(true);
+    }
+  };
+
+  const handleToggleWatchlistBySymbol = (symbol: string) => {
+    toggleWatchlist(symbol, 0, 'NEUTRAL');
+  };
+
   const isInWatchlist = watchlist.some(item => item.symbol === scanningSymbol);
 
   return (
@@ -409,68 +425,11 @@ export default function Home() {
 
           <p className={styles.actionInstruction}>{displaySignal.action}</p>
 
-          {!backtestResult && bestTrade && (
-            <button
-              onClick={handleBacktest}
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                padding: '8px 16px',
-                borderRadius: '20px',
-                color: 'var(--accent-cyan)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                margin: '0 auto 1.5rem',
-                fontSize: '0.8rem',
-                fontWeight: 600
-              }}
-            >
-              <FlaskConical size={14} /> バックテストを実行 (Beta)
-            </button>
-          )}
-
-          {backtestResult && (
-            <div style={{
-              background: 'rgba(0,0,0,0.3)',
-              padding: '1.5rem',
-              borderRadius: '16px',
-              marginBottom: '2rem',
-              border: '1px solid var(--accent-cyan)',
-              width: '100%'
-            }}>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FlaskConical size={14} /> バックテスト結果 (過去100日)
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>純利益</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: backtestResult.profit >= 0 ? '#10b981' : '#ef4444' }}>
-                    {backtestResult.profit >= 0 ? '+' : ''}{backtestResult.profitPercent}%
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>勝率</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>
-                    {backtestResult.winRate}%
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>トレード数</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
-                    {backtestResult.trades}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>最終残高</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
-                    ${backtestResult.finalBalance.toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <BacktestPanel
+            result={backtestResult}
+            onRunBacktest={handleBacktest}
+            canRunBacktest={!!bestTrade}
+          />
 
           {isPaused && !backtestResult && (
             <button className={styles.resumeButton} onClick={() => setIsPaused(false)}>
@@ -537,71 +496,15 @@ export default function Home() {
         )}
 
         {/* 全銘柄一覧パネル (Global Market List -> AI Portfolio Builder) */}
-        <div className={styles.allStocksContainer}>
-          <div className={styles.allStocksHeader}>
-            <Globe size={14} /> AI推奨ポートフォリオ (期待値順)
-          </div>
-          <div className={styles.allStocksGrid}>
-            {sortedRanking.map((item) => {
-              const symbol = item.symbol;
-              // item.profit が -999 なら未分析
-              const isAnalyzed = item.profit !== -999;
-              
-              const isWatched = watchlist.some(w => w.symbol === symbol);
-              return (
-                <div key={symbol} className={styles.stockCard} style={{ order: isAnalyzed ? 0 : 1 }}>
-                  <div
-                    className={styles.stockName}
-                    onClick={() => {
-                      const idx = MONITOR_LIST.indexOf(symbol);
-                      if (idx >= 0) {
-                        setBacktestResult(null);
-                        setCurrentScanIndex(idx);
-                        setIsPaused(true);
-                      }
-                    }}
-                  >
-                    <div>{symbol}</div>
-                    {isAnalyzed && (
-                        <div style={{ fontSize: '0.7rem', color: item.profit > 0 ? '#10b981' : '#ef4444' }}>
-                            Exp: {item.profit > 0 ? '+' : ''}{item.profit}%
-                        </div>
-                    )}
-                  </div>
-                  <button
-                    className={`${styles.addWatchButton} ${isWatched ? styles.watched : ''}`}
-                    onClick={() => {
-                      toggleWatchlist(symbol, 0, 'NEUTRAL');
-                    }}
-                  >
-                    <Star size={14} fill={isWatched ? "currentColor" : "none"} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <MarketRanking
+          sortedRanking={sortedRanking}
+          watchlist={watchlist}
+          onSymbolClick={handleSymbolClick}
+          onToggleWatchlist={handleToggleWatchlistBySymbol}
+          styles={styles}
+        />
 
-        {history.length > 0 && (
-          <div className={styles.historySection}>
-            <div className={styles.historyTitle}>
-              <History size={14} /> 最近のスキャン履歴
-            </div>
-            <div className={styles.historyList}>
-              {history.map((item, idx) => (
-                <div key={idx} className={styles.historyItem}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span className={`${styles.historyTag} ${styles[`tag${item.type}`]}`}>{item.type}</span>
-                    <strong>{item.symbol}</strong>
-                  </div>
-                  <div style={{ color: 'var(--text-muted)' }}>
-                    {item.time} | 確信度: {item.confidence}%
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <TradeHistory history={history} styles={styles} />
 
         {bestTrade && !isPaused && (
           <div className={styles.tradeDetailInfo}>
