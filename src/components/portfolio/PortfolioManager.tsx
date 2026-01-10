@@ -19,6 +19,7 @@ import { getAllStrategies, RISK_COLORS, ASSET_CLASS_COLORS } from '@/lib/portfol
 import { formatCurrency, formatPercent } from '@/lib/portfolio/calculator';
 import { StrategyType, PortfolioAsset, RebalanceAction } from '@/types/portfolio';
 import styles from './PortfolioManager.module.css';
+import { AllocationChart } from './AllocationChart';
 
 export const PortfolioManager: React.FC = () => {
   const {
@@ -173,6 +174,13 @@ export const PortfolioManager: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Allocation Chart */}
+          <AllocationChart
+            assets={activeProfile.assets}
+            totalValue={activeProfile.metrics.totalValue}
+            showTarget={true}
+          />
 
           {/* Price Update Controls */}
           <div className={styles.priceControls}>
