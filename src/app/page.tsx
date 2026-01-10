@@ -20,6 +20,7 @@ import { WatchList } from '@/components/dashboard/WatchList';
 import { TradingPanel } from '@/components/dashboard/TradingPanel';
 import { BacktestPanel } from '@/components/dashboard/BacktestPanel';
 import { FinancialsPanel } from '@/components/dashboard/FinancialsPanel';
+import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 import { VirtualScroll } from '@/components/common/VirtualScroll';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
@@ -238,6 +239,8 @@ export default function Home() {
             />
 
             <FinancialsPanel symbol={currentAnalysis?.symbol || ''} />
+
+            <PortfolioManager />
           </div>
         </div>
       </div>
