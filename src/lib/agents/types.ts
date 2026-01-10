@@ -12,7 +12,7 @@ export interface AgentResult {
 export interface Agent {
     id: string;
     name: string;
-    role: 'CHAIRMAN' | 'TREND' | 'REVERSAL' | 'VOLATILE' | 'VOLUME' | 'FUNDAMENTAL';
+    role: 'CHAIRMAN' | 'TREND' | 'REVERSAL' | 'VOLATILE' | 'VOLUME' | 'FUNDAMENTAL' | 'SENTIMENT' | 'MACRO' | 'OPTION';
 
     /**
      * Analyze market data and return an opinion
