@@ -199,12 +199,15 @@ describe('AIエージェント最適化', () => {
           regime = 'BULL_TREND';
         } else if (data.close < data.open && data.close < data.sma20 && data.sma20 < data.sma50) {
           regime = 'BEAR_TREND';
+        } else {
+          regime = 'SIDEWAYS';
         }
       } else if (Math.abs(rsi - 50) < 10) {
-          regime = 'SIDEWAYS';
-        } else if (adx < 20 && Math.abs(rsi - 50) > 10) {
-          regime = 'VOLATILE';
-        }
+        regime = 'SIDEWAYS';
+      } else if (adx.adx < 20 && Math.abs(rsi - 50) > 10) {
+        regime = 'VOLATILE';
+      } else {
+        regime = 'SIDEWAYS';
       }
       
       return { ...data, regime, rsi, macd, adx };
@@ -379,7 +382,7 @@ function calculateMACD(data: StockDataPoint[]): any {
 }
 
 function calculateADX(data: StockData[]): any {
-  if (data.length < < 14) return null;
+  if (data.length < 14) return null;
   
   const highPrices = data.map(d => d.high);
   const lowPrices = data.map(d => d.low);
