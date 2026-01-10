@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Briefcase,
   PieChart,
@@ -26,13 +26,21 @@ export const PortfolioManager: React.FC = () => {
     activeProfile,
     activeProfileId,
     isLoading,
+    isPriceUpdating,
+    error,
+    lastPriceUpdate,
     setActiveProfileId,
     createProfile,
     deleteProfile,
     getRebalanceActions,
     isRebalanceNeeded,
     executeRebalance,
+    fetchPrices,
+    startAutoRefresh,
+    stopAutoRefresh,
   } = usePortfolio();
+
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>('assets');
@@ -43,6 +51,23 @@ export const PortfolioManager: React.FC = () => {
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  // Handle auto-refresh toggle
+  useEffect(() => {
+    if (autoRefresh && activeProfile) {
+      startAutoRefresh();
+    } else {
+      stopAutoRefresh();
+    }
+    return () => stopAutoRefresh();
+  }, [autoRefresh, activeProfile, startAutoRefresh, stopAutoRefresh]);
+
+  // Format last update time
+  const formatLastUpdate = (isoString: string | null) => {
+    if (!isoString) return null;
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
   if (isLoading) {
@@ -147,6 +172,32 @@ export const PortfolioManager: React.FC = () => {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Price Update Controls */}
+          <div className={styles.priceControls}>
+            <button
+              className={`${styles.refreshButton} ${isPriceUpdating ? styles.spinning : ''}`}
+              onClick={fetchPrices}
+              disabled={isPriceUpdating}
+            >
+              <RefreshCw size={14} />
+              {isPriceUpdating ? '更新中...' : '価格更新'}
+            </button>
+            <label className={styles.autoRefreshLabel}>
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              自動更新
+            </label>
+            {lastPriceUpdate && (
+              <span className={styles.lastUpdate}>
+                最終更新: {formatLastUpdate(lastPriceUpdate)}
+              </span>
+            )}
+            {error && <span className={styles.errorText}>{error}</span>}
           </div>
 
           {/* Rebalance Alert */}

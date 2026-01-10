@@ -3,7 +3,7 @@
  * Portfolio state management with localStorage persistence
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   PortfolioProfile,
   PortfolioAsset,
@@ -28,7 +28,10 @@ export const usePortfolio = () => {
   const [profiles, setProfiles] = useState<PortfolioProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPriceUpdating, setIsPriceUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<string | null>(null);
+  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load from localStorage
   useEffect(() => {
@@ -205,13 +208,78 @@ export const usePortfolio = () => {
     }));
   }, [activeProfile]);
 
+  // Fetch real prices from API
+  const fetchPrices = useCallback(async () => {
+    if (!activeProfile || isPriceUpdating) return;
+
+    const symbols = activeProfile.assets
+      .filter(a => a.symbol !== 'CASH')
+      .map(a => a.symbol);
+
+    if (symbols.length === 0) return;
+
+    setIsPriceUpdating(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/quotes?symbols=${symbols.join(',')}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch quotes');
+      }
+
+      const data = await response.json();
+      const quotes = data.quotes as Record<string, number>;
+
+      // Update prices
+      updatePrices(quotes);
+      setLastPriceUpdate(new Date().toISOString());
+    } catch (e) {
+      console.error('Price fetch error:', e);
+      setError('価格の取得に失敗しました');
+    } finally {
+      setIsPriceUpdating(false);
+    }
+  }, [activeProfile, isPriceUpdating, updatePrices]);
+
+  // Start auto-refresh (every 60 seconds)
+  const startAutoRefresh = useCallback(() => {
+    if (updateIntervalRef.current) return;
+
+    // Initial fetch
+    fetchPrices();
+
+    // Set interval
+    updateIntervalRef.current = setInterval(() => {
+      fetchPrices();
+    }, 60000); // 60 seconds
+  }, [fetchPrices]);
+
+  // Stop auto-refresh
+  const stopAutoRefresh = useCallback(() => {
+    if (updateIntervalRef.current) {
+      clearInterval(updateIntervalRef.current);
+      updateIntervalRef.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+      }
+    };
+  }, []);
+
   return {
     // State
     profiles,
     activeProfile,
     activeProfileId,
     isLoading,
+    isPriceUpdating,
     error,
+    lastPriceUpdate,
 
     // Actions
     setActiveProfileId,
@@ -221,5 +289,8 @@ export const usePortfolio = () => {
     getRebalanceActions,
     isRebalanceNeeded,
     executeRebalance,
+    fetchPrices,
+    startAutoRefresh,
+    stopAutoRefresh,
   };
 };
