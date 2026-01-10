@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { FinnhubProvider } from '@/lib/api/providers/FinnhubProvider';
 import { withAuth, rateLimit } from '@/lib/api/middleware';
 
@@ -16,15 +16,16 @@ async function handler(request: Request) {
     try {
         const financials = await finnhub.fetchFinancials(symbol);
         return NextResponse.json(financials);
-    } catch (error: any) {
-        console.error(`[Financials Error] ${symbol}:`, error.message);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[Financials Error] ${symbol}:`, msg);
+        return NextResponse.json({ error: msg }, { status: 500 });
     }
 }
 
-export const GET = withAuth(async (request: Request) => {
-    const req = request as any;
-    if (!checkRateLimit(req)) {
+export const GET = withAuth(async (request: NextRequest) => {
+    // Apply rate limiting
+    if (!checkRateLimit(request)) {
         return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
     return handler(request);

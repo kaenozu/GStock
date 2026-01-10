@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { PaperTradingEngine } from '@/lib/trading/PaperTrader';
 import { TradeRequest } from '@/lib/trading/types';
 import { withAuth, validateTradeRequest, rateLimit } from '@/lib/api/middleware';
@@ -17,19 +17,18 @@ function getBroker(request: Request) {
     return mode === 'LIVE' ? alpacaBroker : internalBroker;
 }
 
-export const GET = withAuth(withPortfolioCache(async (request: Request) => {
+export const GET = withAuth(withPortfolioCache(async (request: NextRequest) => { // Use NextRequest
     try {
         const broker = getBroker(request);
         const portfolio = await broker.getPortfolio();
         return NextResponse.json(portfolio);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }));
 
-export const POST = withAuth(withPortfolioCache(async (request: Request) => {
-    const req = request as any;
-    if (!checkRateLimit(req)) {
+export const POST = withAuth(withPortfolioCache(async (request: NextRequest) => {
+    if (!checkRateLimit(request)) {
         return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
@@ -53,8 +52,8 @@ export const POST = withAuth(withPortfolioCache(async (request: Request) => {
 
         return NextResponse.json({ success: true, message: "Order Executed", trade });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Broker Error]:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }));

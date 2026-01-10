@@ -36,8 +36,8 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
                 if (!res.ok) throw new Error('Failed to fetch');
                 const json = await res.json();
                 setData(json);
-            } catch (e: any) {
-                setError(e.message);
+            } catch (e: unknown) {
+                setError(e instanceof Error ? e.message : 'An unknown error occurred');
             } finally {
                 setLoading(false);
             }
