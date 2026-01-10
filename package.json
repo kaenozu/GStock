@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:load": "vitest --config vitest.config.load.ts",
+    "test:performance": "vitest --config vitest.config.load.ts --reporter=verbose"
   },
   "dependencies": {
     "axios": "^1.13.2",
@@ -15,6 +20,7 @@
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^3.6.0",
     "swr": "^2.3.8",
     "technicalindicators": "^3.1.0",
     "yahoo-finance2": "^3.11.2"

@@ -1,4 +1,4 @@
-import { StockDataPoint, BacktestResult, ChartMarker } from '@/types/market';
+import { StockDataPoint, BacktestResult, ChartMarker, MarketRegime } from '@/types/market';
 import { calculateHistoricalSignals } from './prediction-engine';
 
 export interface BacktestParams {
@@ -15,8 +15,8 @@ export interface OptimizationResult {
  * シミュレーション実行コア関数
  */
 const runSimulation = (
-  data: StockDataPoint[], 
-  aiSignals: any[], 
+  data: StockDataPoint[],
+  aiSignals: any[],
   params: BacktestParams,
   initialBalance: number
 ): BacktestResult => {
@@ -54,27 +54,27 @@ const runSimulation = (
     // 1. ベア転換 または
     // 2. ブル継続だが信頼度が売り閾値以下に低下
     else if (position !== null) {
-        const shouldSell = (sentiment === 'BEARISH') || (sentiment === 'BULLISH' && confidence <= sellThreshold);
+      const shouldSell = (sentiment === 'BEARISH') || (sentiment === 'BULLISH' && confidence <= sellThreshold);
 
-        if (shouldSell) {
-            const sellValue = position.amount * currentPrice;
-            const profit = sellValue - (position.amount * position.entryPrice);
-            
-            if (profit > 0) winCount++;
-            tradeCount++;
-            
-            balance = sellValue;
-            position = null;
+      if (shouldSell) {
+        const sellValue = position.amount * currentPrice;
+        const profit = sellValue - (position.amount * position.entryPrice);
 
-            markers.push({
-                time: currentTime,
-                position: 'aboveBar',
-                color: profit > 0 ? '#4CAF50' : '#FF5252',
-                shape: 'arrowDown',
-                text: `SELL (${profit > 0 ? '+' : ''}${Math.round(profit)})`,
-                size: 2
-            });
-        }
+        if (profit > 0) winCount++;
+        tradeCount++;
+
+        balance = sellValue;
+        position = null;
+
+        markers.push({
+          time: currentTime,
+          position: 'aboveBar',
+          color: profit > 0 ? '#4CAF50' : '#FF5252',
+          shape: 'arrowDown',
+          text: `SELL (${profit > 0 ? '+' : ''}${Math.round(profit)})`,
+          size: 2
+        });
+      }
     }
   }
 
@@ -85,7 +85,7 @@ const runSimulation = (
   }
 
   const profit = balance - initialBalance;
-  
+
   return {
     initialBalance,
     finalBalance: Math.round(balance),
@@ -102,58 +102,81 @@ const runSimulation = (
  */
 export const runBacktest = (data: StockDataPoint[], initialBalance: number = 10000): BacktestResult => {
   if (data.length < 50) return createEmptyResult(initialBalance);
-  
+
   const aiSignals = calculateHistoricalSignals(data);
   // デフォルトはやや保守的な設定
   return runSimulation(data, aiSignals, { buyThreshold: 75, sellThreshold: 40 }, initialBalance);
 };
 
 /**
- * 最適戦略探索機能
- * 複数のパラメータを試し、最も利益が出る設定を見つける
+ * 最適戦略探索機能 (Regime-Aware Auto-Tuning)
+ * 市場環境に応じて探索グリッドを動的に調整し、最適なパラメータを見つける
  */
-export const findOptimalStrategy = (data: StockDataPoint[], initialBalance: number = 10000): OptimizationResult => {
+export const findOptimalStrategy = (data: StockDataPoint[], regime: MarketRegime = 'SIDEWAYS', initialBalance: number = 10000): OptimizationResult => {
   if (data.length < 50) {
-      return {
-          params: { buyThreshold: 75, sellThreshold: 40 },
-          result: createEmptyResult(initialBalance)
-      };
+    return {
+      params: { buyThreshold: 75, sellThreshold: 40 },
+      result: createEmptyResult(initialBalance)
+    };
   }
 
   const aiSignals = calculateHistoricalSignals(data);
-  
-  // 探索グリッド
-  const buyThresholds = [60, 65, 70, 75, 80, 85, 90];
-  const sellThresholds = [20, 30, 40, 50, 60];
-  
+
+  // Adaptive Grid Search: Regimeに応じた探索範囲の定義
+  let buyThresholds: number[];
+  let sellThresholds: number[];
+
+  switch (regime) {
+    case 'BULL_TREND':
+    case 'SQUEEZE': // 爆発前夜は積極的に攻める
+      // 積極策: 早期エントリー(55%~)を許可
+      buyThresholds = [55, 60, 65, 70, 75, 80, 85];
+      sellThresholds = [20, 30, 40, 50]; // 利確・損切りは標準的
+      break;
+
+    case 'VOLATILE':
+    case 'BEAR_TREND':
+      // 防衛策: 確実性の高い場面(80%~)のみエントリー、損切りは浅く(60%以下で即撤退)
+      buyThresholds = [80, 85, 90, 95];
+      sellThresholds = [40, 50, 60, 70];
+      break;
+
+    case 'SIDEWAYS':
+    default:
+      // 標準策
+      buyThresholds = [65, 70, 75, 80, 85];
+      sellThresholds = [30, 40, 50, 60];
+      break;
+  }
+
   let bestResult: BacktestResult | null = null;
   let bestParams: BacktestParams = { buyThreshold: 75, sellThreshold: 40 }; // 初期値
-  
+
   // グリッドサーチ実行
   for (const buy of buyThresholds) {
-      for (const sell of sellThresholds) {
-          // 買い閾値は売り閾値より最低15ポイント高く設定（頻繁すぎる売買を防ぐ）
-          if (buy < sell + 15) continue;
-          
-          const result = runSimulation(data, aiSignals, { buyThreshold: buy, sellThreshold: sell }, initialBalance);
-          
-          // 評価ロジック:
-          // 1. 利益が最大のものを選ぶ
-          // 2. 利益が同じなら、トレード回数が少ない方（効率重視）を選ぶ
-          if (!bestResult || result.profit > bestResult.profit) {
-              bestResult = result;
-              bestParams = { buyThreshold: buy, sellThreshold: sell };
-          } else if (result.profit === bestResult.profit && result.trades < bestResult.trades) {
-              // 同利益なら手数料リスクの低い方を選択
-              bestResult = result;
-              bestParams = { buyThreshold: buy, sellThreshold: sell };
-          }
+    for (const sell of sellThresholds) {
+      // 買い閾値は売り閾値より最低10ポイント高く設定（頻繁すぎる売買を防ぐ）
+      if (buy < sell + 10) continue;
+
+      const result = runSimulation(data, aiSignals, { buyThreshold: buy, sellThreshold: sell }, initialBalance);
+
+      // 評価ロジック:
+      // 1. 利益が最大のものを選ぶ
+      // 2. 利益が同じなら、トレード回数が少ない方（効率重視）を選ぶ
+      if (!bestResult || result.profit > bestResult.profit) {
+        bestResult = result;
+        bestParams = { buyThreshold: buy, sellThreshold: sell };
+      } else if (result.profit === bestResult.profit && result.trades < bestResult.trades) {
+        // 同利益なら手数料リスクの低い方を選択
+        bestResult = result;
+        bestParams = { buyThreshold: buy, sellThreshold: sell };
       }
+    }
   }
 
   return {
-      params: bestParams,
-      result: bestResult || runSimulation(data, aiSignals, bestParams, initialBalance)
+    params: bestParams,
+    result: bestResult || runSimulation(data, aiSignals, bestParams, initialBalance)
   };
 };
 

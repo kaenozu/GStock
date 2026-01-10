@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { createChart, ColorType, IChartApi, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { StockDataPoint, PredictionPoint, ChartIndicators, ChartMarker, ChartSettings } from '@/types/market';
 
@@ -12,7 +12,7 @@ interface ChartProps {
     settings?: ChartSettings;
 }
 
-const StockChart: React.FC<ChartProps> = ({ data, predictionData, indicators, markers, settings }) => {
+const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, indicators, markers, settings }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
 
@@ -132,6 +132,6 @@ const StockChart: React.FC<ChartProps> = ({ data, predictionData, indicators, ma
     }, [data, predictionData, indicators, markers, settings]);
 
     return <div ref={chartContainerRef} style={{ width: '100%', height: '400px' }} />;
-};
+});
 
 export default StockChart;

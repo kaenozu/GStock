@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
+import { withAuth, validateSymbol, rateLimit } from '@/lib/api/middleware';
+import { withStockCache } from '@/lib/api/cache-middleware';
+import { FinnhubProvider } from '@/lib/api/providers/FinnhubProvider';
+import { YahooProvider } from '@/lib/api/providers/YahooProvider';
 
-export async function GET(request: Request) {
+const checkRateLimit = rateLimit(100, 60000);
+
+const finnhub = new FinnhubProvider();
+const yahoo = new YahooProvider();
+
+async function handler(request: Request) {
     const { searchParams } = new URL(request.url);
     const symbol = searchParams.get('symbol');
 
@@ -8,65 +17,38 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Symbol is required' }, { status: 400 });
     }
 
+    if (!validateSymbol(symbol)) {
+        return NextResponse.json({ error: 'Invalid symbol format' }, { status: 400 });
+    }
+
     try {
-        // Yahoo Finance Query API v8 (Chart API) を直接利用
-        // range: 6mo (6ヶ月分), interval: 1d
-        const apiUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=6mo`;
+        console.log(`[Hybrid Fetch] Attempting Finnhub for ${symbol}`);
+        let data = await finnhub.fetchData(symbol);
 
-        console.log(`Fetching Yahoo Finance data for ${symbol}: ${apiUrl}`);
-
-        const response = await fetch(apiUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Yahoo Finance API responded with status ${response.status}`);
+        if (data.length === 0) {
+            console.warn(`[Hybrid Fetch] Finnhub returned no data for ${symbol}. Falling back to Yahoo.`);
+            data = await yahoo.fetchData(symbol);
         }
 
-        const data = await response.json();
-        const result = data.chart.result[0];
+        return NextResponse.json(data);
 
-        if (!result) {
-            throw new Error('No data found in Yahoo Finance response');
+    } catch (error: any) {
+        console.error(`[Hybrid Fetch] Finnhub Failed for ${symbol}, trying Yahoo Fallback:`, error.message);
+
+        try {
+            const fallbackData = await yahoo.fetchData(symbol);
+            return NextResponse.json(fallbackData);
+        } catch (fallbackError: any) {
+            console.error(`[Hybrid Fetch] Both providers failed for ${symbol}:`, fallbackError);
+            return NextResponse.json({ error: 'All data providers failed' }, { status: 500 });
         }
-
-        const timestamps = result.timestamp;
-        const quote = result.indicators.quote[0];
-
-        if (!timestamps || !quote) {
-            // 取引データがない場合（休日など）
-            return NextResponse.json([]);
-        }
-
-        // Alpha Vantage形式 (StockDataPoint[]) に変換
-        const formattedData = timestamps.map((ts: number, index: number) => {
-            // データの欠損チェック
-            if (quote.open[index] === null) return null;
-
-            return {
-                // UNIX timestamp (sec) -> ISO Date string (YYYY-MM-DD)
-                time: new Date(ts * 1000).toISOString().split('T')[0],
-                open: requestRound(quote.open[index]),
-                high: requestRound(quote.high[index]),
-                low: requestRound(quote.low[index]),
-                close: requestRound(quote.close[index]),
-            };
-        }).filter((item: any) => item !== null);
-
-        // 新しい順（降順）にソート（APIは古い順で来る）
-        formattedData.reverse();
-
-        return NextResponse.json(formattedData);
-
-    } catch (error) {
-        console.error(`Yahoo Finance Direct API Error for ${symbol}:`, error);
-        return NextResponse.json({ error: 'Failed to fetch data', details: String(error) }, { status: 500 });
     }
 }
 
-// 小数点2位で丸めるヘルパー
-function requestRound(num: number): number {
-    return Math.round(num * 100) / 100;
-}
+export const GET = withAuth(withStockCache(async (request: Request) => {
+    const req = request as any;
+    if (!checkRateLimit(req)) {
+        return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
+    return handler(request);
+}));
