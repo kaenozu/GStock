@@ -77,7 +77,15 @@
 - [x] **Historical EPS**: Show past 4 quarters of EPS actual vs estimate.
 - [x] **Surprise Indicator**: Visual indicator for beat/miss.
 - [x] **Finnhub Integration**: Real earnings data with mock fallback.
-- [ ] **Insider Sentiment**: Track CEO/CFO buying activity. (Future Phase 18)
+
+## ✅ Phase 18: Prediction Accuracy System (The Mirror)
+**Status: Complete**
+- [x] **AccuracyPanel**: Display hit rate, bullish/bearish accuracy.
+- [x] **PredictionLogger**: Store predictions for later evaluation.
+- [x] **AccuracyCalculator**: Compute metrics (hit rate, calibration, regime breakdown).
+- [x] **Confidence Calibration**: Compare predicted confidence vs actual accuracy.
+- [x] **Regime Analysis**: Track accuracy by market regime (BULL, BEAR, VOLATILE, etc.).
+- [ ] **Insider Sentiment**: Track CEO/CFO buying activity. (Future Phase 19)
 
 ## 🌌 Phase 16: G-DAO (Infinite Scale)
 **Timeline: 2028+**

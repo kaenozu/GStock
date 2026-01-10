@@ -36,7 +36,7 @@ export class YahooProvider implements StockProvider {
                 low: this.round(quote.low[i]),
                 close: this.round(quote.close[i]),
             };
-        }).filter((x): x is StockDataPoint => x !== null);
+        }).filter((x: StockDataPoint | null): x is StockDataPoint => x !== null);
     }
 
     async fetchQuote(symbol: string): Promise<number> {
