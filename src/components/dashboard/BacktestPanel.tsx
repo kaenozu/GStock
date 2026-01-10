@@ -49,7 +49,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Calendar size={16} color="var(--accent-cyan)" />
-                    Backtest Report: {report.period}
+                    バックテストレポート: {report.period}
                 </h3>
                 <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{report.symbol}</span>
             </div>
@@ -57,19 +57,19 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
             {/* Key Stats Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Net Profit</div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>純利益</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: report.profit >= 0 ? '#10b981' : '#ef4444' }}>
                         {report.profit >= 0 ? '+' : ''}{report.profit.toLocaleString()} ({report.profitPercent.toFixed(1)}%)
                     </div>
                 </div>
                 <div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Win Rate</div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>勝率</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>
                         {report.winRate.toFixed(1)}%
                     </div>
                 </div>
                 <div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Trades</div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>取引数</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>
                         {report.tradeCount}
                     </div>

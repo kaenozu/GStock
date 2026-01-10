@@ -1,0 +1,146 @@
+.panel {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px 0;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+}
+
+.nextEarnings {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+
+.value {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.date {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.countdown {
+    font-size: 0.8rem;
+    background: rgba(99, 102, 241, 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #a5b4fc;
+}
+
+.countdown.urgent {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.na {
+    color: #64748b;
+    font-style: italic;
+}
+
+.warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 0.8rem;
+    color: #fbbf24;
+}
+
+.historySection {
+    margin-top: 12px;
+}
+
+.historyLabel {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 8px;
+}
+
+.historyGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.historyItem {
+    background: rgba(51, 65, 85, 0.5);
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.period {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+
+.epsRow {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 0.85rem;
+}
+
+.epsLabel {
+    color: #94a3b8;
+}
+
+.epsValue {
+    color: #e2e8f0;
+    font-weight: 500;
+}
+
+.estimate {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-left: 4px;
+}
+
+.surprise {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.surprise.beat {
+    color: #10b981;
+}
+
+.surprise.miss {
+    color: #ef4444;
+}

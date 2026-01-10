@@ -70,8 +70,14 @@
 **Status: Complete**
 - [x] **Fundamental Agent**: Analysis of EPS, Revenue, and P/E.
 - [x] **Financials Panel**: Dashboard display of key metrics.
-- [ ] **Earnings Tracker**: Visualize upcoming earnings on the chart. (Future)
-- [ ] **Insider Sentiment**: Track CEO/CFO buying activity. (Future)
+
+## ✅ Phase 17: Earnings Tracker (The Oracle)
+**Status: Complete**
+- [x] **Earnings Panel**: Display next earnings date with countdown.
+- [x] **Historical EPS**: Show past 4 quarters of EPS actual vs estimate.
+- [x] **Surprise Indicator**: Visual indicator for beat/miss.
+- [x] **Finnhub Integration**: Real earnings data with mock fallback.
+- [ ] **Insider Sentiment**: Track CEO/CFO buying activity. (Future Phase 18)
 
 ## 🌌 Phase 16: G-DAO (Infinite Scale)
 **Timeline: 2028+**

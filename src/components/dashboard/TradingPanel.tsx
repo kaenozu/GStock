@@ -96,7 +96,7 @@ export const TradingPanel = React.memo(({ symbol, currentPrice, executionMode }:
             <div className={styles.cardHeader}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <DollarSign size={20} color="var(--accent-purple)" />
-                    <h2 className={styles.cardTitle}>VIRTUAL PORTFOLIO (Iron Dome)</h2>
+                    <h2 className={styles.cardTitle}>仮想ポートフォリオ (Iron Dome)</h2>
                 </div>
             </div>
 
@@ -132,26 +132,26 @@ export const TradingPanel = React.memo(({ symbol, currentPrice, executionMode }:
                     disabled={loading}
                     style={{ flex: 1, padding: '0.75rem', background: '#10b981', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
                 >
-                    BUY 100
+                    買い 100
                 </button>
                 <button
                     onClick={() => handleTrade('SELL')}
                     disabled={loading || !currentPosition}
                     style={{ flex: 1, padding: '0.75rem', background: '#ef4444', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
                 >
-                    SELL 100
+                    売り 100
                 </button>
             </div>
 
             {/* Trade History */}
             <div>
                 <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <History size={12} /> RECENT TRADES
+                    <History size={12} /> 最近の取引
                 </div>
                 <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
                     {portfolio.trades.slice(0, 5).map(t => (
                         <div key={t.id} style={{ fontSize: '0.75rem', padding: '0.25rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            <span style={{ color: t.side === 'BUY' ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{t.side}</span> {t.symbol} x {t.quantity} @ {t.price}
+                            <span style={{ color: t.side === 'BUY' ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{t.side === 'BUY' ? '買い' : '売り'}</span> {t.symbol} x {t.quantity} @ {t.price}
                             <div style={{ fontSize: '0.65rem', color: '#64748b' }}>{new Date(t.timestamp).toLocaleTimeString()} - {t.reason}</div>
                         </div>
                     ))}
