@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnalysisResult, TradeHistoryItem, StockDataPoint, MarketStats, TradeSentiment, MarketRegime } from '@/types/market';
 import { MONITOR_LIST } from '@/config/constants';
+import { PredictionLogger, AutoEvaluator } from '@/lib/accuracy';
+import { AlertService } from '@/lib/alerts';
 
 export const useScanning = (
     isPaused: boolean,
@@ -58,6 +60,24 @@ export const useScanning = (
                 });
             }
 
+            // Phase 19: Auto-log prediction
+            PredictionLogger.autoLog({
+                symbol,
+                predictedDirection: result.sentiment,
+                confidence: result.confidence,
+                priceAtPrediction: lastPrice,
+                regime: result.marketRegime,
+            });
+
+            // Phase 19: Send alert
+            const signalType = result.sentiment === 'BULLISH' ? 'BUY' : result.sentiment === 'BEARISH' ? 'SELL' : 'HOLD';
+            AlertService.alert({
+                symbol,
+                signal: signalType,
+                confidence: result.confidence,
+                price: lastPrice,
+            });
+
         } catch (error) {
             console.error(`Scan error for ${symbol}:`, error);
         } finally {
@@ -76,6 +96,11 @@ export const useScanning = (
             scanSymbol(symbol);
             symbolIndexRef.current++;
         };
+
+        // Phase 19: Run auto-evaluation on startup
+        AutoEvaluator.evaluatePending().then(count => {
+            if (count > 0) console.log(`AutoEvaluator: Evaluated ${count} pending predictions`);
+        });
 
         runScan();
         intervalRef.current = setInterval(runScan, 10000);

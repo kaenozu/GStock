@@ -22,6 +22,7 @@ import { BacktestPanel } from '@/components/dashboard/BacktestPanel';
 import { FinancialsPanel } from '@/components/dashboard/FinancialsPanel';
 import { EarningsPanel } from '@/components/dashboard/EarningsPanel';
 import { AccuracyPanel } from '@/components/dashboard/AccuracyPanel';
+import { AlertSettingsPanel } from '@/components/dashboard/AlertSettingsPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 import { VirtualScroll } from '@/components/common/VirtualScroll';
 import { SettingsPanel } from '@/components/common/SettingsPanel';
@@ -273,6 +274,8 @@ export default function Home() {
                 regime: currentAnalysis.marketRegime,
               } : undefined}
             />
+
+            <AlertSettingsPanel />
 
             <PortfolioManager />
           </div>
