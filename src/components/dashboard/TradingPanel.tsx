@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, History, PlayCircle } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { Portfolio, Trade } from '@/lib/trading/types';
+import { Skeleton } from '@/components/common/Skeleton';
 
 interface TradingPanelProps {
     symbol: string;
@@ -67,7 +68,23 @@ export const TradingPanel = React.memo(({ symbol, currentPrice, executionMode }:
         }
     };
 
-    if (!portfolio) return <div className={styles.card}>Loading Portfolio...</div>;
+    if (!portfolio) {
+        return (
+            <div className={styles.card} style={{ borderColor: 'var(--accent-purple)' }}>
+                <div className={styles.cardHeader}>
+                    <Skeleton width="150px" height="1.5rem" />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <Skeleton height="60px" borderRadius="8px" />
+                    <Skeleton height="60px" borderRadius="8px" />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <Skeleton height="40px" borderRadius="4px" />
+                    <Skeleton height="40px" borderRadius="4px" />
+                </div>
+            </div>
+        );
+    }
 
     // Calculate Unrealized PnL approx
     const currentPosition = portfolio.positions.find(p => p.symbol === symbol);
