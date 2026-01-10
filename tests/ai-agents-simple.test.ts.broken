@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ChairmanAgent } from '../src/lib/agents/ChairmanAgent';
+import { TrendAgent } from '../src/lib/agents/TrendAgent';
+import { ReversalAgent } from '../src/lib/agents/ReversalAgent';
+import { VolatilityAgent } from '../src/lib/agents/VolatilityAgent';
 
 // 簡単なテストデータ生成
 const generateTestData = (symbol: string, days: number) => {
@@ -110,35 +114,32 @@ describe('エージェントの連携テスト', () => {
 });
 
 describe('市場レジーム適応テスト', () => {
-  const testMarketData = generateTestData('AAPL', 100);
-  
-  // レジーム変化のテスト
-  const regimeData = testMarketData.map((data, index) => {
-    const rsi = calculateRSI(data);
-    let regime: 'SIDEWAYS';
+  it('レジーム変化に適応する', () => {
+    const testMarketData = generateTestData('AAPL', 100);
     
-    if (data.close > data.open && data.close > data.sma20 && data.sma20 > data.sma50) {
-      regime = 'BULL_TREND';
-    } else if (data.close < data.open && data.close < data.sma20 && data.sma20 < data.sma50) {
-      regime = 'BEARISH_TREND';
-    }
-    
-    return { ...data, regime };
-  });
+    // レジーム変化のテスト
+    const regimeData = testMarketData.map((data) => {
+      let regime: 'SIDEWAYS' | 'BULL_TREND' | 'BEARISH_TREND' = 'SIDEWAYS';
+      
+      if (data.close > data.open && data.close > data.sma20 && data.sma20 > data.sma50) {
+        regime = 'BULL_TREND';
+      } else if (data.close < data.open && data.close < data.sma20 && data.sma20 < data.sma50) {
+        regime = 'BEARISH_TREND';
+      }
+      
+      return { ...data, regime };
+    });
 
-  // レジーム適応型エージェント
-  const adaptiveAgent = new AdaptiveAgent();
-  adaptiveAgent.train(testMarketData.slice(0, 50));
-  
-  const regimeChanges = regimeData.filter((data, index, array) => 
+    // レジーム適応型エージェント
+    const adaptiveAgent = new AdaptiveAgent();
+    adaptiveAgent.train(testMarketData.slice(0, 50));
+    
+    const regimeChanges = regimeData.filter((data, index, array) => 
       index > 0 && data.regime !== array[index - 1].regime
     );
-    
-  // レジーム変化のテスト
-  if (regimeChanges.length > 0) {
-      const lastRegime = regimeData[regimeChanges.length - 1].regime;
-      const currentRegime = regimeData[regimeData.length - 1].regime;
       
+    // レジーム変化のテスト
+    if (regimeChanges.length > 0) {
       const prediction = adaptiveAgent.predict(regimeData[regimeData.length - 1]);
       
       expect(prediction).toBeDefined();
@@ -182,7 +183,7 @@ function calculateADX(data: StockDataPoint[]): any {
   const lowPrices = data.map(d => d.low);
   
   const avgHigh = highPrices.reduce((sum, val) => sum + val, 0) / highPrices.length;
-    const avgLow = lowPrices.reduce((sum, val, val) => sum + val, 0) / lowPrices.length;
+  const avgLow = lowPrices.reduce((sum, val) => sum + val, 0) / lowPrices.length;
     
   return { avgHigh, avgLow };
 }
