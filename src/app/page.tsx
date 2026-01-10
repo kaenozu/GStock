@@ -67,8 +67,8 @@ export default function Home() {
 
   // Derived Signal Logic
   const displaySignal: DisplaySignal = useMemo(() => {
-    if (isPaused) return { type: 'HOLD', text: 'PAUSED', action: 'Scanning Paused' };
-    if (!bestTrade) return { type: 'HOLD', text: 'SCANNING', action: 'Analyzing Market...' };
+    if (isPaused) return { type: 'HOLD', text: '一時停止', action: 'スキャン一時停止中' };
+    if (!bestTrade) return { type: 'HOLD', text: 'スキャン中', action: '市場を分析中...' };
 
     const buyThreshold = bestTrade.optimalParams?.buyThreshold ?? CONFIDENCE_THRESHOLD;
 
@@ -76,16 +76,16 @@ export default function Home() {
       const isBullish = bestTrade.sentiment === 'BULLISH';
       return {
         type: isBullish ? 'BUY' : 'SELL',
-        text: isBullish ? 'STRONG BUY' : 'STRONG SELL',
+        text: isBullish ? '強い買い' : '強い売り',
         action: isBullish
-          ? `Confidence ${bestTrade.confidence}% (> ${buyThreshold}%). Strong Upside.`
-          : `Confidence ${bestTrade.confidence}% (> ${buyThreshold}%). High Downside Risk.`
+          ? `信頼度 ${bestTrade.confidence}% (> ${buyThreshold}%)。上昇余地あり。`
+          : `信頼度 ${bestTrade.confidence}% (> ${buyThreshold}%)。下落リスク高。`
       };
     } else {
       return {
         type: 'HOLD',
-        text: 'WAIT',
-        action: `Confidence ${bestTrade.confidence}% < Threshold ${buyThreshold}%. Waiting for setup.`
+        text: '様子見',
+        action: `信頼度 ${bestTrade.confidence}% < 閾値 ${buyThreshold}%。セットアップ待ち。`
       };
     }
   }, [bestTrade, isPaused]);
@@ -132,21 +132,21 @@ export default function Home() {
               }}
             >
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: isLive ? '#fff' : '#10b981', boxShadow: isLive ? '0 0 10px #fff' : 'none' }}></div>
-              {isLive ? 'SYSTEM LIVE' : 'PAPER TRADING'}
+              {isLive ? '本番稼働' : '模擬取引'}
             </button>
             <button
               onClick={() => setIsPaused(!isPaused)}
               className={`${styles.button} ${isPaused ? styles.paused : ''} `}
             >
               {isPaused ? <Play size={16} /> : <Pause size={16} />}
-              {isPaused ? 'Resume' : 'Pause'}
+              {isPaused ? '再開' : '停止'}
             </button>
             <button
               onClick={() => setShowIndicators(!showIndicators)}
               className={`${styles.button} ${showIndicators ? styles.active : ''} `}
             >
               <Layers size={16} />
-              Indicators
+              指標
             </button>
           </div>
         </header>
@@ -185,7 +185,7 @@ export default function Home() {
                     }}
                   >
                     <FlaskConical size={14} />
-                    {isBacktestLoading ? 'Processing History...' : 'Run Deep Backtest (1Y)'}
+                    {isBacktestLoading ? '分析中...' : 'ディープバックテスト (1年)'}
                   </button>
                 </div>
               )}

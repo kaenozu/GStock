@@ -32,7 +32,7 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
             setError(null);
             try {
                 const res = await fetch(`/api/financials?symbol=${symbol}`);
-                if (!res.ok) throw new Error('Failed to fetch');
+                if (!res.ok) throw new Error('取得失敗');
                 const json = await res.json();
                 setData(json);
             } catch (e: any) {
@@ -46,7 +46,7 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
     }, [symbol]);
 
     if (!symbol) return null;
-    if (loading) return <div className={styles.financialsPanel}>Loading Financials...</div>;
+    if (loading) return <div className={styles.financialsPanel}>財務データ読み込み中...</div>;
     if (error) return <div className={styles.financialsPanel}><AlertCircle size={16} /> {error}</div>;
     if (!data) return null;
 

@@ -74,7 +74,7 @@ export const PortfolioManager: React.FC = () => {
   if (isLoading) {
     return (
       <div className={styles.container}>
-        <div className={styles.loading}>Loading...</div>
+        <div className={styles.loading}>読み込み中...</div>
       </div>
     );
   }

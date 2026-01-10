@@ -60,7 +60,7 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
       <div className={`${styles.signalDisplay} ${getSignalClass()}`}>
         <div className={styles.signalHeader}>
           <Target size={20} />
-          <span>AI Signal</span>
+          <span>AIシグナル</span>
         </div>
         <div className={styles.signalContent}>
           {getSignalIcon()}
