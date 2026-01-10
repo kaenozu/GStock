@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, validateSymbol, rateLimit } from '@/lib/api/middleware';
 import { withStockCache } from '@/lib/api/cache-middleware';
 import { FinnhubProvider } from '@/lib/api/providers/FinnhubProvider';
@@ -32,22 +32,23 @@ async function handler(request: Request) {
 
         return NextResponse.json(data);
 
-    } catch (error: any) {
-        console.error(`[Hybrid Fetch] Finnhub Failed for ${symbol}, trying Yahoo Fallback:`, error.message);
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[Hybrid Fetch] Finnhub Failed for ${symbol}, trying Yahoo Fallback:`, msg);
 
         try {
             const fallbackData = await yahoo.fetchData(symbol);
             return NextResponse.json(fallbackData);
-        } catch (fallbackError: any) {
+        } catch (fallbackError: unknown) {
             console.error(`[Hybrid Fetch] Both providers failed for ${symbol}:`, fallbackError);
             return NextResponse.json({ error: 'All data providers failed' }, { status: 500 });
         }
     }
 }
 
-export const GET = withAuth(withStockCache(async (request: Request) => {
-    const req = request as any;
-    if (!checkRateLimit(req)) {
+export const GET = withAuth(withStockCache(async (request: NextRequest) => {
+    // Apply rate limiting
+    if (!checkRateLimit(request)) {
         return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
     return handler(request);

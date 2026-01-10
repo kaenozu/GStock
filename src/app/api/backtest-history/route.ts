@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { Historian, HistoricalPeriod } from '@/lib/backtest/Historian';
 import { BacktestArena } from '@/lib/backtest/BacktestArena';
 import { withAuth, rateLimit } from '@/lib/api/middleware';
@@ -28,19 +28,17 @@ async function postHandler(request: Request) {
 
         return NextResponse.json(report);
 
-} catch (error: any) {
+    } catch (error: unknown) {
         console.error("Backtest Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }
 
-export const POST = withAuth(async (request: Request) => {
-    const req = request as any;
-    
+export const POST = withAuth(async (request: NextRequest) => {
     // Apply rate limiting
-    if (!checkRateLimit(req)) {
+    if (!checkRateLimit(request)) {
         return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
-    
+
     return postHandler(request);
 });

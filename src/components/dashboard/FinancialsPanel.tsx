@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, BarChart2, AlertCircle } from 'lucide-react';
 import styles from '@/app/page.module.css';
+import { Skeleton } from '@/components/common/Skeleton';
 
 interface FinancialData {
     pe: number | null;
@@ -35,8 +36,8 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
                 if (!res.ok) throw new Error('Failed to fetch');
                 const json = await res.json();
                 setData(json);
-            } catch (e: any) {
-                setError(e.message);
+            } catch (e: unknown) {
+                setError(e instanceof Error ? e.message : 'An unknown error occurred');
             } finally {
                 setLoading(false);
             }
@@ -46,7 +47,23 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
     }, [symbol]);
 
     if (!symbol) return null;
-    if (loading) return <div className={styles.financialsPanel}>Loading Financials...</div>;
+    if (loading) {
+        return (
+            <div className={styles.financialsPanel}>
+                <div style={{ marginBottom: '12px' }}>
+                    <Skeleton width="120px" height="1rem" />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i}>
+                            <Skeleton width="60px" height="0.8rem" style={{ marginBottom: '4px' }} />
+                            <Skeleton width="80px" height="1rem" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
     if (error) return <div className={styles.financialsPanel}><AlertCircle size={16} /> {error}</div>;
     if (!data) return null;
 
