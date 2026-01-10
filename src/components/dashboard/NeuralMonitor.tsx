@@ -1,7 +1,8 @@
 import React from 'react';
-import { Brain, Zap, Activity } from 'lucide-react';
+import { Brain, Zap, Activity, HelpCircle } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { AnalysisResult } from '@/types/market';
+import { TermWithTooltip } from '@/components/common/Tooltip';
 
 interface NeuralMonitorProps {
     analysis: AnalysisResult | null;
@@ -97,7 +98,7 @@ export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(({ analysi
                         <div className={styles.gaugeScore} style={{ color: sentimentColor }}>
                             {confidence}
                         </div>
-                        <div className={styles.gaugeLabel}>信頼度</div>
+                        <div className={styles.gaugeLabel}><TermWithTooltip term="信頼度">信頼度</TermWithTooltip></div>
                     </div>
                 </div>
 
@@ -106,7 +107,7 @@ export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(({ analysi
                     {/* Market Regime (New) */}
                     <div className={styles.factorRow}>
                         <div className={styles.factorHeader}>
-                            <span>市場状態</span>
+                            <span><TermWithTooltip term="市場状態">市場状態</TermWithTooltip></span>
                             <span style={{
                                 color: analysis.marketRegime === 'BULL_TREND' ? '#10b981' :
                                     analysis.marketRegime === 'BEAR_TREND' ? '#ef4444' :
@@ -125,7 +126,7 @@ export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(({ analysi
                     {/* RSI Factor */}
                     <div className={styles.factorRow}>
                         <div className={styles.factorHeader}>
-                            <span>RSI (モメンタム)</span>
+                            <span><TermWithTooltip term="RSI">RSI (モメンタム)</TermWithTooltip></span>
                             <span className={styles[rsiColor]}>{rsiVal} / {rsiStatus}</span>
                         </div>
                         <div className={styles.factorBarBg}>
@@ -139,7 +140,7 @@ export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(({ analysi
                     {/* Trend Factor */}
                     <div className={styles.factorRow}>
                         <div className={styles.factorHeader}>
-                            <span>ADX (トレンド強度)</span>
+                            <span><TermWithTooltip term="ADX">ADX (トレンド強度)</TermWithTooltip></span>
                             <span className={styles[trendColor]}>{trendVal} / {trendStatus}</span>
                         </div>
                         <div className={styles.factorBarBg}>
@@ -153,7 +154,7 @@ export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(({ analysi
                     {/* Council Voice (Top Signal) */}
                     <div className={styles.factorRow} style={{ marginTop: '0.5rem' }}>
                         <div className={styles.factorHeader}>
-                            <span>評議会の声</span>
+                            <span><TermWithTooltip term="評議会の声">評議会の声</TermWithTooltip></span>
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Zap size={12} fill="var(--accent-cyan)" color="var(--accent-cyan)" />

@@ -1,0 +1,110 @@
+/* Tooltip Styles */
+
+.container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: #1a1a2e;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 280px;
+  min-width: 200px;
+  white-space: normal;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tooltip.top {
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tooltip.bottom {
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tooltip.left {
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tooltip.right {
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #1a1a2e;
+  border: 1px solid #3b82f6;
+  transform: rotate(45deg);
+}
+
+.top .arrow {
+  bottom: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-top: none;
+  border-left: none;
+}
+
+.bottom .arrow {
+  top: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-bottom: none;
+  border-right: none;
+}
+
+.left .arrow {
+  right: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-bottom: none;
+  border-left: none;
+}
+
+.right .arrow {
+  left: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-top: none;
+  border-right: none;
+}
+
+.termHighlight {
+  border-bottom: 1px dotted #3b82f6;
+  color: inherit;
+}
+
+.termHighlight:hover {
+  color: #3b82f6;
+}

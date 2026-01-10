@@ -20,6 +20,7 @@ import { formatCurrency, formatPercent } from '@/lib/portfolio/calculator';
 import { StrategyType, PortfolioAsset, RebalanceAction } from '@/types/portfolio';
 import styles from './PortfolioManager.module.css';
 import { AllocationChart } from './AllocationChart';
+import { TermWithTooltip } from '@/components/common/Tooltip';
 
 export const PortfolioManager: React.FC = () => {
   const {
@@ -161,13 +162,13 @@ export const PortfolioManager: React.FC = () => {
                 </span>
               </div>
               <div className={styles.metric}>
-                <span className={styles.metricLabel}>シャープレシオ</span>
+                <span className={styles.metricLabel}><TermWithTooltip term="シャープレシオ">シャープレシオ</TermWithTooltip></span>
                 <span className={styles.metricValue}>
                   {activeProfile.metrics.sharpeRatio.toFixed(2)}
                 </span>
               </div>
               <div className={styles.metric}>
-                <span className={styles.metricLabel}>分散度</span>
+                <span className={styles.metricLabel}><TermWithTooltip term="分散度">分散度</TermWithTooltip></span>
                 <span className={styles.metricValue}>
                   {(activeProfile.metrics.concentration * 100).toFixed(0)}%
                 </span>

@@ -158,39 +158,100 @@
 /* Responsive */
 @media (max-width: 1200px) {
     .content {
-        grid-template-columns: 300px 1fr;
-        /* Hide Right or stack? */
+        grid-template-columns: 280px 1fr 280px;
     }
 
+    .leftPanel,
     .rightPanel {
-        display: none;
-        /* For MVP simply hide right panel on medium screens or move below? */
-        /* Ideally Grid Area logic would stack them */
+        padding: 12px;
     }
 }
 
-@media (max-width: 868px) {
+@media (max-width: 1024px) {
+    .content {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+    }
+
+    .leftPanel {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .centerPanel {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .rightPanel {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        max-height: none;
+        overflow-y: visible;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+    }
+
+    .controls {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
     .content {
         display: flex;
         flex-direction: column;
+        gap: 12px;
+        padding: 12px;
         overflow-y: auto;
     }
 
     .leftPanel,
     .centerPanel,
     .rightPanel {
-        overflow-y: visible;
         width: 100%;
+        max-height: none;
+        overflow-y: visible;
     }
 
     .rightPanel {
         display: flex;
-        /* Show again in stack */
+        flex-direction: column;
+        gap: 12px;
     }
 
     .container {
         height: auto;
+        min-height: 100vh;
         overflow-y: auto;
+    }
+
+    .button {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .title h1 {
+        font-size: 1.2rem;
+    }
+
+    .controls {
+        gap: 6px;
+    }
+
+    .button {
+        padding: 6px 8px;
+        font-size: 11px;
     }
 }
 

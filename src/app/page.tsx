@@ -22,6 +22,7 @@ import { BacktestPanel } from '@/components/dashboard/BacktestPanel';
 import { FinancialsPanel } from '@/components/dashboard/FinancialsPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 import { VirtualScroll } from '@/components/common/VirtualScroll';
+import { SettingsPanel } from '@/components/common/SettingsPanel';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -148,6 +149,7 @@ export default function Home() {
               <Layers size={16} />
               指標
             </button>
+            <SettingsPanel />
           </div>
         </header>
 

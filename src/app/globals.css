@@ -1,4 +1,7 @@
 :root {
+  /* Font Size (adjustable) */
+  --base-font-size: 14px;
+  
   /* Colors - Cyber Premium Palette */
   --bg-primary: #05070a;
   --bg-secondary: #0c121d;
