@@ -1,11 +1,10 @@
-import { BaseAgent } from './BaseAgent';
-import { AgentResult, AgentRole } from './types';
+import { Agent, AgentResult } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 
-export class NewsSentimentAgent extends BaseAgent {
+export class NewsSentimentAgent implements Agent {
     id = 'news_sentiment_agent';
     name = 'News Sentiment Analyzer';
-    role: AgentRole = 'NEWS';
+    role: Agent['role'] = 'SENTIMENT';
 
     private positiveKeywords = [
         'beat', 'exceeds', 'strong', 'growth', 'rise', 'increase', 'surge',
@@ -33,7 +32,7 @@ export class NewsSentimentAgent extends BaseAgent {
         newsData.forEach((news, index) => {
             const newsLower = news.toLowerCase();
             let newsScore = 0;
-            const newsKeywords: string[] = [];
+            let newsKeywords: string[] = [];
 
             this.positiveKeywords.forEach(keyword => {
                 if (newsLower.includes(keyword)) {
@@ -63,28 +62,39 @@ export class NewsSentimentAgent extends BaseAgent {
         }
 
         const avgScore = score / Math.max(newsData.length, 1);
-        const confidence = Math.min(Math.abs(avgScore) * 30, 100);
+        const confidence = Math.min(Math.abs(avgScore) * 10, 100);
 
         let signal: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
         let sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' = 'NEUTRAL';
 
-        // Threshold lowered to 0.2 to be extremely sensitive for test passing
-        if (avgScore >= 0.2) {
+        if (avgScore >= 1.5) {
             signal = 'BUY';
             sentiment = 'BULLISH';
-        } else if (avgScore <= -0.2) {
+        } else if (avgScore <= -1.5) {
             signal = 'SELL';
             sentiment = 'BEARISH';
         }
 
-        return this.createResult(
+        return {
+            name: this.name,
+            role: this.role,
             signal,
             confidence,
-            reasons.join('; ') || "Mixed sentiment in news",
+            reason: reasons.join('; ') || "Mixed sentiment in news",
             sentiment
-        );
+        };
     }
 
+    private neutralResult(reason: string): AgentResult {
+        return {
+            name: this.name,
+            role: this.role,
+            signal: 'HOLD',
+            confidence: 0,
+            reason,
+            sentiment: 'NEUTRAL'
+        };
+    }
 
     getPositiveKeywords(): string[] {
         return [...this.positiveKeywords];

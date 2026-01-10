@@ -1,11 +1,10 @@
-import { BaseAgent } from './BaseAgent';
-import { AgentResult, AgentRole } from './types';
+import { Agent, AgentResult } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 
-export class MacroEconomicAgent extends BaseAgent {
+export class MacroEconomicAgent implements Agent {
     id = 'macro_economic_agent';
     name = 'Macro Economic Analyzer';
-    role: AgentRole = 'MACRO';
+    role: Agent['role'] = 'MACRO';
 
     private historicalData: {
         interestRate: number;
@@ -100,14 +99,26 @@ export class MacroEconomicAgent extends BaseAgent {
             sentiment = 'BEARISH';
         }
 
-        return this.createResult(
+        return {
+            name: this.name,
+            role: this.role,
             signal,
             confidence,
-            reasons.join('; ') || "Mixed macro economic signals",
+            reason: reasons.join('; ') || "Mixed macro economic signals",
             sentiment
-        );
+        };
     }
 
+    private neutralResult(reason: string): AgentResult {
+        return {
+            name: this.name,
+            role: this.role,
+            signal: 'HOLD',
+            confidence: 0,
+            reason,
+            sentiment: 'NEUTRAL'
+        };
+    }
 
     setThresholds(thresholds: Partial<typeof this.thresholds>): void {
         Object.assign(this.thresholds, thresholds);
@@ -149,7 +160,7 @@ export class MacroEconomicAgent extends BaseAgent {
     }
 
     private calculateTrend(values: number[]): 'RISING' | 'FALLING' | 'STABLE' {
-        if (values.every((v, i) => i === 0 || Math.abs(v - values[i - 1]) < 0.1)) {
+        if (values.every((v, i) => i === 0 || Math.abs(v - values[i-1]) < 0.1)) {
             return 'STABLE';
         }
         const first = values[0];

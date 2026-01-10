@@ -1,5 +1,4 @@
-import { BaseAgent } from './BaseAgent';
-import { AgentResult, AgentRole } from './types';
+import { Agent, AgentResult } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 
 export interface OptionFlowData {
@@ -14,10 +13,10 @@ export interface OptionFlowData {
     maxPain?: number;
 }
 
-export class OptionFlowAgent extends BaseAgent {
+export class OptionFlowAgent implements Agent {
     id = 'option_flow_agent';
     name = 'Option Flow Analyzer';
-    role: AgentRole = 'OPTION';
+    role: Agent['role'] = 'OPTION';
 
     private historicalFlows: OptionFlowData[] = [];
 
@@ -36,6 +35,7 @@ export class OptionFlowAgent extends BaseAgent {
         const { callVolume, putVolume, callOI, putOI, impliedVolatility, institutionalActivity, maxPain } = optionFlow;
         const currentPrice = data.length > 0 ? data[data.length - 1].close : 0;
 
+        const totalVolume = callVolume + putVolume;
         const putCallRatio = callVolume > 0 ? putVolume / callVolume : 0;
         const oiRatio = callOI > 0 ? putOI / callOI : 0;
 
@@ -97,14 +97,26 @@ export class OptionFlowAgent extends BaseAgent {
             sentiment = 'BEARISH';
         }
 
-        return this.createResult(
+        return {
+            name: this.name,
+            role: this.role,
             signal,
             confidence,
-            reasons.join('; ') || "Mixed option flow signals",
+            reason: reasons.join('; ') || "Mixed option flow signals",
             sentiment
-        );
+        };
     }
 
+    private neutralResult(reason: string): AgentResult {
+        return {
+            name: this.name,
+            role: this.role,
+            signal: 'HOLD',
+            confidence: 0,
+            reason,
+            sentiment: 'NEUTRAL'
+        };
+    }
 
     addHistoricalFlow(flowData: OptionFlowData): void {
         this.historicalFlows.push(flowData);
