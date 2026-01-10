@@ -21,6 +21,7 @@ import { TradingPanel } from '@/components/dashboard/TradingPanel';
 import { BacktestPanel } from '@/components/dashboard/BacktestPanel';
 import { FinancialsPanel } from '@/components/dashboard/FinancialsPanel';
 import { EarningsPanel } from '@/components/dashboard/EarningsPanel';
+import { AccuracyPanel } from '@/components/dashboard/AccuracyPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 import { VirtualScroll } from '@/components/common/VirtualScroll';
 import { SettingsPanel } from '@/components/common/SettingsPanel';
@@ -261,6 +262,16 @@ export default function Home() {
             <EarningsPanel 
               symbol={currentAnalysis?.symbol || ''}
               onEarningsDates={handleEarningsDates}
+            />
+
+            <AccuracyPanel
+              currentSymbol={currentAnalysis?.symbol}
+              currentPrice={currentAnalysis?.stats?.price}
+              currentPrediction={currentAnalysis ? {
+                direction: currentAnalysis.sentiment,
+                confidence: currentAnalysis.confidence,
+                regime: currentAnalysis.marketRegime,
+              } : undefined}
             />
 
             <PortfolioManager />

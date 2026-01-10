@@ -1,0 +1,230 @@
+.panel {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.header h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+}
+
+.refreshBtn {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.refreshBtn:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.loading {
+  color: #64748b;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Main Hit Rate */
+.mainMetric {
+  text-align: center;
+  padding: 16px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.hitRateLabel {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.hitRateValue {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 8px 0;
+}
+
+.hitRateSub {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Colors */
+.good { color: #10b981; }
+.neutral { color: #f59e0b; }
+.poor { color: #ef4444; }
+.improving { color: #10b981; }
+.declining { color: #ef4444; }
+.stable { color: #64748b; }
+
+/* Direction Accuracy */
+.directionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.directionItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  background: rgba(51, 65, 85, 0.5);
+  border-radius: 6px;
+}
+
+.bullLabel, .bearLabel {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.directionValue {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+/* Calibration */
+.calibration {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(51, 65, 85, 0.3);
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.calibLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.calibValue {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.calibHint {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-left: 4px;
+}
+
+/* Regime Performance */
+.regimeSection {
+  margin-bottom: 16px;
+}
+
+.regimeLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.regimeGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.regimeItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.regimeName {
+  flex: 1;
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+
+.regimeRate {
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+.regimeCount {
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+/* Log Section */
+.logSection {
+  margin-bottom: 12px;
+}
+
+.logBtn {
+  width: 100%;
+  padding: 10px;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: 6px;
+  color: #a5b4fc;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logBtn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+.logBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lastLogged {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #64748b;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
