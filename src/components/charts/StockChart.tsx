@@ -59,10 +59,8 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                 if (data && data.length > 0) {
                     candlestickSeries.setData(data);
 
-                    if (markers && markers.length > 0) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (candlestickSeries as any).setMarkers(markers);
-                    }
+                    // Note: markers are disabled in lightweight-charts v5 (API changed)
+                    // Earnings dates are shown in EarningsPanel instead
 
                     // ユーザー要望: 予測線（未来14日分）が見えるところまで表示範囲を調整
                     // 過去15日 + 未来15日（予測期間＋余白）を表示

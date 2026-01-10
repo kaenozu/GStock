@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Zap, Play, Pause, Layers, FlaskConical } from 'lucide-react';
 import styles from './page.module.css';
-import { ChartSettings, DisplaySignal } from '@/types/market';
+import { ChartSettings, DisplaySignal, ChartMarker } from '@/types/market';
 import { CONFIDENCE_THRESHOLD, MONITOR_LIST } from '@/config/constants';
 
 // Hooks
@@ -20,6 +20,7 @@ import { WatchList } from '@/components/dashboard/WatchList';
 import { TradingPanel } from '@/components/dashboard/TradingPanel';
 import { BacktestPanel } from '@/components/dashboard/BacktestPanel';
 import { FinancialsPanel } from '@/components/dashboard/FinancialsPanel';
+import { EarningsPanel } from '@/components/dashboard/EarningsPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 import { VirtualScroll } from '@/components/common/VirtualScroll';
 import { SettingsPanel } from '@/components/common/SettingsPanel';
@@ -28,6 +29,7 @@ const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr
 
 export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
+  const [earningsMarkers, setEarningsMarkers] = useState<ChartMarker[]>([]);
 
   const {
     watchlist, setWatchlist,
@@ -90,6 +92,19 @@ export default function Home() {
       };
     }
   }, [bestTrade, isPaused]);
+
+  // Handler for Earnings dates -> Chart markers
+  const handleEarningsDates = (dates: string[]) => {
+    const markers: ChartMarker[] = dates.map((date, i) => ({
+      time: date,
+      position: 'aboveBar',
+      color: i === 0 ? '#f59e0b' : '#6366f1', // First is next earnings (amber), rest are past (indigo)
+      shape: 'circle',
+      text: i === 0 ? '📅 次回決算' : '📊',
+      size: i === 0 ? 2 : 1,
+    }));
+    setEarningsMarkers(markers);
+  };
 
   // Handler for Watchlist Toggle
   const handleToggleWatchlist = (symbol: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') => {
@@ -211,6 +226,7 @@ export default function Home() {
               <StockChart
                 data={currentAnalysis.history}
                 indicators={showIndicators ? currentAnalysis.chartIndicators : undefined}
+                markers={earningsMarkers}
                 settings={chartSettings}
               />
             )}
@@ -241,6 +257,11 @@ export default function Home() {
             />
 
             <FinancialsPanel symbol={currentAnalysis?.symbol || ''} />
+
+            <EarningsPanel 
+              symbol={currentAnalysis?.symbol || ''}
+              onEarningsDates={handleEarningsDates}
+            />
 
             <PortfolioManager />
           </div>

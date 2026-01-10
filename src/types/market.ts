@@ -101,3 +101,19 @@ export interface BacktestResult {
   finalBalance: number;
   markers: ChartMarker[]; // チャート描画用マーカー
 }
+// Earnings Tracker Types
+export interface EarningsEvent {
+  date: string;           // YYYY-MM-DD
+  epsEstimate: number | null;
+  epsActual: number | null;
+  revenueEstimate: number | null;
+  revenueActual: number | null;
+  surprise: number | null;  // EPS surprise %
+  period: string;           // 'Q1 2024' etc
+}
+
+export interface EarningsData {
+  symbol: string;
+  nextEarningsDate: string | null;
+  history: EarningsEvent[];
+}
