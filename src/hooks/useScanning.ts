@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AnalysisResult, TradeHistoryItem, StockDataPoint, TradeSentiment, MarketRegime } from '@/types/market';
 import { MONITOR_LIST } from '@/config/constants';
-import { PredictionLogger, AutoEvaluator } from '@/lib/accuracy';
+import { PredictionClient, AutoEvaluator } from '@/lib/accuracy';
 import { AlertService } from '@/lib/alerts';
 import { ErrorLogger } from '@/lib/errors';
 import { toast } from 'sonner';
@@ -107,14 +107,14 @@ export const useScanning = (
                 });
             }
 
-            // 予測をログ
-            PredictionLogger.autoLog({
+            // 予測をログ（非同期、エラーは無視）
+            PredictionClient.autoLog({
                 symbol,
                 predictedDirection: result.sentiment,
                 confidence: result.confidence,
                 priceAtPrediction: lastPrice,
                 regime: result.marketRegime,
-            });
+            }).catch(() => { /* ignore */ });
 
             // アラート送信
             const signalType = result.sentiment === 'BULLISH' ? 'BUY' : result.sentiment === 'BEARISH' ? 'SELL' : 'HOLD';

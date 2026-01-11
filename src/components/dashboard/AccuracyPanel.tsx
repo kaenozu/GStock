@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Target, TrendingUp, TrendingDown, Minus, Activity, BarChart3, RefreshCw } from 'lucide-react';
 import { AccuracyReport } from '@/types/accuracy';
-import { AccuracyCalculator, PredictionLogger } from '@/lib/accuracy';
+import { PredictionClient } from '@/lib/accuracy';
 import styles from './AccuracyPanel.module.css';
 
 interface AccuracyPanelProps {
@@ -26,8 +26,8 @@ export const AccuracyPanel: React.FC<AccuracyPanelProps> = ({
   const [lastLogged, setLastLogged] = useState<string | null>(null);
 
   // Load accuracy report
-  const loadReport = useCallback(() => {
-    const r = AccuracyCalculator.generateReport();
+  const loadReport = useCallback(async () => {
+    const r = await PredictionClient.generateReport();
     setReport(r);
   }, []);
 
@@ -39,12 +39,12 @@ export const AccuracyPanel: React.FC<AccuracyPanelProps> = ({
   }, [loadReport]);
 
   // Log current prediction
-  const handleLogPrediction = () => {
+  const handleLogPrediction = async () => {
     if (!currentSymbol || !currentPrice || !currentPrediction) return;
     
     setIsLogging(true);
     try {
-      PredictionLogger.log({
+      await PredictionClient.log({
         symbol: currentSymbol,
         predictedDirection: currentPrediction.direction,
         confidence: currentPrediction.confidence,
@@ -61,14 +61,14 @@ export const AccuracyPanel: React.FC<AccuracyPanelProps> = ({
   // Evaluate pending predictions (would need price data)
   // Note: Currently not used in UI but available for future use
   const _handleEvaluatePending = async () => {
-    const pending = PredictionLogger.getPending();
+    const pending = await PredictionClient.getPending();
     if (pending.length === 0) return;
     
     // In real implementation, fetch current prices for each symbol
     // For now, we'll simulate with a placeholder
     for (const _record of pending) {
       // This would normally fetch the actual price
-      // PredictionLogger.evaluate(record.id, actualPrice);
+      // await PredictionClient.evaluate(record.id, actualPrice);
     }
     loadReport();
   };
