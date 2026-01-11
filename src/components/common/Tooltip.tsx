@@ -1,105 +1,100 @@
+/**
+ * Tooltip - ツールチップコンポーネント
+ * @description ホバー時に説明を表示
+ */
+
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import styles from './Tooltip.module.css';
 
 interface TooltipProps {
-  children: React.ReactNode;
-  content: string;
-  position?: 'top' | 'bottom' | 'left' | 'right';
+    content: string;
+    children: React.ReactNode;
+    position?: 'top' | 'bottom' | 'left' | 'right';
+    delay?: number;
 }
 
 export const Tooltip: React.FC<TooltipProps> = ({
-  children,
-  content,
-  position = 'top',
+    content,
+    children,
+    position = 'top',
+    delay = 300
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [actualPosition, setActualPosition] = useState(position);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLSpanElement>(null);
+    const [isVisible, setIsVisible] = useState(false);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Reset position when visibility changes or position prop changes
-    if (!isVisible) return;
-    
-    // Use requestAnimationFrame to defer position calculation
-    const frame = requestAnimationFrame(() => {
-      if (!tooltipRef.current || !containerRef.current) return;
-      
-      const tooltip = tooltipRef.current.getBoundingClientRect();
-      const container = containerRef.current.getBoundingClientRect();
-      
-      // Adjust position if tooltip goes off screen
-      let newPosition = position;
-      if (position === 'top' && container.top - tooltip.height < 10) {
-        newPosition = 'bottom';
-      } else if (position === 'bottom' && container.bottom + tooltip.height > window.innerHeight - 10) {
-        newPosition = 'top';
-      }
-      
-      if (newPosition !== actualPosition) {
-        setActualPosition(newPosition);
-      }
-    });
-    
-    return () => cancelAnimationFrame(frame);
-  }, [isVisible, position, actualPosition]);
+    const showTooltip = useCallback(() => {
+        timeoutRef.current = setTimeout(() => {
+            setIsVisible(true);
+        }, delay);
+    }, [delay]);
 
-  return (
-    <span
-      ref={containerRef}
-      className={styles.container}
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
-      onFocus={() => setIsVisible(true)}
-      onBlur={() => setIsVisible(false)}
-      tabIndex={0}
-    >
-      {children}
-      {isVisible && (
+    const hideTooltip = useCallback(() => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+        setIsVisible(false);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+        };
+    }, []);
+
+    return (
         <div
-          ref={tooltipRef}
-          className={`${styles.tooltip} ${styles[actualPosition]}`}
-          role="tooltip"
+            ref={containerRef}
+            className={styles.container}
+            onMouseEnter={showTooltip}
+            onMouseLeave={hideTooltip}
+            onFocus={showTooltip}
+            onBlur={hideTooltip}
         >
-          {content}
-          <div className={styles.arrow} />
+            {children}
+            {isVisible && (
+                <div
+                    className={`${styles.tooltip} ${styles[position]}`}
+                    role="tooltip"
+                >
+                    {content}
+                    <div className={styles.arrow} />
+                </div>
+            )}
         </div>
-      )}
-    </span>
-  );
+    );
 };
 
-// Pre-defined tooltips for financial terms
-export const TERM_DEFINITIONS: Record<string, string> = {
-  RSI: 'RSI（相対力指数）: 0-100の範囲で買われ過ぎ・売られ過ぎを判断。70以上は買われ過ぎ、30以下は売られ過ぎ。',
-  ADX: 'ADX（平均方向性指数）: トレンドの強さを測定。25以上で強いトレンド、20以下で弱いトレンド。',
-  'シャープレシオ': 'リスク調整後リターン。高いほどリスクに対してリターンが良い。1以上が良好、2以上は優秀。',
-  '分散度': 'ポートフォリオの分散度合い。高いほどリスクが分散されている。60%以上が推奨。',
-  '信頼度': 'AIが判断した取引シグナルの確信度。0-100%で表示。',
-  '市場状態': '現在の市場のトレンド状態。上昇/下落/横ばい/不安定など。',
-  '評議会の声': '複数のAIエージェントの合議結果。トレンド・リバーサル・ボラティリティ各エージェントが投票。',
-  'リバランス': 'ポートフォリオの配分を目標に近づける調整。乖離が大きいとリスクが偏る。',
-  '模擬取引': '実際のお金を使わない練習用取引モード。',
-  '目標': '理想的な資産配分比率。戦略によって異なる。',
-  'VTI': '米国全株式市場ETF。約4000銘柄に分散投資。',
-  'QQQ': 'NASDAQ100指数連動ETF。テクノロジー株中心。',
-  'BND': '米国総合債券ETF。安定した値動きが特徴。',
-  'GLD': '金価格連動ETF。インフレヘッジや安全資産として。',
-  'VWO': '新興国株式ETF。中国・インド等の成長市場に投資。',
+/**
+ * TermWithTooltip - 用語にツールチップを付けるコンポーネント
+ */
+const TERM_DEFINITIONS: Record<string, string> = {
+    'シャープレシオ': 'リスク調整後リターン。1以上なら良好。2以上なら優秀。',
+    '分散度': 'ポートフォリオの分散度合い。1に近いほど分散されている。',
+    'RSI': '相対力指数。30以下は売られ過ぎ、70以上は買われ過ぎ。',
+    'ADX': '平均方向性指数。25以上は強いトレンドを示す。',
+    '信頼度': 'AIがこのシグナルにどれだけ自信があるかを示す。',
 };
 
-// Helper component for term with tooltip
-export const TermWithTooltip: React.FC<{ term: string; children?: React.ReactNode }> = ({ term, children }) => {
-  const definition = TERM_DEFINITIONS[term];
-  if (!definition) return <span>{children || term}</span>;
-  
-  return (
-    <Tooltip content={definition}>
-      <span className={styles.termHighlight}>{children || term}</span>
-    </Tooltip>
-  );
+interface TermWithTooltipProps {
+    term: string;
+    children: React.ReactNode;
+}
+
+export const TermWithTooltip: React.FC<TermWithTooltipProps> = ({ term, children }) => {
+    const definition = TERM_DEFINITIONS[term] || `${term}についての説明`;
+    return (
+        <Tooltip content={definition}>
+            <span style={{ borderBottom: '1px dotted var(--text-muted)', cursor: 'help' }}>
+                {children}
+            </span>
+        </Tooltip>
+    );
 };
 
 export default Tooltip;

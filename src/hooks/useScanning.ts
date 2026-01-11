@@ -1,17 +1,20 @@
 /**
  * useScanning Hook
- * @description 銘柄スキャン・分析のカスタムフック
+ * @description 銀柄スキャン・分析のカスタムフック
  * @module hooks/useScanning
+ * @refactored 分析ロジックをStockAnalyzerに分離
  */
 
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { AnalysisResult, TradeHistoryItem, StockDataPoint, TradeSentiment, MarketRegime } from '@/types/market';
+import { AnalysisResult, TradeHistoryItem, StockDataPoint } from '@/types/market';
 import { MONITOR_LIST } from '@/config/constants';
 import { PredictionClient, AutoEvaluator } from '@/lib/accuracy';
 import { AlertService } from '@/lib/alerts';
 import { ErrorLogger } from '@/lib/errors';
+import { StockAnalyzer } from '@/lib/analysis/StockAnalyzer';
+import { translateError, messages } from '@/lib/i18n/messages';
 import { toast } from 'sonner';
 
 /** スキャン間隔（ミリ秒） */
@@ -23,138 +26,17 @@ const ERROR_TOAST_THRESHOLD = 3;
 /** エラークリアまでの時間（ミリ秒） */
 const ERROR_CLEAR_DELAY_MS = 5000;
 
-/**
- * Calculate ADX (Average Directional Index) for trend strength
- * ADX > 25: Strong trend, ADX < 20: Weak/No trend
- */
-function calculateADX(history: StockDataPoint[], period: number = 14): number {
-    if (history.length < period + 1) return 20; // Default neutral
-    
-    const data = history.slice(-(period + 1));
-    let sumDX = 0;
-    
-    for (let i = 1; i < data.length; i++) {
-        const high = data[i].high;
-        const low = data[i].low;
-        const prevHigh = data[i - 1].high;
-        const prevLow = data[i - 1].low;
-        const prevClose = data[i - 1].close;
-        
-        const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
-        const plusDM = high - prevHigh > prevLow - low ? Math.max(high - prevHigh, 0) : 0;
-        const minusDM = prevLow - low > high - prevHigh ? Math.max(prevLow - low, 0) : 0;
-        
-        if (tr > 0) {
-            const plusDI = (plusDM / tr) * 100;
-            const minusDI = (minusDM / tr) * 100;
-            const diSum = plusDI + minusDI;
-            if (diSum > 0) {
-                sumDX += (Math.abs(plusDI - minusDI) / diSum) * 100;
-            }
-        }
-    }
-    
-    return sumDX / period;
+/** スキャン結果 */
+export interface ScanResult {
+    scanningSymbol: string | null;
+    isScanLoading: boolean;
+    scanError: string | null;
+    failedSymbols: Set<string>;
+    resetFailedSymbols: () => void;
 }
 
 /**
- * Calculate RSI, ADX and derive sentiment from stock data
- * Improved: Uses ADX to determine if RSI signals are reliable
- */
-function calculateAnalysis(history: StockDataPoint[]): {
-    sentiment: TradeSentiment;
-    confidence: number;
-    rsi: number;
-    regime: MarketRegime;
-    adx?: number;
-} {
-    if (history.length < 20) {
-        return { sentiment: 'NEUTRAL', confidence: 50, rsi: 50, regime: 'SIDEWAYS' };
-    }
-
-    // Calculate RSI (14-period)
-    const closes = history.slice(-15).map(d => d.close);
-    let gains = 0, losses = 0;
-    for (let i = 1; i < closes.length; i++) {
-        const change = closes[i] - closes[i - 1];
-        if (change > 0) gains += change;
-        else losses -= change;
-    }
-    const avgGain = gains / 14;
-    const avgLoss = losses / 14;
-    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    const rsi = 100 - (100 / (1 + rs));
-
-    // Calculate ADX for trend strength
-    const adx = calculateADX(history);
-    const isStrongTrend = adx > 25;
-    const isWeakTrend = adx < 20;
-
-    // Calculate short-term trend (SMA5 vs SMA20)
-    const sma5 = history.slice(-5).reduce((a, b) => a + b.close, 0) / 5;
-    const sma20 = history.slice(-20).reduce((a, b) => a + b.close, 0) / 20;
-    const trendStrength = ((sma5 - sma20) / sma20) * 100;
-    const isBullishTrend = sma5 > sma20;
-
-    // Determine sentiment with ADX-aware logic
-    let sentiment: TradeSentiment = 'NEUTRAL';
-    let confidence = 50;
-
-    // Strong trend: Follow the trend, ignore overbought/oversold
-    if (isStrongTrend) {
-        if (isBullishTrend) {
-            sentiment = 'BULLISH';
-            // RSI > 50 in uptrend = momentum confirmation
-            confidence = Math.min(85, 60 + (rsi - 50) * 0.5 + (adx - 25) * 0.5);
-        } else {
-            sentiment = 'BEARISH';
-            confidence = Math.min(85, 60 + (50 - rsi) * 0.5 + (adx - 25) * 0.5);
-        }
-    }
-    // Weak trend: RSI extremes are more reliable for reversals
-    else if (isWeakTrend) {
-        if (rsi > 70) {
-            sentiment = 'BEARISH';
-            confidence = Math.min(80, 55 + (rsi - 70) * 1.5);
-        } else if (rsi < 30) {
-            sentiment = 'BULLISH';
-            confidence = Math.min(80, 55 + (30 - rsi) * 1.5);
-        }
-    }
-    // Medium trend: Balanced approach
-    else {
-        if (rsi > 70 && !isBullishTrend) {
-            sentiment = 'BEARISH';
-            confidence = Math.min(75, 50 + (rsi - 70));
-        } else if (rsi < 30 && isBullishTrend) {
-            sentiment = 'BULLISH';
-            confidence = Math.min(75, 50 + (30 - rsi));
-        } else if (trendStrength > 2) {
-            sentiment = 'BULLISH';
-            confidence = Math.min(70, 50 + trendStrength * 3);
-        } else if (trendStrength < -2) {
-            sentiment = 'BEARISH';
-            confidence = Math.min(70, 50 + Math.abs(trendStrength) * 3);
-        }
-    }
-
-    // Determine regime
-    let regime: MarketRegime = 'SIDEWAYS';
-    if (isStrongTrend && isBullishTrend) regime = 'BULL_TREND';
-    else if (isStrongTrend && !isBullishTrend) regime = 'BEAR_TREND';
-    else if (adx > 30 && Math.abs(trendStrength) > 3) regime = 'VOLATILE';
-
-    return { 
-        sentiment, 
-        confidence: Math.round(confidence), 
-        rsi: Math.round(rsi), 
-        regime,
-        adx: Math.round(adx)
-    };
-}
-
-/**
- * 銘柄スキャンフック
+ * 銀柄スキャンフック
  * @param isPaused - スキャンが一時停止中か
  * @param updateBestTrade - 分析結果を更新するコールバック
  * @param addToHistory - 履歴に追加するコールバック
@@ -164,7 +46,7 @@ export const useScanning = (
     isPaused: boolean,
     updateBestTrade: (result: AnalysisResult | null) => void,
     addToHistory: (item: TradeHistoryItem) => void
-) => {
+): ScanResult => {
     const [scanningSymbol, setScanningSymbol] = useState<string | null>(null);
     const [isScanLoading, setIsScanLoading] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
@@ -173,7 +55,7 @@ export const useScanning = (
     const symbolIndexRef = useRef(0);
     const isVisibleRef = useRef(true);
 
-    // 失敗銘柄をSetとしてメモ化
+    // 失敗銀柄をSetとしてメモ化
     const failedSymbols = useMemo(() => new Set(failedSymbolsList), [failedSymbolsList]);
 
     // Visibility APIでバックグラウンドタブを検出
@@ -187,7 +69,7 @@ export const useScanning = (
     }, []);
 
     /**
-     * 単一銘柄をスキャン
+     * 単一銀柄をスキャン
      */
     const scanSymbol = useCallback(async (symbol: string) => {
         // バックグラウンドタブではスキップ
@@ -200,33 +82,17 @@ export const useScanning = (
 
         try {
             const res = await fetch(`/api/stock?symbol=${symbol}`);
-            if (!res.ok) throw new Error('Fetch failed');
+            if (!res.ok) {
+                throw new Error(res.status === 429 ? 'Rate limit exceeded' : 'Fetch failed');
+            }
 
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 
             const history: StockDataPoint[] = Array.isArray(data) ? data : [];
-            const lastPrice = history.length > 0 ? history[history.length - 1].close : 0;
-
-            // Calculate RSI and sentiment from actual data
-            const { sentiment, confidence, rsi, regime } = calculateAnalysis(history);
-
-            const result: AnalysisResult = {
-                symbol,
-                history,
-                predictions: [],
-                sentiment,
-                confidence,
-                marketRegime: regime,
-                signals: [],
-                stats: {
-                    price: lastPrice,
-                    rsi,
-                    trend: sentiment === 'BULLISH' ? 'UP' : sentiment === 'BEARISH' ? 'DOWN' : 'NEUTRAL',
-                    adx: 20,
-                    regime
-                }
-            };
+            
+            // StockAnalyzerを使用して分析（分離されたロジック）
+            const result = StockAnalyzer.createAnalysisResult(symbol, history);
 
             updateBestTrade(result);
 
@@ -241,6 +107,7 @@ export const useScanning = (
             }
 
             // 予測をログ（非同期、エラーは無視）
+            const lastPrice = history.length > 0 ? history[history.length - 1].close : 0;
             PredictionClient.autoLog({
                 symbol,
                 predictedDirection: result.sentiment,
@@ -265,19 +132,20 @@ export const useScanning = (
 
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            const translatedError = translateError(errorMsg);
             
             ErrorLogger.error(errorMsg, 'Scanner', { symbol });
             
-            // 失敗銘柄を追跡
+            // 失敗銀柄を追跡
             if (!failedSymbolsList.includes(symbol)) {
                 setFailedSymbolsList(prev => [...prev, symbol]);
             }
-            setScanError(`${symbol}: ${errorMsg}`);
+            setScanError(`${symbol}: ${translatedError}`);
             
             // 複数失敗時にトースト表示
             if (failedSymbolsList.length >= ERROR_TOAST_THRESHOLD) {
-                toast.error('複数の銘柄でエラー', {
-                    description: 'データ取得に問題が発生しています',
+                toast.error(messages.notifications.multipleErrors, {
+                    description: messages.notifications.dataFetchError,
                     id: 'scan-error',
                 });
             }
@@ -289,7 +157,7 @@ export const useScanning = (
     }, [updateBestTrade, addToHistory, failedSymbolsList]);
 
     /**
-     * 次のスキャン対象銘柄を取得
+     * 次のスキャン対象銀柄を取得
      */
     const getNextSymbol = useCallback((): string => {
         let attempts = 0;
@@ -302,7 +170,7 @@ export const useScanning = (
         } while (failedSymbols.has(symbol) && attempts < MONITOR_LIST.length);
         
         if (attempts >= MONITOR_LIST.length) {
-            // 全銘柄失敗時はリセット
+            // 全銀柄失敗時はリセット
             setFailedSymbolsList([]);
             return MONITOR_LIST[0];
         }
@@ -322,9 +190,9 @@ export const useScanning = (
 
         // 起動時に自動評価を実行
         AutoEvaluator.evaluatePending().then(count => {
-            if (count > 0) console.log(`AutoEvaluator: Evaluated ${count} pending predictions`);
+            if (count > 0) console.log(`AutoEvaluator: ${count}件の予測を評価しました`);
         }).catch(err => {
-            console.error('AutoEvaluator error:', err);
+            console.error('AutoEvaluatorエラー:', err);
         });
 
         const runScan = () => {
@@ -351,7 +219,6 @@ export const useScanning = (
         isScanLoading, 
         scanError, 
         failedSymbols,
-        /** 失敗銘柄を手動リセット */
         resetFailedSymbols: useCallback(() => setFailedSymbolsList([]), []),
     };
 };

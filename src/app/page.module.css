@@ -562,3 +562,165 @@
 .chartLoadingText {
     font-size: 0.85rem;
 }
+
+/* =========================================
+   Enhanced Responsive Styles
+   ========================================= */
+
+/* Tablet Landscape Improvements */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .centerPanel {
+        min-height: 400px;
+    }
+    
+    .signalCard {
+        min-height: 250px;
+    }
+}
+
+/* Mobile Landscape */
+@media (max-height: 500px) and (orientation: landscape) {
+    .container {
+        height: auto;
+    }
+    
+    .content {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    .leftPanel {
+        width: 30%;
+        min-width: 250px;
+    }
+    
+    .centerPanel {
+        width: 40%;
+        min-width: 300px;
+    }
+    
+    .rightPanel {
+        width: 30%;
+        min-width: 250px;
+    }
+}
+
+/* Touch-friendly button sizes for mobile */
+@media (max-width: 768px) {
+    .button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 10px 14px;
+    }
+    
+    .addWatchButton {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 10px;
+    }
+    
+    .stockCard {
+        padding: 12px;
+    }
+    
+    .watchItem {
+        padding: 12px;
+    }
+    
+    /* Improve signal card readability on mobile */
+    .signalDisplay {
+        padding: 1rem;
+    }
+    
+    .signalText {
+        font-size: 1.8rem;
+    }
+    
+    /* Stack watchlist items */
+    .watchlistGrid,
+    .allStocksGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 360px) {
+    .title h1 {
+        font-size: 1rem;
+    }
+    
+    .icon {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .controls {
+        gap: 4px;
+    }
+    
+    .button {
+        padding: 8px;
+        font-size: 10px;
+    }
+    
+    .signalText {
+        font-size: 1.5rem;
+    }
+}
+
+/* Accessibility: Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    .loadingDot,
+    .chartSpinner,
+    .liveModeActive::before {
+        animation: none;
+    }
+    
+    .button,
+    .stockCard,
+    .watchItem,
+    .addWatchButton {
+        transition: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .button {
+        border-width: 2px;
+    }
+    
+    .signalBUY {
+        background: #10b981;
+        color: #000;
+    }
+    
+    .signalSELL {
+        background: #ef4444;
+        color: #fff;
+    }
+}
+
+/* Dark mode adjustments (already default, but explicit) */
+@media (prefers-color-scheme: dark) {
+    .main {
+        background-color: var(--background);
+    }
+}
+
+/* Print styles */
+@media print {
+    .controls,
+    .addWatchButton {
+        display: none;
+    }
+    
+    .main {
+        background: white;
+        color: black;
+    }
+    
+    .signalCard {
+        border: 1px solid #000;
+    }
+}

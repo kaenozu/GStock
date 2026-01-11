@@ -1,5 +1,14 @@
-import { StockDataPoint, TradeType } from '@/types/market';
-import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
+/**
+ * BacktestArena - バックテスト実行エンジン
+ * @description 最適化された O(N) バックテスト
+ * @module lib/backtest/BacktestArena
+ */
+
+import { StockDataPoint, TradeType, TradeSentiment } from '@/types/market';
+import { SMA, RSI, MACD, ADX, BollingerBands, ATR } from 'technicalindicators';
+import type { MACDOutput } from 'technicalindicators/declarations/moving_averages/MACD';
+import type { ADXOutput } from 'technicalindicators/declarations/directionalmovement/ADX';
+import type { BollingerBandsOutput } from 'technicalindicators/declarations/volatility/BollingerBands';
 
 export interface BacktestReport {
     symbol: string;
@@ -27,96 +36,213 @@ interface SimulatedTrade {
     reason: string;
 }
 
-export class BacktestArena {
+/** 事前計算されたインジケーター */
+interface PrecomputedIndicators {
+    sma20: number[];
+    sma50: number[];
+    rsi: number[];
+    macd: MACDOutput[];
+    adx: ADXOutput[];
+    bb: BollingerBandsOutput[];
+    atr: number[];
+}
 
+/** 単一時点の分析結果 */
+interface PointAnalysis {
+    sentiment: TradeSentiment;
+    confidence: number;
+}
+
+export class BacktestArena {
+    /**
+     * インジケーターを事前計算（O(N)）
+     */
+    private precomputeIndicators(history: StockDataPoint[]): PrecomputedIndicators {
+        const closingPrices = history.map(d => d.close);
+        const highPrices = history.map(d => d.high);
+        const lowPrices = history.map(d => d.low);
+
+        return {
+            sma20: SMA.calculate({ period: 20, values: closingPrices }),
+            sma50: SMA.calculate({ period: 50, values: closingPrices }),
+            rsi: RSI.calculate({ period: 14, values: closingPrices }),
+            macd: MACD.calculate({
+                values: closingPrices,
+                fastPeriod: 12,
+                slowPeriod: 26,
+                signalPeriod: 9,
+                SimpleMAOscillator: false,
+                SimpleMASignal: false
+            }),
+            adx: ADX.calculate({ high: highPrices, low: lowPrices, close: closingPrices, period: 14 }),
+            bb: BollingerBands.calculate({ period: 20, values: closingPrices, stdDev: 2 }),
+            atr: ATR.calculate({ high: highPrices, low: lowPrices, close: closingPrices, period: 14 })
+        };
+    }
+
+    /**
+     * 特定インデックスでの分析を取得（O(1)）
+     */
+    private getAnalysisAtIndex(
+        dataIndex: number,
+        price: number,
+        indicators: PrecomputedIndicators
+    ): PointAnalysis {
+        // インデックスマッピング
+        // SMA20: データインデックス - 19 = SMAインデックス
+        // SMA50: データインデックス - 49 = SMAインデックス
+        const sma20Idx = dataIndex - 19;
+        const sma50Idx = dataIndex - 49;
+        const rsiIdx = dataIndex - 14;
+        const macdIdx = dataIndex - 25; // slowPeriod(26) - 1
+        const adxIdx = dataIndex - 14;
+        const bbIdx = dataIndex - 19;
+        const atrIdx = dataIndex - 14;
+
+        // インデックス範囲チェック
+        if (sma50Idx < 0 || macdIdx < 0 || rsiIdx < 0 || adxIdx < 0 || bbIdx < 0 || atrIdx < 0) {
+            return { sentiment: 'NEUTRAL', confidence: 50 };
+        }
+
+        const sma20 = indicators.sma20[sma20Idx];
+        const sma50 = indicators.sma50[sma50Idx];
+        const rsi = indicators.rsi[rsiIdx];
+        const macd = indicators.macd[macdIdx];
+        const prevMacd = macdIdx > 0 ? indicators.macd[macdIdx - 1] : undefined;
+        const adx = indicators.adx[adxIdx];
+        const bb = indicators.bb[bbIdx];
+        const atr = indicators.atr[atrIdx];
+
+        if (!sma20 || !sma50 || !macd || !adx || !bb) {
+            return { sentiment: 'NEUTRAL', confidence: 50 };
+        }
+
+        // スコア計算（簡略化版）
+        let bullScore = 0;
+        let bearScore = 0;
+
+        const adxValue = adx.adx;
+        const trendStrength = Math.min(Math.max(adxValue / 20, 0.5), 2.0);
+        const oscillatorStrength = Math.min(Math.max(25 / adxValue, 0.5), 2.0);
+
+        // トレンド分析
+        if (price > sma20) bullScore += 15 * trendStrength;
+        else bearScore += 15 * trendStrength;
+
+        if (sma20 > sma50) bullScore += 15 * trendStrength;
+        else bearScore += 15 * trendStrength;
+
+        // RSI分析
+        if (rsi > 50) bullScore += 10 * oscillatorStrength;
+        else bearScore += 10 * oscillatorStrength;
+
+        if (rsi < 30) bullScore += 25 * oscillatorStrength;
+        else if (rsi > 70) bearScore += 25 * oscillatorStrength;
+
+        // MACD分析
+        const currentHist = macd.histogram || 0;
+        const prevHist = prevMacd?.histogram || 0;
+        const isHistGrowing = Math.abs(currentHist) > Math.abs(prevHist);
+
+        if (macd.MACD && macd.signal && macd.MACD > macd.signal) {
+            let score = 15;
+            if (currentHist > 0 && isHistGrowing) score += 5;
+            bullScore += score * trendStrength;
+        } else {
+            let score = 15;
+            if (currentHist < 0 && isHistGrowing) score += 5;
+            bearScore += score * trendStrength;
+        }
+
+        // ボリンジャーバンド
+        if (price > bb.upper) {
+            if (adxValue > 30) bullScore += 10;
+            else bearScore += 20 * oscillatorStrength;
+        } else if (price < bb.lower) {
+            if (adxValue > 30) bearScore += 10;
+            else bullScore += 20 * oscillatorStrength;
+        }
+
+        const finalScore = bullScore - bearScore;
+        const isTrending = adxValue > 25;
+        const atrPercent = (atr / price) * 100;
+        const isHighVolatility = atrPercent > 3.0;
+
+        let rawConfidence = (Math.abs(finalScore) / 35) * 100;
+        if (isTrending) rawConfidence *= 1.3;
+        else rawConfidence *= 0.85;
+        if (isHighVolatility) rawConfidence *= 0.8;
+        rawConfidence += 20;
+
+        const confidence = Math.min(Math.round(rawConfidence), 98);
+        const sentiment: TradeSentiment = finalScore >= 0 ? 'BULLISH' : 'BEARISH';
+
+        return { confidence, sentiment };
+    }
+
+    /**
+     * バックテストを実行（最適化済み O(N)）
+     */
     public run(symbol: string, history: StockDataPoint[], initialBalance: number = 1000000): BacktestReport {
-        // Simulation State
+        // インジケーターを事前計算（一度だけ）
+        const indicators = this.precomputeIndicators(history);
+
         let cash = initialBalance;
         let position: { quantity: number, entryPrice: number, type: TradeType } | null = null;
         const simulatedTrades: SimulatedTrade[] = [];
         const equityCurve: { time: string, value: number }[] = [];
 
-        // Track High Water Mark for Drawdown
         let peakEquity = initialBalance;
         let maxDrawdown = 0;
 
-        // Loop through history (skip first 50 days for indicators)
         const START_INDEX = 50;
+        const BUY_THRESHOLD = 70;
 
         for (let i = START_INDEX; i < history.length; i++) {
             const currentDay = history[i];
-            const previousData = history.slice(0, i + 1); // Data available up to today
-
-            // 1. Ask The Council
-            // Note: This re-calculates indicators every step. O(N^2). 
-            // Acceptable for < 1000 bars. might be 1-2s for 1 year.
-            const analysis = calculateAdvancedPredictions(previousData);
-
-            // 2. Decision Logic ( Simplified Strategy )
-            // Strategy: Buy if Confidence > 70 & Bullish. Sell if Bearish or < 50?
-            // Let's use the exact "Best Trade" logic derived from optimization?
-            // For Deep Backtest, we use a Standard High-Quality Strategy as baseline.
-            const BUY_THRESHOLD = 70;
-            // Note: SELL_THRESHOLD could be used for more complex exit logic
-            // const SELL_THRESHOLD = 40;
-
             const price = currentDay.close;
             const date = currentDay.time;
 
-            // Current Equity for Drawdown Calculation
+            // 事前計算済みインジケーターから分析取得（O(1)）
+            const analysis = this.getAnalysisAtIndex(i, price, indicators);
+
+            // 現在の資産評価
             let currentEquity = cash;
             if (position) {
                 currentEquity += (price - position.entryPrice) * position.quantity * (position.type === 'BUY' ? 1 : -1);
             }
 
-            // Drawdown Update
+            // ドローダウン更新
             if (currentEquity > peakEquity) peakEquity = currentEquity;
             const drawdown = (peakEquity - currentEquity) / peakEquity;
             if (drawdown > maxDrawdown) maxDrawdown = drawdown;
 
             equityCurve.push({ time: date, value: currentEquity });
 
-            // Trading Logic
+            // 取引ロジック
             if (position) {
-                // Check Exit Conditions
                 let shouldExit = false;
                 let reason = "";
 
-                // Stop Loss (Fixed 5%)
                 const pnlPercent = (price - position.entryPrice) / position.entryPrice * (position.type === 'BUY' ? 1 : -1);
+
                 if (pnlPercent < -0.05) {
                     shouldExit = true;
-                    reason = "Stop Loss (-5%)";
-                }
-                // Take Profit (Fixed 10%)
-                else if (pnlPercent > 0.10) {
+                    reason = "ストップロス (-5%)";
+                } else if (pnlPercent > 0.10) {
                     shouldExit = true;
-                    reason = "Take Profit (+10%)";
-                }
-                // Signal Reversal
-                else if (analysis.sentiment !== 'BULLISH' && position.type === 'BUY') {
-                    // If Neutral or Bearish, consider exit?
-                    if (analysis.sentiment === 'BEARISH') {
-                        shouldExit = true;
-                        reason = "Signal Reversal (Bearish)";
-                    }
+                    reason = "利確定 (+10%)";
+                } else if (analysis.sentiment === 'BEARISH' && position.type === 'BUY') {
+                    shouldExit = true;
+                    reason = "シグナル反転 (弱気)";
                 }
 
                 if (shouldExit) {
-                    // Execute Sell
                     const pnl = (price - position.entryPrice) * position.quantity;
-                    cash += (price * position.quantity); // For simplicity of calc
-                    // Actually cash update:
-                    // PnL added to Balance. 
-                    // Wait, Cash = Cash + Revenue.
-                    // Initial Cash was spent? 
-                    // Let's model Cash/Position accurately.
-
-                    // On Entry: Cash -= Cost.
-                    // On Exit: Cash += Revenue.
+                    cash += (price * position.quantity);
 
                     simulatedTrades.push({
-                        entryDate: simulatedTrades.find(t => !t.exitDate)?.entryDate || date, // Hacky match
+                        entryDate: simulatedTrades.find(t => !t.exitDate)?.entryDate || date,
                         entryPrice: position.entryPrice,
                         exitDate: date,
                         exitPrice: price,
@@ -127,12 +253,9 @@ export class BacktestArena {
                     });
                     position = null;
                 }
-            }
-            else {
-                // Check Entry Conditions
+            } else {
                 if (analysis.sentiment === 'BULLISH' && analysis.confidence >= BUY_THRESHOLD) {
-                    // Enter BUY
-                    const riskAmount = currentEquity * 0.2; // 20% position size (Iron Dome rule)
+                    const riskAmount = currentEquity * 0.2;
                     const quantity = Math.floor(riskAmount / price);
 
                     if (quantity > 0) {
@@ -142,33 +265,31 @@ export class BacktestArena {
                             entryPrice: price,
                             type: 'BUY'
                         };
-                        // Log partial trade start
                         simulatedTrades.push({
                             entryDate: date,
                             entryPrice: price,
                             type: 'BUY',
                             quantity,
                             pnl: 0,
-                            reason: `Council Signal ${analysis.confidence}%`
+                            reason: `AIシグナル ${analysis.confidence}%`
                         });
                     }
                 }
             }
         }
 
-        // Finalize
-        // Close open position at last price
+        // 終了時にポジションをクローズ
         if (position) {
             const lastPrice = history[history.length - 1].close;
             const pnl = (lastPrice - position.entryPrice) * position.quantity;
             cash += lastPrice * position.quantity;
-            // Update last trade
+
             const lastTrade = simulatedTrades[simulatedTrades.length - 1];
             if (lastTrade) {
                 lastTrade.exitDate = history[history.length - 1].time;
                 lastTrade.exitPrice = lastPrice;
                 lastTrade.pnl = pnl;
-                lastTrade.reason = "End of Backtest";
+                lastTrade.reason = "バックテスト終了";
             }
         }
 
@@ -181,7 +302,7 @@ export class BacktestArena {
 
         return {
             symbol,
-            period: `${history.length} days`,
+            period: `${history.length}日間`,
             totalDays: history.length,
             initialBalance,
             finalBalance,
@@ -190,7 +311,7 @@ export class BacktestArena {
             tradeCount: completedTrades.length,
             winRate,
             maxDrawdown,
-            trades: completedTrades, // Only completed
+            trades: completedTrades,
             equityCurve
         };
     }

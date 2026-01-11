@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Zap, Play, Pause, Layers, FlaskConical, BarChart3, TrendingUp, Settings } from 'lucide-react';
+import { Zap, Play, Pause, Layers, HelpCircle, FlaskConical, BarChart3, TrendingUp, Settings } from 'lucide-react';
 import styles from './page.module.css';
 import { DisplaySignal, ChartMarker } from '@/types/market';
 import { CONFIDENCE_THRESHOLD, MONITOR_LIST } from '@/config/constants';
@@ -25,16 +25,21 @@ import { EarningsPanel } from '@/components/dashboard/EarningsPanel';
 import { AccuracyPanel } from '@/components/dashboard/AccuracyPanel';
 import { AlertSettingsPanel } from '@/components/dashboard/AlertSettingsPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
-// VirtualScroll available but not currently used
+import { SymbolSearch } from '@/components/dashboard/SymbolSearch';
 import { SettingsPanel } from '@/components/common/SettingsPanel';
 import { TabPanel } from '@/components/common/TabPanel';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ConnectionStatusIndicator } from '@/components/common/ConnectionStatus';
+import { ChartPlaceholder } from '@/components/charts/ChartPlaceholder';
+import { Onboarding, resetOnboarding } from '@/components/common/Onboarding';
+import { Tooltip } from '@/components/common/Tooltip';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
 export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   // Earnings markers prepared for future integration
   const earningsMarkers: ChartMarker[] = [];
 
@@ -127,6 +132,30 @@ export default function Home() {
     }
   };
 
+  // 銘柄検索ハンドラー
+  const handleSymbolSelect = useCallback((symbol: string) => {
+    // 最近の検索に追加
+    setRecentSearches(prev => {
+      const filtered = prev.filter(s => s !== symbol);
+      return [symbol, ...filtered].slice(0, 10);
+    });
+    // 分析を開始（スキャンリストに一時的に追加）
+    // TODO: 直接スキャンを実行する機能を追加
+  }, []);
+
+  // ウォッチリストに追加
+  const handleAddToWatchlist = useCallback((symbol: string) => {
+    if (!watchlist.some(item => item.symbol === symbol)) {
+      setWatchlist(prev => [...prev, { symbol, price: 0, changePercent: 0, sentiment: 'NEUTRAL' as const }]);
+    }
+  }, [watchlist, setWatchlist]);
+
+  // オンボーディング表示
+  const handleShowHelp = useCallback(() => {
+    resetOnboarding();
+    setShowOnboarding(true);
+  }, []);
+
   return (
     <ErrorBoundary>
     <main className={`${styles.main} ${isLive ? styles.liveModeActive : ''}`}>
@@ -178,6 +207,15 @@ export default function Home() {
               指標
             </button>
             <SettingsPanel />
+            <Tooltip content="ヘルプ・チュートリアルを表示">
+              <button
+                onClick={handleShowHelp}
+                className={styles.button}
+                aria-label="ヘルプ"
+              >
+                <HelpCircle size={16} />
+              </button>
+            </Tooltip>
             {wsEnabled && (
               <ConnectionStatusIndicator
                 status={wsStatus}
@@ -243,12 +281,18 @@ export default function Home() {
 
           {/* Center Panel */}
           <div className={styles.centerPanel}>
-            {currentAnalysis?.history && (
+            {currentAnalysis?.history ? (
               <StockChart
                 data={currentAnalysis.history}
                 indicators={showIndicators ? currentAnalysis.chartIndicators : undefined}
                 markers={earningsMarkers}
                 settings={chartSettings}
+              />
+            ) : (
+              <ChartPlaceholder
+                isScanning={isScanLoading}
+                isPaused={isPaused}
+                scanningSymbol={scanningSymbol ?? undefined}
               />
             )}
           </div>
@@ -265,11 +309,18 @@ export default function Home() {
             >
               {/* Market Tab */}
               <>
+                {/* 銀柄検索 */}
+                <SymbolSearch
+                  onSelect={handleSymbolSelect}
+                  watchlist={watchlist.map(w => w.symbol)}
+                  onAddToWatchlist={handleAddToWatchlist}
+                  recentSearches={recentSearches}
+                />
                 <WatchList
                   watchlist={watchlist}
                   allSymbols={MONITOR_LIST}
                   onSelectSymbol={(symbol) => {
-                    console.log('Select', symbol);
+                    handleSymbolSelect(symbol);
                   }}
                   onToggleWatch={(symbol) => {
                     handleToggleWatchlist(symbol, 0, 'NEUTRAL');
@@ -308,6 +359,8 @@ export default function Home() {
         </div>
       </div>
     </main>
+    {/* オンボーディングモーダル */}
+    <Onboarding forceShow={showOnboarding} onComplete={() => setShowOnboarding(false)} />
     </ErrorBoundary>
   );
 }
