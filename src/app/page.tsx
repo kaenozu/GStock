@@ -4,7 +4,11 @@ import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Zap, Play, Pause, Layers, FlaskConical } from 'lucide-react';
 import styles from './page.module.css';
+<<<<<<< Updated upstream
 import { ChartSettings, DisplaySignal, ChartMarker } from '@/types/market';
+=======
+import { DisplaySignal } from '@/types/market';
+>>>>>>> Stashed changes
 import { CONFIDENCE_THRESHOLD, MONITOR_LIST } from '@/config/constants';
 
 // Hooks
@@ -26,6 +30,7 @@ import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 import { VirtualScroll } from '@/components/common/VirtualScroll';
 import { SettingsPanel } from '@/components/common/SettingsPanel';
 
+
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
 export default function Home() {
@@ -46,7 +51,6 @@ export default function Home() {
     setShowIndicators,
     updateBestTrade,
     chartSettings,
-    setChartSettings,
     deepReport,
     isBacktestLoading,
     runDeepBacktest,
@@ -112,7 +116,7 @@ export default function Home() {
     if (watchlist.some(item => item.symbol === symbol)) {
       setWatchlist(watchlist.filter(item => item.symbol !== symbol));
     } else {
-      setWatchlist([...watchlist, { symbol, price, changePercent: 0, sentiment: sentiment as any }]);
+      setWatchlist([...watchlist, { symbol, price, changePercent: 0, sentiment: sentiment }]);
     }
   };
 
@@ -259,6 +263,7 @@ export default function Home() {
 
             <FinancialsPanel symbol={currentAnalysis?.symbol || ''} />
 
+<<<<<<< Updated upstream
             <EarningsPanel 
               symbol={currentAnalysis?.symbol || ''}
               onEarningsDates={handleEarningsDates}
@@ -275,9 +280,12 @@ export default function Home() {
             />
 
             <PortfolioManager />
-          </div>
-        </div>
-      </div>
-    </main>
+=======
+            <EarningsPanel symbol={currentAnalysis?.symbol || ''} />
+>>>>>>> Stashed changes
+          </div >
+        </div >
+      </div >
+    </main >
   );
 }

@@ -1,4 +1,4 @@
-import { StockDataPoint, EarningsEvent, EarningsData } from '@/types/market';
+import { StockDataPoint } from '@/types/market';
 import { StockProvider } from './StockProvider';
 
 export interface CompanyFinancials {
@@ -81,62 +81,53 @@ export class FinnhubProvider implements StockProvider {
         return Math.round(num * 100) / 100;
     }
 
-    async fetchEarnings(symbol: string): Promise<EarningsData> {
-        // Fetch earnings calendar
-        const calendarUrl = `https://finnhub.io/api/v1/calendar/earnings?symbol=${symbol}&token=${this.apiKey}`;
-        const calendarRes = await fetch(calendarUrl);
-        if (!calendarRes.ok) throw new Error(`Finnhub Earnings Error: ${calendarRes.status}`);
-        const calendarData = await calendarRes.json();
+    async fetchEarningsCalendar(symbol: string): Promise<EarningsEvent[]> {
+        // Get earnings for the next 3 months
+        const from = new Date().toISOString().split('T')[0];
+        const to = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-        // Fetch historical earnings
-        const historyUrl = `https://finnhub.io/api/v1/stock/earnings?symbol=${symbol}&token=${this.apiKey}`;
-        const historyRes = await fetch(historyUrl);
-        if (!historyRes.ok) throw new Error(`Finnhub Earnings History Error: ${historyRes.status}`);
-        const historyData = await historyRes.json();
+        const url = `https://finnhub.io/api/v1/calendar/earnings?symbol=${symbol}&from=${from}&to=${to}&token=${this.apiKey}`;
 
-        // Parse next earnings date from calendar
-        let nextEarningsDate: string | null = null;
-        if (calendarData.earningsCalendar && calendarData.earningsCalendar.length > 0) {
-            const upcoming = calendarData.earningsCalendar.find(
-                (e: { date: string }) => new Date(e.date) >= new Date()
-            );
-            if (upcoming) {
-                nextEarningsDate = upcoming.date;
-            }
-        }
-
-        // Parse historical earnings
-        const history: EarningsEvent[] = (historyData || []).map((e: {
-            period: string;
-            actual: number | null;
-            estimate: number | null;
-            surprisePercent: number | null;
-            revenueActual?: number | null;
-            revenueEstimate?: number | null;
-        }) => ({
-            date: e.period,
-            epsActual: e.actual,
-            epsEstimate: e.estimate,
-            surprise: e.surprisePercent,
-            revenueActual: e.revenueActual ?? null,
-            revenueEstimate: e.revenueEstimate ?? null,
-            period: this.formatPeriod(e.period),
-        })).slice(0, 8);
-
-        return {
-            symbol,
-            nextEarningsDate,
-            history,
-        };
-    }
-
-    private formatPeriod(dateStr: string): string {
         try {
-            const d = new Date(dateStr);
-            const q = Math.ceil((d.getMonth() + 1) / 3);
-            return `Q${q} ${d.getFullYear()}`;
-        } catch {
-            return dateStr;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Finnhub Earnings Error: ${response.status}`);
+
+            const data = await response.json();
+            const events = data.earningsCalendar || [];
+
+            return events.map((e: FinnhubEarningsResponse) => ({
+                symbol: e.symbol,
+                date: e.date,
+                epsEstimate: e.epsEstimate ?? null,
+                epsActual: e.epsActual ?? null,
+                revenueEstimate: e.revenueEstimate ?? null,
+                revenueActual: e.revenueActual ?? null,
+                hour: e.hour || 'bmo', // before market open / after market close
+            }));
+        } catch (error) {
+            console.error(`[Finnhub] Earnings calendar error for ${symbol}:`, error);
+            return [];
         }
     }
+}
+
+// Types for Earnings
+export interface EarningsEvent {
+    symbol: string;
+    date: string;
+    epsEstimate: number | null;
+    epsActual: number | null;
+    revenueEstimate: number | null;
+    revenueActual: number | null;
+    hour: 'bmo' | 'amc' | 'dmh'; // before market open, after market close, during market hours
+}
+
+interface FinnhubEarningsResponse {
+    symbol: string;
+    date: string;
+    epsEstimate?: number;
+    epsActual?: number;
+    revenueEstimate?: number;
+    revenueActual?: number;
+    hour?: string;
 }

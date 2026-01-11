@@ -4,6 +4,7 @@ import { DollarSign, TrendingUp, History, PlayCircle } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { Portfolio, Trade } from '@/lib/trading/types';
 import { Skeleton } from '@/components/common/Skeleton';
+import { toast } from 'sonner';
 
 interface TradingPanelProps {
     symbol: string;
@@ -56,13 +57,14 @@ export const TradingPanel = React.memo(({ symbol, currentPrice, executionMode }:
             });
 
             if (res.ok) {
+                toast.success(`${side} Order Executed!`, { description: `${symbol} x 100` });
                 await fetchPortfolio();
             } else {
                 const err = await res.json();
-                alert(`Error: ${err.error}`);
+                toast.error(`Order Failed`, { description: err.error });
             }
         } catch (e) {
-            alert("Trade Failed");
+            toast.error("Trade Execution Failed", { description: "Network or server error" });
         } finally {
             setLoading(false);
         }
