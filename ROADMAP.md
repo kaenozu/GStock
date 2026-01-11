@@ -85,7 +85,15 @@
 - [x] **AccuracyCalculator**: Compute metrics (hit rate, calibration, regime breakdown).
 - [x] **Confidence Calibration**: Compare predicted confidence vs actual accuracy.
 - [x] **Regime Analysis**: Track accuracy by market regime (BULL, BEAR, VOLATILE, etc.).
-- [ ] **Insider Sentiment**: Track CEO/CFO buying activity. (Future Phase 19)
+
+## ✅ Phase 19: The Nervous System (Automation & Alerts)
+**Status: Complete**
+- [x] **Prediction Auto-Recording**: Automatic logging on signal generation.
+- [x] **Auto-Evaluation**: Evaluate pending predictions on page load.
+- [x] **Browser Notifications**: Alert on BUY/SELL signal changes.
+- [x] **Alert Settings Panel**: Configure notifications (on/off, sound, min confidence).
+- [x] **Duplicate Prevention**: Skip same symbol/day recordings.
+- [ ] **Insider Sentiment**: Track CEO/CFO buying activity. (Future Phase 20)
 
 ## 🌌 Phase 16: G-DAO (Infinite Scale)
 **Timeline: 2028+**
