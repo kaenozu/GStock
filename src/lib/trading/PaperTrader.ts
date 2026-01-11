@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { Portfolio, Position, Trade, TradeRequest } from './types';
+import { Portfolio, Trade, TradeRequest } from './types';
 import { CircuitBreaker } from '@/lib/risk/CircuitBreaker';
 
 const DATA_DIR = path.join(process.cwd(), 'data');

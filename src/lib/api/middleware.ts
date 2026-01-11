@@ -32,8 +32,8 @@ export function withAuth(handler: (req: NextRequest, context?: any) => Promise<N
 
 // Input validation utilities
 export function validateSymbol(symbol: string): boolean {
-    // Basic symbol validation: 1-5 letters, optionally with .extension
-    return /^[A-Z]{1,5}(\.[A-Z]{1,3})?$/.test(symbol.toUpperCase());
+    // Symbol validation: 1-6 alphanumeric chars, optionally with .extension (e.g., AAPL, 7203.T)
+    return /^[A-Z0-9]{1,6}(\.[A-Z]{1,3})?$/i.test(symbol);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
