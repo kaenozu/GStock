@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "test:load": "vitest --config vitest.config.load.ts",
@@ -27,6 +30,7 @@
     "yahoo-finance2": "^3.11.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
