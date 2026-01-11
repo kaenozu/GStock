@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // インメモリキャッシュ（プロダクションではRedisなどを推奨）
 class APICache {
-  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+  private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
   
-  set(key: string, data: any, ttl: number = 30000): void {
+  set(key: string, data: unknown, ttl: number = 30000): void {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -17,7 +17,7 @@ class APICache {
     }
   }
   
-  get(key: string): any {
+  get(key: string): unknown {
     const item = this.cache.get(key);
     if (!item) return null;
     
@@ -29,7 +29,7 @@ class APICache {
     return item.data;
   }
   
-  getEntry(key: string): { data: any; timestamp: number; ttl: number } | null {
+  getEntry(key: string): { data: unknown; timestamp: number; ttl: number } | null {
     const item = this.cache.get(key);
     if (!item) return null;
     
@@ -188,7 +188,7 @@ export function withBacktestCache(
 }
 
 // キャッシュ管理API
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const stats = apiCache.getStats();
   
   return NextResponse.json({
@@ -202,7 +202,7 @@ export async function GET(req: NextRequest) {
 }
 
 // キャッシュクリアAPI
-export async function DELETE(req: NextRequest) {
+export async function DELETE(_req: NextRequest) {
   apiCache.clear();
   
   return NextResponse.json({

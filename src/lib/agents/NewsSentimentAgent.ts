@@ -32,7 +32,7 @@ export class NewsSentimentAgent implements Agent {
         newsData.forEach((news, index) => {
             const newsLower = news.toLowerCase();
             let newsScore = 0;
-            let newsKeywords: string[] = [];
+            const newsKeywords: string[] = [];
 
             this.positiveKeywords.forEach(keyword => {
                 if (newsLower.includes(keyword)) {

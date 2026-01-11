@@ -51,17 +51,17 @@ describe('Cache Middleware', () => {
       const handler = vi.fn().mockImplementation(() =>
         Promise.resolve(new Response(JSON.stringify({ data: 'test' }), { status: 200 }))
       );
-      
+
       const cachedHandler = withCache(handler, { ttl: 100 });
-      
+
       const req = new NextRequest('http://localhost:3000/api/test');
-      
-      const response1 = await cachedHandler(req);
+
+      await cachedHandler(req);
       expect(handler).toHaveBeenCalledTimes(1);
-      
+
       await new Promise(resolve => setTimeout(resolve, 150));
-      
-      const response2 = await cachedHandler(req);
+
+      await cachedHandler(req);
       expect(handler).toHaveBeenCalledTimes(2);
     });
 
@@ -94,7 +94,7 @@ describe('Cache Middleware', () => {
       
       const req = new NextRequest('http://localhost:3000/api/stock?symbol=AAPL');
       
-      const response1 = await cachedHandler(req);
+      await cachedHandler(req);
       expect(handler).toHaveBeenCalledTimes(1);
       
       const response2 = await cachedHandler(req);
