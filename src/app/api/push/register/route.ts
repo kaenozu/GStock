@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { indexedDBCache } from '@/lib/cache/IndexedDBCache';
 
 export async function POST(request: NextRequest) {
     try {
@@ -11,11 +12,13 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Store token (in production, store in database)
-        const tokens = JSON.parse(localStorage.getItem('pushTokens') || '[]');
-        if (!tokens.includes(token)) {
-            tokens.push(token);
-            localStorage.setItem('pushTokens', JSON.stringify(tokens));
+        // Store token in IndexedDB
+        await indexedDBCache.init();
+        const tokensData = await indexedDBCache.get('push-tokens', 'all') || { tokens: [] };
+
+        if (!tokensData.tokens.includes(token)) {
+            tokensData.tokens.push(token);
+            await indexedDBCache.set('push-tokens', 'all', tokensData);
         }
 
         return NextResponse.json({ success: true, token });
@@ -39,10 +42,11 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        // Remove token (in production, remove from database)
-        const tokens = JSON.parse(localStorage.getItem('pushTokens') || '[]');
-        const filteredTokens = tokens.filter((t: string) => t !== token);
-        localStorage.setItem('pushTokens', JSON.stringify(filteredTokens));
+        // Remove token from IndexedDB
+        await indexedDBCache.init();
+        const tokensData = await indexedDBCache.get('push-tokens', 'all') || { tokens: [] };
+        const filteredTokens = tokensData.tokens.filter((t: string) => t !== token);
+        await indexedDBCache.set('push-tokens', 'all', { tokens: filteredTokens });
 
         return NextResponse.json({ success: true });
     } catch (error) {

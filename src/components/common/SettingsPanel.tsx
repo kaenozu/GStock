@@ -1,15 +1,16 @@
 'use client';
  
 import React, { useState } from 'react';
-import { Settings, X, Type, Key, Palette, Database, Bell } from 'lucide-react';
+import { Settings, X, Type, Key, Palette, Database, Bell, Clock } from 'lucide-react';
 import { useSettings, FontSize } from '@/hooks/useSettings';
 import { ThemeToggle } from './ThemeToggle';
 import { ApiKeySettingsPanel } from './ApiKeySettingsPanel';
 import { DataManager } from './DataManager';
 import { PushNotificationSettingsPanel } from './PushNotificationSettingsPanel';
+import { NotificationHistoryPanel } from './NotificationHistoryPanel';
 import styles from './SettingsPanel.module.css';
-  
-type Tab = 'general' | 'theme' | 'api' | 'data' | 'push';
+
+type Tab = 'general' | 'theme' | 'api' | 'data' | 'push' | 'history';
  
 export const SettingsPanel: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -75,7 +76,14 @@ export const SettingsPanel: React.FC = () => {
                 onClick={() => setActiveTab('push')}
               >
                 <Bell size={14} />
-                通知
+                設定
+              </button>
+              <button
+                className={`${styles.tab} ${activeTab === 'history' ? styles.activeTab : ''}`}
+                onClick={() => setActiveTab('history')}
+              >
+                <Clock size={14} />
+                履歴
               </button>
             </div>
 
@@ -130,6 +138,10 @@ export const SettingsPanel: React.FC = () => {
 
               {activeTab === 'push' && (
                 <PushNotificationSettingsPanel />
+              )}
+
+              {activeTab === 'history' && (
+                <NotificationHistoryPanel />
               )}
             </div>
           </div>

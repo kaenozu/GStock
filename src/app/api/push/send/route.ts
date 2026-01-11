@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { messaging } from '@/lib/firebase/admin';
+import { indexedDBCache } from '@/lib/cache/IndexedDBCache';
 
 interface PushNotificationPayload {
     title: string;
@@ -22,40 +24,65 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get all registered push tokens
-        const tokens = JSON.parse(localStorage.getItem('pushTokens') || '[]');
+        // Get all registered push tokens from IndexedDB
+        await indexedDBCache.init();
+        const tokensData = await indexedDBCache.get('push-tokens', 'all') || [];
 
-        if (tokens.length === 0) {
+        if (!tokensData.tokens || tokensData.tokens.length === 0) {
             return NextResponse.json(
                 { message: 'No registered devices' },
                 { status: 200 }
             );
         }
 
-        // In production, use Firebase Admin SDK to send notifications
-        // For now, we'll store notifications in localStorage for testing
-        const notifications = JSON.parse(localStorage.getItem('pendingNotifications') || '[]');
-        notifications.push({
-            ...payload,
-            timestamp: Date.now(),
-            id: Date.now().toString()
-        });
-        localStorage.setItem('pendingNotifications', JSON.stringify(notifications));
+        const tokens = tokensData.tokens;
 
-        // TODO: Integrate Firebase Admin SDK for actual push notifications
-        // const admin = require('firebase-admin');
-        // const message = {
-        //     notification: {
-        //         title: payload.title,
-        //         body: payload.body,
-        //     },
-        //     tokens: tokens,
-        // };
-        // await admin.messaging().sendMulticast(message);
+        // Create notification messages
+        const messages = tokens.map((token: string) => ({
+            notification: {
+                title: payload.title,
+                body: payload.body,
+                tag: payload.tag,
+                requireInteraction: payload.requireInteraction || false,
+            },
+            token: token,
+            android: {
+                priority: 'high',
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        'content-available': 1,
+                    },
+                },
+            },
+        }));
+
+        // Send push notifications using Firebase Admin SDK
+        const response = await messaging.sendEachForMulticast(messages);
+
+        // Store failed tokens for cleanup
+        const failedTokens: string[] = [];
+        if (response.failureCount > 0) {
+            response.responses.forEach((resp: any, idx: number) => {
+                if (!resp.success) {
+                    failedTokens.push(tokens[idx]);
+                }
+            });
+
+            // Remove failed tokens from IndexedDB
+            for (const token of failedTokens) {
+                await indexedDBCache.delete('push-tokens', token);
+            }
+
+            console.error('[Push API] Failed tokens:', failedTokens);
+        }
 
         return NextResponse.json({
             success: true,
-            recipients: tokens.length
+            recipients: response.successCount,
+            failed: response.failureCount,
+            removedTokens: failedTokens.length,
         });
     } catch (error) {
         console.error('[Push API] Send error:', error);
