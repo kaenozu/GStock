@@ -1,25 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Authentication Mode:
+ * - GSTOCK_AUTH_MODE=none: No authentication (for personal/self-hosted use)
+ * - GSTOCK_AUTH_MODE=api_key: Require API_KEY (for public deployment)
+ * - Default: 'none' for development, 'api_key' for production
+ */
+type AuthMode = 'none' | 'api_key';
+
+function getAuthMode(): AuthMode {
+    const explicitMode = process.env.GSTOCK_AUTH_MODE as AuthMode;
+    if (explicitMode === 'none' || explicitMode === 'api_key') {
+        return explicitMode;
+    }
+    // Legacy support: SKIP_AUTH=true means 'none'
+    if (process.env.SKIP_AUTH === 'true') {
+        return 'none';
+    }
+    // Default: development=none, production=api_key
+    return process.env.NODE_ENV === 'production' ? 'api_key' : 'none';
+}
+
 // Simple API key authentication middleware
 export function withAuth(handler: (req: NextRequest, context?: unknown) => Promise<NextResponse>) {
     return async (req: NextRequest, context?: unknown) => {
-        // Skip auth for development if needed
-        if (process.env.NODE_ENV === 'development' && process.env.SKIP_AUTH === 'true') {
+        const authMode = getAuthMode();
+        
+        // No authentication required
+        if (authMode === 'none') {
             return handler(req, context);
         }
 
+        // API Key authentication
         const authHeader = req.headers.get('authorization');
         const apiKey = process.env.API_KEY;
 
         if (!apiKey) {
-            console.warn('API_KEY environment variable not set');
-            // In production, this should fail
-            if (process.env.NODE_ENV === 'production') {
-                return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-            }
+            console.error('[Auth] API_KEY not set but auth mode is api_key');
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
         }
 
-        // Check for Bearer token or API key in header
+        // Check for Bearer token or API key in header/query
         const providedKey = authHeader?.replace('Bearer ', '') || req.nextUrl.searchParams.get('api_key');
 
         if (!providedKey || providedKey !== apiKey) {
