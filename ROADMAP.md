@@ -93,7 +93,20 @@
 - [x] **Browser Notifications**: Alert on BUY/SELL signal changes.
 - [x] **Alert Settings Panel**: Configure notifications (on/off, sound, min confidence).
 - [x] **Duplicate Prevention**: Skip same symbol/day recordings.
-- [ ] **Insider Sentiment**: Track CEO/CFO buying activity. (Future Phase 20)
+
+## 🔄 Phase 20A: Stabilization Sprint
+**Status: In Progress**
+- [x] **UI/UX Tabbed Layout**: Right panel reorganized into Market/Trade/Config tabs.
+- [x] **Mobile Responsive**: Tab icons on mobile, improved layout.
+- [x] **Security Audit**: API keys confirmed in environment variables.
+- [ ] **Accuracy Data Collection**: 2-week observation period.
+- [ ] **Error Logging Enhancement**: Centralized error collection.
+
+## 📋 Phase 20B: Intelligence Expansion (Pending)
+**Timeline: After 2-week data collection**
+- [ ] **Insider Sentiment**: Track CEO/CFO buying activity (SEC Form 4).
+- [ ] **WebSocket Support**: Real-time data streaming.
+- [ ] **Model Tuning**: Based on accuracy analysis.
 
 ## 🌌 Phase 16: G-DAO (Infinite Scale)
 **Timeline: 2028+**
