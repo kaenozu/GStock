@@ -11,6 +11,7 @@ import { CONFIDENCE_THRESHOLD, MONITOR_LIST } from '@/config/constants';
 import { useScanning } from '@/hooks/useScanning';
 import { usePersistence } from '@/hooks/usePersistence';
 import { useAnalysis } from '@/hooks/useAnalysis';
+import { useRealtimePrice } from '@/hooks/useRealtimePrice';
 
 // Components
 import { SignalCard } from '@/components/dashboard/SignalCard';
@@ -28,6 +29,7 @@ import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 import { SettingsPanel } from '@/components/common/SettingsPanel';
 import { TabPanel } from '@/components/common/TabPanel';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { ConnectionStatusIndicator } from '@/components/common/ConnectionStatus';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -61,6 +63,22 @@ export default function Home() {
     updateBestTrade,
     (item) => setHistory(prev => [item, ...prev.slice(0, 99)])
   );
+
+  // WebSocketリアルタイム価格
+  const {
+    prices: realtimePrices,
+    status: wsStatus,
+    error: wsError,
+    subscribe: wsSubscribe,
+    isEnabled: wsEnabled,
+  } = useRealtimePrice();
+
+  // スキャン中のシンボルをWebSocketで購読
+  React.useEffect(() => {
+    if (scanningSymbol && wsEnabled) {
+      wsSubscribe(scanningSymbol);
+    }
+  }, [scanningSymbol, wsEnabled, wsSubscribe]);
 
   const currentAnalysis = useMemo(() => {
     if (bestTrade && bestTrade.history) {
@@ -160,6 +178,13 @@ export default function Home() {
               指標
             </button>
             <SettingsPanel />
+            {wsEnabled && (
+              <ConnectionStatusIndicator
+                status={wsStatus}
+                error={wsError}
+                compact
+              />
+            )}
           </div>
         </header>
 
@@ -182,6 +207,7 @@ export default function Home() {
               bestTrade={bestTrade}
               isInWatchlist={watchlist.some(item => item.symbol === scanningSymbol)}
               onToggleWatchlist={handleToggleWatchlist}
+              realtimePrice={scanningSymbol ? realtimePrices[scanningSymbol] : null}
             >
               {/* Backtest Integration */}
               {!deepReport && bestTrade && (
