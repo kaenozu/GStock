@@ -14,6 +14,8 @@ interface FinancialData {
     marketCap: number | null;
     _52wHigh: number | null;
     _52wLow: number | null;
+    _mock?: boolean;
+    _message?: string;
 }
 
 interface FinancialsPanelProps {
@@ -67,21 +69,21 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
     if (error) return <div className={styles.financialsPanel}><AlertCircle size={16} /> {error}</div>;
     if (!data) return null;
 
-    const formatNum = (n: number | null, suffix = '') => {
-        if (n === null) return 'N/A';
+    const formatNum = (n: number | null | undefined, suffix = '') => {
+        if (n === null || n === undefined) return 'N/A';
         return n.toFixed(2) + suffix;
     };
 
-    const formatMktCap = (n: number | null) => {
-        if (n === null) return 'N/A';
+    const formatMktCap = (n: number | null | undefined) => {
+        if (n === null || n === undefined) return 'N/A';
         if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
         if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
         if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
         return `$${n.toFixed(0)}`;
     };
 
-    const getScoreColor = (val: number | null, goodAbove: number, badBelow: number) => {
-        if (val === null) return '#6b7280';
+    const getScoreColor = (val: number | null | undefined, goodAbove: number, badBelow: number) => {
+        if (val === null || val === undefined) return '#6b7280';
         if (val >= goodAbove) return '#10b981';
         if (val <= badBelow) return '#ef4444';
         return '#f59e0b';
@@ -91,6 +93,11 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
         <div className={styles.financialsPanel}>
             <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 12px 0', fontSize: '0.9rem' }}>
                 <BarChart2 size={16} /> Fundamentals: {symbol}
+                {data._mock && (
+                    <span style={{ fontSize: '0.65rem', color: '#f59e0b', marginLeft: 'auto' }}>
+                        (データ取得中...)
+                    </span>
+                )}
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '0.8rem' }}>
                 <div>

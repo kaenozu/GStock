@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Target, TrendingUp, TrendingDown, Minus, Activity, BarChart3, RefreshCw } from 'lucide-react';
 import { AccuracyReport, AccuracyMetrics } from '@/types/accuracy';
 import { AccuracyCalculator, PredictionLogger } from '@/lib/accuracy';
+import { safeToLocaleTimeString } from '@/lib/utils/format';
 import styles from './AccuracyPanel.module.css';
 
 interface AccuracyPanelProps {
@@ -51,7 +52,7 @@ export const AccuracyPanel: React.FC<AccuracyPanelProps> = ({
         priceAtPrediction: currentPrice,
         regime: currentPrediction.regime as any,
       });
-      setLastLogged(new Date().toLocaleTimeString());
+      setLastLogged(safeToLocaleTimeString(new Date()));
       loadReport();
     } finally {
       setIsLogging(false);

@@ -21,6 +21,7 @@ import { StrategyType, PortfolioAsset, RebalanceAction } from '@/types/portfolio
 import styles from './PortfolioManager.module.css';
 import { AllocationChart } from './AllocationChart';
 import { TermWithTooltip } from '@/components/common/Tooltip';
+import { safeToLocaleTimeString } from '@/lib/utils/format';
 
 export const PortfolioManager: React.FC = () => {
   const {
@@ -68,8 +69,7 @@ export const PortfolioManager: React.FC = () => {
   // Format last update time
   const formatLastUpdate = (isoString: string | null) => {
     if (!isoString) return null;
-    const date = new Date(isoString);
-    return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return safeToLocaleTimeString(new Date(isoString));
   };
 
   if (isLoading) {

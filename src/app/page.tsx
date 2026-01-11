@@ -225,13 +225,20 @@ export default function Home() {
 
           {/* Center Panel */}
           <div className={styles.centerPanel}>
-            {currentAnalysis?.history && (
+            {currentAnalysis?.history ? (
               <StockChart
                 data={currentAnalysis.history}
                 indicators={showIndicators ? currentAnalysis.chartIndicators : undefined}
                 markers={earningsMarkers}
                 settings={chartSettings}
               />
+            ) : (
+              <div className={styles.chartLoading}>
+                <div className={styles.chartSpinner} />
+                <span className={styles.chartLoadingText}>
+                  {isScanLoading ? `${scanningSymbol} を分析中...` : 'チャートデータを読み込み中...'}
+                </span>
+              </div>
             )}
           </div>
 
