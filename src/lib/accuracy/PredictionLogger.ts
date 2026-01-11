@@ -11,6 +11,7 @@ import { MarketRegime } from '@/types/market';
 
 const STORAGE_KEY = 'gstock_predictions';
 const MAX_RECORDS = 500; // Keep last 500 predictions
+const LAST_LOGGED_KEY = 'gstock_last_logged'; // Track last logged to prevent duplicates
 
 export class PredictionLogger {
   /**
@@ -125,6 +126,64 @@ export class PredictionLogger {
   static clear(): void {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LAST_LOGGED_KEY);
+  }
+  
+  /**
+   * Check if we already logged this symbol today (prevent duplicates)
+   */
+  static hasLoggedToday(symbol: string): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      const lastLogged = localStorage.getItem(LAST_LOGGED_KEY);
+      if (!lastLogged) return false;
+      const data = JSON.parse(lastLogged);
+      const today = new Date().toISOString().split('T')[0];
+      return data[symbol] === today;
+    } catch {
+      return false;
+    }
+  }
+  
+  /**
+   * Mark symbol as logged today
+   */
+  static markLoggedToday(symbol: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const lastLogged = localStorage.getItem(LAST_LOGGED_KEY);
+      const data = lastLogged ? JSON.parse(lastLogged) : {};
+      const today = new Date().toISOString().split('T')[0];
+      data[symbol] = today;
+      localStorage.setItem(LAST_LOGGED_KEY, JSON.stringify(data));
+    } catch {
+      // ignore
+    }
+  }
+  
+  /**
+   * Auto-log prediction if not already logged today
+   * Returns true if logged, false if skipped
+   */
+  static autoLog(params: {
+    symbol: string;
+    predictedDirection: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    confidence: number;
+    priceAtPrediction: number;
+    regime?: MarketRegime;
+  }): boolean {
+    if (this.hasLoggedToday(params.symbol)) {
+      return false;
+    }
+    
+    // Only log non-neutral predictions with decent confidence
+    if (params.predictedDirection === 'NEUTRAL' || params.confidence < 40) {
+      return false;
+    }
+    
+    this.log(params);
+    this.markLoggedToday(params.symbol);
+    return true;
   }
   
   /**

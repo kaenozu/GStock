@@ -2,13 +2,9 @@
 
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { Zap, Play, Pause, Layers, FlaskConical } from 'lucide-react';
+import { Zap, Play, Pause, Layers, FlaskConical, BarChart3, TrendingUp, Settings } from 'lucide-react';
 import styles from './page.module.css';
-<<<<<<< Updated upstream
 import { ChartSettings, DisplaySignal, ChartMarker } from '@/types/market';
-=======
-import { DisplaySignal } from '@/types/market';
->>>>>>> Stashed changes
 import { CONFIDENCE_THRESHOLD, MONITOR_LIST } from '@/config/constants';
 
 // Hooks
@@ -26,10 +22,11 @@ import { BacktestPanel } from '@/components/dashboard/BacktestPanel';
 import { FinancialsPanel } from '@/components/dashboard/FinancialsPanel';
 import { EarningsPanel } from '@/components/dashboard/EarningsPanel';
 import { AccuracyPanel } from '@/components/dashboard/AccuracyPanel';
+import { AlertSettingsPanel } from '@/components/dashboard/AlertSettingsPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 import { VirtualScroll } from '@/components/common/VirtualScroll';
 import { SettingsPanel } from '@/components/common/SettingsPanel';
-
+import { TabPanel, Tab } from '@/components/common/TabPanel';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -51,6 +48,7 @@ export default function Home() {
     setShowIndicators,
     updateBestTrade,
     chartSettings,
+    setChartSettings,
     deepReport,
     isBacktestLoading,
     runDeepBacktest,
@@ -116,7 +114,7 @@ export default function Home() {
     if (watchlist.some(item => item.symbol === symbol)) {
       setWatchlist(watchlist.filter(item => item.symbol !== symbol));
     } else {
-      setWatchlist([...watchlist, { symbol, price, changePercent: 0, sentiment: sentiment }]);
+      setWatchlist([...watchlist, { symbol, price, changePercent: 0, sentiment: sentiment as any }]);
     }
   };
 
@@ -237,55 +235,63 @@ export default function Home() {
             )}
           </div>
 
-          {/* Right Panel */}
+          {/* Right Panel - Tabbed */}
           <div className={styles.rightPanel}>
-            <WatchList
-              watchlist={watchlist}
-              allSymbols={MONITOR_LIST}
-              onSelectSymbol={(symbol) => {
-                // Optional: Can implement manual select logic here by adding handleSelectSymbol to component props or context
-                console.log('Select', symbol);
-              }}
-              onToggleWatch={(symbol) => { // Manual add via text input support
-                handleToggleWatchlist(symbol, 0, 'NEUTRAL');
-              }}
-            />
+            <TabPanel
+              tabs={[
+                { id: 'market', label: 'Market', icon: <BarChart3 size={16} /> },
+                { id: 'trade', label: 'Trade', icon: <TrendingUp size={16} /> },
+                { id: 'settings', label: 'Config', icon: <Settings size={16} /> },
+              ]}
+              defaultTab="market"
+            >
+              {/* Market Tab */}
+              <>
+                <WatchList
+                  watchlist={watchlist}
+                  allSymbols={MONITOR_LIST}
+                  onSelectSymbol={(symbol) => {
+                    console.log('Select', symbol);
+                  }}
+                  onToggleWatch={(symbol) => {
+                    handleToggleWatchlist(symbol, 0, 'NEUTRAL');
+                  }}
+                />
+                <HistoryPanel history={history} />
+                <FinancialsPanel symbol={currentAnalysis?.symbol || ''} />
+                <EarningsPanel 
+                  symbol={currentAnalysis?.symbol || ''}
+                  onEarningsDates={handleEarningsDates}
+                />
+              </>
 
-            <HistoryPanel
-              history={history}
-            />
+              {/* Trade Tab */}
+              <>
+                <TradingPanel
+                  symbol={currentAnalysis?.symbol || ''}
+                  currentPrice={currentAnalysis?.stats?.price || 0}
+                  executionMode={executionMode}
+                />
+                <PortfolioManager />
+                <AccuracyPanel
+                  currentSymbol={currentAnalysis?.symbol}
+                  currentPrice={currentAnalysis?.stats?.price}
+                  currentPrediction={currentAnalysis ? {
+                    direction: currentAnalysis.sentiment,
+                    confidence: currentAnalysis.confidence,
+                    regime: currentAnalysis.marketRegime,
+                  } : undefined}
+                />
+              </>
 
-            <TradingPanel
-              symbol={currentAnalysis?.symbol || ''}
-              currentPrice={currentAnalysis?.stats?.price || 0}
-              executionMode={executionMode}
-            />
-
-            <FinancialsPanel symbol={currentAnalysis?.symbol || ''} />
-
-<<<<<<< Updated upstream
-            <EarningsPanel 
-              symbol={currentAnalysis?.symbol || ''}
-              onEarningsDates={handleEarningsDates}
-            />
-
-            <AccuracyPanel
-              currentSymbol={currentAnalysis?.symbol}
-              currentPrice={currentAnalysis?.stats?.price}
-              currentPrediction={currentAnalysis ? {
-                direction: currentAnalysis.sentiment,
-                confidence: currentAnalysis.confidence,
-                regime: currentAnalysis.marketRegime,
-              } : undefined}
-            />
-
-            <PortfolioManager />
-=======
-            <EarningsPanel symbol={currentAnalysis?.symbol || ''} />
->>>>>>> Stashed changes
-          </div >
-        </div >
-      </div >
-    </main >
+              {/* Settings Tab */}
+              <>
+                <AlertSettingsPanel />
+              </>
+            </TabPanel>
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }
