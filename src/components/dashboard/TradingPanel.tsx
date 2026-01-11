@@ -5,6 +5,7 @@ import styles from '@/app/page.module.css';
 import { Portfolio, Trade } from '@/lib/trading/types';
 import { Skeleton } from '@/components/common/Skeleton';
 import { toast } from 'sonner';
+import { safeToLocaleTimeString } from '@/lib/utils/format';
 
 interface TradingPanelProps {
     symbol: string;
@@ -154,7 +155,7 @@ export const TradingPanel = React.memo(({ symbol, currentPrice, executionMode }:
                     {portfolio.trades.slice(0, 5).map(t => (
                         <div key={t.id} style={{ fontSize: '0.75rem', padding: '0.25rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                             <span style={{ color: t.side === 'BUY' ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{t.side === 'BUY' ? '買い' : '売り'}</span> {t.symbol} x {t.quantity} @ {t.price}
-                            <div style={{ fontSize: '0.65rem', color: '#64748b' }}>{new Date(t.timestamp).toLocaleTimeString()} - {t.reason}</div>
+                            <div style={{ fontSize: '0.65rem', color: '#64748b' }}>{safeToLocaleTimeString(new Date(t.timestamp))} - {t.reason}</div>
                         </div>
                     ))}
                 </div>

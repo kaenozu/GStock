@@ -13,6 +13,8 @@ export const useScanning = (
 ) => {
     const [scanningSymbol, setScanningSymbol] = useState<string | null>(null);
     const [isScanLoading, setIsScanLoading] = useState(false);
+    const [scanError, setScanError] = useState<string | null>(null);
+    const [failedSymbols, setFailedSymbols] = useState<Set<string>>(new Set());
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const symbolIndexRef = useRef(0);
 
@@ -79,7 +81,15 @@ export const useScanning = (
             });
 
         } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
             console.error(`Scan error for ${symbol}:`, error);
+            
+            // Track failed symbols to skip them temporarily
+            setFailedSymbols(prev => new Set([...prev, symbol]));
+            setScanError(`${symbol}: ${errorMsg}`);
+            
+            // Clear error after 5 seconds
+            setTimeout(() => setScanError(null), 5000);
         } finally {
             setIsScanLoading(false);
         }
@@ -92,9 +102,22 @@ export const useScanning = (
         }
 
         const runScan = () => {
-            const symbol = MONITOR_LIST[symbolIndexRef.current % MONITOR_LIST.length];
+            // Skip failed symbols for this cycle
+            let attempts = 0;
+            let symbol: string;
+            do {
+                symbol = MONITOR_LIST[symbolIndexRef.current % MONITOR_LIST.length];
+                symbolIndexRef.current++;
+                attempts++;
+            } while (failedSymbols.has(symbol) && attempts < MONITOR_LIST.length);
+            
+            if (attempts >= MONITOR_LIST.length) {
+                // All symbols failed, reset and try again
+                setFailedSymbols(new Set());
+                symbol = MONITOR_LIST[0];
+            }
+            
             scanSymbol(symbol);
-            symbolIndexRef.current++;
         };
 
         // Phase 19: Run auto-evaluation on startup
@@ -110,5 +133,5 @@ export const useScanning = (
         };
     }, [isPaused, scanSymbol]);
 
-    return { scanningSymbol, isScanLoading };
+    return { scanningSymbol, isScanLoading, scanError, failedSymbols };
 };
