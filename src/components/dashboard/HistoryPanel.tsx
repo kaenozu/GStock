@@ -7,7 +7,7 @@ interface HistoryPanelProps {
     history: TradeHistoryItem[];
 }
 
-export const HistoryPanel: React.FC<HistoryPanelProps> = React.memo(({ history }) => {
+export const HistoryPanel: React.FC<HistoryPanelProps> = React.memo(function HistoryPanel({ history }) {
     if (history.length === 0) return null;
 
     return (

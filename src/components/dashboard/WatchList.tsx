@@ -10,7 +10,7 @@ interface WatchListProps {
     onToggleWatch: (symbol: string) => void;
 }
 
-export const WatchList: React.FC<WatchListProps> = React.memo(({ watchlist, allSymbols, onSelectSymbol, onToggleWatch }) => {
+export const WatchList: React.FC<WatchListProps> = React.memo(function WatchList({ watchlist, allSymbols, onSelectSymbol, onToggleWatch }) {
     return (
         <div className={styles.watchlistContainer}>
             <div className={styles.watchlistTitle}>

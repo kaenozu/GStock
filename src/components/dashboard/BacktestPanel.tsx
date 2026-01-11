@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { BacktestReport } from '@/lib/backtest/BacktestArena';
-import { TrendingUp, TrendingDown, Activity, Calendar } from 'lucide-react';
+import { Activity, Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface BacktestPanelProps {
@@ -91,7 +91,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
                         <Tooltip
                             contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '4px' }}
                             itemStyle={{ color: '#fff' }}
-                            formatter={(val: any) => `¥${Number(val).toLocaleString()}`}
+                            formatter={(val) => val != null ? `¥${Number(val).toLocaleString()}` : ''}
                         />
                         <Line type="monotone" dataKey="value" stroke="var(--accent-cyan)" strokeWidth={2} dot={false} />
                     </LineChart>

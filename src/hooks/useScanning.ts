@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AnalysisResult, TradeHistoryItem, StockDataPoint, MarketStats, TradeSentiment, MarketRegime } from '@/types/market';
+import { AnalysisResult, TradeHistoryItem, StockDataPoint, TradeSentiment, MarketRegime } from '@/types/market';
 import { MONITOR_LIST } from '@/config/constants';
 import { PredictionLogger, AutoEvaluator } from '@/lib/accuracy';
 import { AlertService } from '@/lib/alerts';
@@ -131,6 +131,8 @@ export const useScanning = (
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
+    // Note: failedSymbols is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isPaused, scanSymbol]);
 
     return { scanningSymbol, isScanLoading, scanError, failedSymbols };

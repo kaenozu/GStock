@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createChart, ColorType, IChartApi, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { StockDataPoint, PredictionPoint, ChartIndicators, ChartMarker, ChartSettings } from '@/types/market';
 
@@ -12,7 +12,7 @@ interface ChartProps {
     settings?: ChartSettings;
 }
 
-const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, indicators, markers, settings }) => {
+const StockChart: React.FC<ChartProps> = React.memo(function StockChart({ data, predictionData, indicators, markers, settings }) {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
 
@@ -56,8 +56,10 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                     wickDownColor: '#ef4444',
                 });
 
+                console.log('[StockChart] Data received:', data?.length, 'points');
                 if (data && data.length > 0) {
                     candlestickSeries.setData(data);
+                    console.log('[StockChart] Chart data set successfully');
 
                     // Note: markers are disabled in lightweight-charts v5 (API changed)
                     // Earnings dates are shown in EarningsPanel instead

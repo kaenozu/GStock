@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, History, PlayCircle } from 'lucide-react';
+import { DollarSign, History } from 'lucide-react';
 import styles from '@/app/page.module.css';
-import { Portfolio, Trade } from '@/lib/trading/types';
+import { Portfolio } from '@/lib/trading/types';
 import { Skeleton } from '@/components/common/Skeleton';
 import { toast } from 'sonner';
 import { safeToLocaleTimeString } from '@/lib/utils/format';
@@ -13,29 +13,29 @@ interface TradingPanelProps {
     executionMode: string;
 }
 
-export const TradingPanel = React.memo(({ symbol, currentPrice, executionMode }: TradingPanelProps) => {
+export const TradingPanel = React.memo(function TradingPanel({ symbol, currentPrice, executionMode }: TradingPanelProps) {
     const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
     const [loading, setLoading] = useState(false);
-
-    const fetchPortfolio = async () => {
-        try {
-            const res = await fetch('/api/trade', {
-                headers: { 'x-execution-mode': executionMode }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setPortfolio(data);
-            }
-        } catch (e) {
-            console.error("Failed to fetch portfolio", e);
-        }
-    };
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     useEffect(() => {
-        fetchPortfolio();
-        const interval = setInterval(fetchPortfolio, 5000);
+        const doFetch = async () => {
+            try {
+                const res = await fetch('/api/trade', {
+                    headers: { 'x-execution-mode': executionMode }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setPortfolio(data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch portfolio", err);
+            }
+        };
+        doFetch();
+        const interval = setInterval(doFetch, 5000);
         return () => clearInterval(interval);
-    }, [executionMode, symbol]);
+    }, [executionMode, symbol, refreshTrigger]);
 
     const handleTrade = async (side: 'BUY' | 'SELL') => {
         if (!confirm(`Simulate ${side} 100 shares of ${symbol} @ ${currentPrice}?`)) return;
@@ -59,12 +59,12 @@ export const TradingPanel = React.memo(({ symbol, currentPrice, executionMode }:
 
             if (res.ok) {
                 toast.success(`${side} Order Executed!`, { description: `${symbol} x 100` });
-                await fetchPortfolio();
+                setRefreshTrigger(prev => prev + 1);
             } else {
                 const err = await res.json();
                 toast.error(`Order Failed`, { description: err.error });
             }
-        } catch (e) {
+        } catch {
             toast.error("Trade Execution Failed", { description: "Network or server error" });
         } finally {
             setLoading(false);

@@ -14,9 +14,16 @@ export interface OptimizationResult {
 /**
  * シミュレーション実行コア関数
  */
+interface AISignal {
+  price: number;
+  time: string;
+  confidence: number;
+  sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+}
+
 const runSimulation = (
   data: StockDataPoint[],
-  aiSignals: any[],
+  aiSignals: AISignal[],
   params: BacktestParams,
   initialBalance: number
 ): BacktestResult => {

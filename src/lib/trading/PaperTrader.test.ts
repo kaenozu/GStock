@@ -13,12 +13,27 @@ vi.mock('fs', () => ({
 }));
 
 // CircuitBreakerモック - クールダウンのみ無効化
+interface MockPosition {
+  symbol: string;
+  quantity: number;
+}
+
+interface MockPortfolio {
+  positions: MockPosition[];
+}
+
+interface MockRequest {
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  quantity: number;
+}
+
 vi.mock('@/lib/risk/CircuitBreaker', () => ({
   CircuitBreaker: {
-    checkTrade: vi.fn((portfolio: any, request: any) => {
+    checkTrade: vi.fn((portfolio: MockPortfolio, request: MockRequest) => {
       // 実際のロジックを維持しつつ、クールダウンのみ無効化
       if (request.side === 'SELL') {
-        const existingPos = portfolio.positions.find((p: any) => p.symbol === request.symbol);
+        const existingPos = portfolio.positions.find((p) => p.symbol === request.symbol);
         if (!existingPos || existingPos.quantity < request.quantity) {
           return { allowed: false, reason: 'Insufficient Holdings' };
         }

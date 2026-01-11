@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Target, TrendingUp, TrendingDown, Minus, Activity, BarChart3, RefreshCw } from 'lucide-react';
-import { AccuracyReport, AccuracyMetrics } from '@/types/accuracy';
+import { AccuracyReport } from '@/types/accuracy';
 import { AccuracyCalculator, PredictionLogger } from '@/lib/accuracy';
 import styles from './AccuracyPanel.module.css';
 
@@ -49,7 +49,7 @@ export const AccuracyPanel: React.FC<AccuracyPanelProps> = ({
         predictedDirection: currentPrediction.direction,
         confidence: currentPrediction.confidence,
         priceAtPrediction: currentPrice,
-        regime: currentPrediction.regime as any,
+        regime: currentPrediction.regime as 'BULL_TREND' | 'BEAR_TREND' | 'SIDEWAYS' | 'VOLATILE' | 'SQUEEZE' | undefined,
       });
       setLastLogged(new Date().toLocaleTimeString());
       loadReport();
@@ -59,13 +59,14 @@ export const AccuracyPanel: React.FC<AccuracyPanelProps> = ({
   };
 
   // Evaluate pending predictions (would need price data)
-  const handleEvaluatePending = async () => {
+  // Note: Currently not used in UI but available for future use
+  const _handleEvaluatePending = async () => {
     const pending = PredictionLogger.getPending();
     if (pending.length === 0) return;
     
     // In real implementation, fetch current prices for each symbol
     // For now, we'll simulate with a placeholder
-    for (const record of pending) {
+    for (const _record of pending) {
       // This would normally fetch the actual price
       // PredictionLogger.evaluate(record.id, actualPrice);
     }
@@ -150,14 +151,14 @@ export const AccuracyPanel: React.FC<AccuracyPanelProps> = ({
       </div>
 
       {/* Regime Performance */}
-      {Object.entries(metrics.byRegime).some(([_, v]) => v.total > 0) && (
+      {Object.entries(metrics.byRegime).some(([, v]) => v.total > 0) && (
         <div className={styles.regimeSection}>
           <div className={styles.regimeLabel}>
             <BarChart3 size={12} /> 市場環境別精度
           </div>
           <div className={styles.regimeGrid}>
             {Object.entries(metrics.byRegime)
-              .filter(([_, v]) => v.total > 0)
+              .filter(([, v]) => v.total > 0)
               .map(([regime, data]) => (
                 <div key={regime} className={styles.regimeItem}>
                   <span className={styles.regimeName}>{regime.replace('_', ' ')}</span>

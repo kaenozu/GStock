@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, BarChart2, AlertCircle } from 'lucide-react';
+import { BarChart2, AlertCircle } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { Skeleton } from '@/components/common/Skeleton';
 

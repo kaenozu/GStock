@@ -1,4 +1,4 @@
-import { StockDataPoint, AnalysisResult, MarketRegime, TradeSentiment } from '@/types/market';
+import { StockDataPoint, MarketRegime, TradeSentiment } from '@/types/market';
 
 export interface AgentResult {
     name: string;

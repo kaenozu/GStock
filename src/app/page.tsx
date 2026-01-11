@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Zap, Play, Pause, Layers, FlaskConical, BarChart3, TrendingUp, Settings } from 'lucide-react';
 import styles from './page.module.css';
-import { ChartSettings, DisplaySignal, ChartMarker } from '@/types/market';
+import { DisplaySignal, ChartMarker } from '@/types/market';
 import { CONFIDENCE_THRESHOLD, MONITOR_LIST } from '@/config/constants';
 
 // Hooks
@@ -24,9 +24,9 @@ import { EarningsPanel } from '@/components/dashboard/EarningsPanel';
 import { AccuracyPanel } from '@/components/dashboard/AccuracyPanel';
 import { AlertSettingsPanel } from '@/components/dashboard/AlertSettingsPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
-import { VirtualScroll } from '@/components/common/VirtualScroll';
+// VirtualScroll available but not currently used
 import { SettingsPanel } from '@/components/common/SettingsPanel';
-import { TabPanel, Tab } from '@/components/common/TabPanel';
+import { TabPanel } from '@/components/common/TabPanel';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -48,7 +48,6 @@ export default function Home() {
     setShowIndicators,
     updateBestTrade,
     chartSettings,
-    setChartSettings,
     deepReport,
     isBacktestLoading,
     runDeepBacktest,
@@ -97,7 +96,7 @@ export default function Home() {
   }, [bestTrade, isPaused]);
 
   // Handler for Earnings dates -> Chart markers
-  const handleEarningsDates = (dates: string[]) => {
+  const _handleEarningsDates = (dates: string[]) => {
     const markers: ChartMarker[] = dates.map((date, i) => ({
       time: date,
       position: 'aboveBar',
@@ -114,7 +113,7 @@ export default function Home() {
     if (watchlist.some(item => item.symbol === symbol)) {
       setWatchlist(watchlist.filter(item => item.symbol !== symbol));
     } else {
-      setWatchlist([...watchlist, { symbol, price, changePercent: 0, sentiment: sentiment as any }]);
+      setWatchlist([...watchlist, { symbol, price, changePercent: 0, sentiment: sentiment as 'BULLISH' | 'BEARISH' | 'NEUTRAL' }]);
     }
   };
 

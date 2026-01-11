@@ -1,4 +1,4 @@
-import { StockDataPoint, AnalysisResult, TradeType } from '@/types/market';
+import { StockDataPoint, TradeType } from '@/types/market';
 import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
 
 export interface BacktestReport {
@@ -33,7 +33,7 @@ export class BacktestArena {
         // Simulation State
         let cash = initialBalance;
         let position: { quantity: number, entryPrice: number, type: TradeType } | null = null;
-        let trades: SimulatedTrade[] = [];
+        const simulatedTrades: SimulatedTrade[] = [];
         const equityCurve: { time: string, value: number }[] = [];
 
         // Track High Water Mark for Drawdown
@@ -57,7 +57,8 @@ export class BacktestArena {
             // Let's use the exact "Best Trade" logic derived from optimization?
             // For Deep Backtest, we use a Standard High-Quality Strategy as baseline.
             const BUY_THRESHOLD = 70;
-            const SELL_THRESHOLD = 40; // Force exit if confidence drops? Or just reverse signal?
+            // Note: SELL_THRESHOLD could be used for more complex exit logic
+            // const SELL_THRESHOLD = 40;
 
             const price = currentDay.close;
             const date = currentDay.time;
@@ -114,8 +115,8 @@ export class BacktestArena {
                     // On Entry: Cash -= Cost.
                     // On Exit: Cash += Revenue.
 
-                    trades.push({
-                        entryDate: trades.find(t => !t.exitDate)?.entryDate || date, // Hacky match
+                    simulatedTrades.push({
+                        entryDate: simulatedTrades.find(t => !t.exitDate)?.entryDate || date, // Hacky match
                         entryPrice: position.entryPrice,
                         exitDate: date,
                         exitPrice: price,
@@ -142,7 +143,7 @@ export class BacktestArena {
                             type: 'BUY'
                         };
                         // Log partial trade start
-                        trades.push({
+                        simulatedTrades.push({
                             entryDate: date,
                             entryPrice: price,
                             type: 'BUY',
@@ -162,7 +163,7 @@ export class BacktestArena {
             const pnl = (lastPrice - position.entryPrice) * position.quantity;
             cash += lastPrice * position.quantity;
             // Update last trade
-            const lastTrade = trades[trades.length - 1];
+            const lastTrade = simulatedTrades[simulatedTrades.length - 1];
             if (lastTrade) {
                 lastTrade.exitDate = history[history.length - 1].time;
                 lastTrade.exitPrice = lastPrice;
@@ -174,7 +175,7 @@ export class BacktestArena {
         const finalBalance = cash;
         const profit = finalBalance - initialBalance;
         const profitPercent = (profit / initialBalance) * 100;
-        const completedTrades = trades.filter(t => t.exitDate);
+        const completedTrades = simulatedTrades.filter(t => t.exitDate);
         const wins = completedTrades.filter(t => t.pnl > 0).length;
         const winRate = completedTrades.length > 0 ? (wins / completedTrades.length) * 100 : 0;
 

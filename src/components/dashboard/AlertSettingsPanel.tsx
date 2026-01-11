@@ -1,19 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Bell, BellOff, Volume2, VolumeX } from 'lucide-react';
 import { AlertService, AlertSettings } from '@/lib/alerts';
 import styles from './AlertSettingsPanel.module.css';
 
 export const AlertSettingsPanel: React.FC = () => {
   const [settings, setSettings] = useState<AlertSettings>(AlertService.getSettings());
-  const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'default'>('default');
-  
-  useEffect(() => {
+  const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'default'>(() => {
+    // Initialize synchronously during render to avoid effect setState
     if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPermissionStatus(Notification.permission);
+      return Notification.permission;
     }
-  }, []);
+    return 'default';
+  });
   
   const handleRequestPermission = async () => {
     const granted = await AlertService.requestPermission();

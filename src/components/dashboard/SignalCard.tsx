@@ -7,7 +7,7 @@ import { Skeleton, SkeletonCard } from '@/components/common/Skeleton';
 interface SignalCardProps {
   scanningSymbol: string | null;
   isScanLoading: boolean;
-  isPaused: boolean;
+  isPaused?: boolean; // Reserved for future use
   currentAnalysis: AnalysisResult | null;
   displaySignal: DisplaySignal;
   bestTrade: AnalysisResult | null;
@@ -19,7 +19,7 @@ interface SignalCardProps {
 const SignalCardComponent: React.FC<SignalCardProps> = ({
   scanningSymbol,
   isScanLoading,
-  isPaused,
+  isPaused: _isPaused,
   currentAnalysis,
   displaySignal,
   bestTrade,

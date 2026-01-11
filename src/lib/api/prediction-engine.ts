@@ -1,4 +1,7 @@
 import { SMA, RSI, MACD, ADX, BollingerBands, ATR } from 'technicalindicators';
+import type { MACDOutput } from 'technicalindicators/declarations/moving_averages/MACD';
+import type { ADXOutput } from 'technicalindicators/declarations/directionalmovement/ADX';
+import type { BollingerBandsOutput } from 'technicalindicators/declarations/volatility/BollingerBands';
 import { StockDataPoint, AnalysisResult, TradeSentiment, ChartIndicators, MarketRegime } from '@/types/market';
 import { ChairmanAgent } from '@/lib/agents/ChairmanAgent';
 import { TrendAgent } from '@/lib/agents/TrendAgent';
@@ -13,10 +16,10 @@ const calculateScore = (
     sma20: number,
     sma50: number,
     rsi: number,
-    macd: any,
-    prevMacd: any,
-    adx: any,
-    bb: any,
+    macd: MACDOutput,
+    prevMacd: MACDOutput | undefined,
+    adx: ADXOutput,
+    bb: BollingerBandsOutput,
     atr: number
 ): { confidence: number, sentiment: 'BULLISH' | 'BEARISH', signals: string[], finalScore: number, regime: MarketRegime } => {
 
@@ -218,7 +221,7 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     };
 
     // Helper: Convert Agent Result to Numerical Score (-100 to 100)
-    const getAgentScore = (res: any): number => {
+    const getAgentScore = (res: { signal: 'BUY' | 'SELL' | 'HOLD'; confidence: number }): number => {
         let dir = 0;
         if (res.signal === 'BUY') dir = 1;
         else if (res.signal === 'SELL') dir = -1;
@@ -382,7 +385,7 @@ export const calculateHistoricalSignals = (data: StockDataPoint[]) => {
                 sentiment,
                 signals
             });
-        } catch (e) {
+        } catch {
             // 計算エラー時はスキップ
             continue;
         }
