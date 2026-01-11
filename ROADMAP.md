@@ -99,6 +99,9 @@
 - [x] **UI/UX Tabbed Layout**: Right panel reorganized into Market/Trade/Config tabs.
 - [x] **Mobile Responsive**: Tab icons on mobile, improved layout.
 - [x] **Security Audit**: API keys confirmed in environment variables.
+- [x] **Skeleton Loaders**: Loading states for SignalCard, TradingPanel, FinancialsPanel.
+- [x] **Toast Notifications**: Error/success feedback using Sonner library.
+- [x] **Japanese Stock Fix**: `validateSymbol()` updated for numeric prefixes (7203.T, 9984.T).
 - [ ] **Accuracy Data Collection**: 2-week observation period.
 - [ ] **Error Logging Enhancement**: Centralized error collection.
 
