@@ -22,7 +22,6 @@ async function handler(request: Request) {
     }
 
     try {
-        console.log(`[Hybrid Fetch] Attempting Finnhub for ${symbol}`);
         let data = await finnhub.fetchData(symbol);
 
         if (data.length === 0) {

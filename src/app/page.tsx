@@ -251,7 +251,7 @@ export default function Home() {
                   watchlist={watchlist}
                   allSymbols={MONITOR_LIST}
                   onSelectSymbol={(symbol) => {
-                    console.log('Select', symbol);
+                    // Symbol selected from watchlist - could trigger analysis
                   }}
                   onToggleWatch={(symbol) => {
                     handleToggleWatchlist(symbol, 0, 'NEUTRAL');

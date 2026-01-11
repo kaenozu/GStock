@@ -29,14 +29,12 @@ export class Historian {
 
             // Valid for 24 hours
             if ((now - mtime) < 24 * 60 * 60 * 1000) {
-                console.log(`[Historian] Cache Hit: ${symbol} (${period})`);
                 const raw = fs.readFileSync(cacheFile, 'utf-8');
                 return JSON.parse(raw);
             }
         }
 
         // 2. Fetch from API
-        console.log(`[Historian] Fetching from API: ${symbol} (${period})`);
         const data = await this.fetchFromYahoo(symbol, period);
 
         if (data.length > 0) {

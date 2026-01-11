@@ -86,11 +86,11 @@ export const useScanning = (
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
             console.error(`Scan error for ${symbol}:`, error);
-            
+
             // Track failed symbols to skip them temporarily
             setFailedSymbols(prev => new Set([...prev, symbol]));
             setScanError(`${symbol}: ${errorMsg}`);
-            
+
             // Clear error after 5 seconds
             setTimeout(() => setScanError(null), 5000);
         } finally {
@@ -169,20 +169,18 @@ export const useScanning = (
                 symbolIndexRef.current++;
                 attempts++;
             } while (failedSymbols.has(symbol) && attempts < MONITOR_LIST.length);
-            
+
             if (attempts >= MONITOR_LIST.length) {
                 // All symbols failed, reset and try again
                 setFailedSymbols(new Set());
                 symbol = MONITOR_LIST[0];
             }
-            
+
             scanSymbol(symbol);
         };
 
         // Phase 19: Run auto-evaluation on startup
-        AutoEvaluator.evaluatePending().then(count => {
-            if (count > 0) console.log(`AutoEvaluator: Evaluated ${count} pending predictions`);
-        });
+        AutoEvaluator.evaluatePending();
 
         runScan();
         intervalRef.current = setInterval(runScan, 10000);
