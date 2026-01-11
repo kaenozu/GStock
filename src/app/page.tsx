@@ -27,6 +27,7 @@ import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 // VirtualScroll available but not currently used
 import { SettingsPanel } from '@/components/common/SettingsPanel';
 import { TabPanel } from '@/components/common/TabPanel';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -118,6 +119,7 @@ export default function Home() {
   };
 
   return (
+    <ErrorBoundary>
     <main className={`${styles.main} ${isLive ? styles.liveModeActive : ''}`}>
       <div className={styles.container}>
         {/* Header */}
@@ -289,5 +291,6 @@ export default function Home() {
         </div>
       </div>
     </main>
+    </ErrorBoundary>
   );
 }

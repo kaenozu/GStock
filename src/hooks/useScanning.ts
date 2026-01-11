@@ -5,6 +5,8 @@ import { AnalysisResult, TradeHistoryItem, StockDataPoint, TradeSentiment, Marke
 import { MONITOR_LIST } from '@/config/constants';
 import { PredictionLogger, AutoEvaluator } from '@/lib/accuracy';
 import { AlertService } from '@/lib/alerts';
+import { ErrorLogger } from '@/lib/errors';
+import { toast } from 'sonner';
 
 export const useScanning = (
     isPaused: boolean,
@@ -82,17 +84,30 @@ export const useScanning = (
 
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-            console.error(`Scan error for ${symbol}:`, error);
+            
+            // Log error with context
+            ErrorLogger.error(errorMsg, 'Scanner', { symbol });
             
             // Track failed symbols to skip them temporarily
             setFailedSymbols(prev => new Set([...prev, symbol]));
             setScanError(`${symbol}: ${errorMsg}`);
+            
+            // Show toast for persistent errors (only if many symbols fail)
+            const currentFailedCount = failedSymbols.size;
+            if (currentFailedCount >= 3) {
+                toast.error('複数の銘柄でエラー', {
+                    description: 'データ取得に問題が発生しています',
+                    id: 'scan-error', // Prevent duplicate toasts
+                });
+            }
             
             // Clear error after 5 seconds
             setTimeout(() => setScanError(null), 5000);
         } finally {
             setIsScanLoading(false);
         }
+    // Note: failedSymbols.size is intentionally excluded to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [updateBestTrade, addToHistory]);
 
     useEffect(() => {
