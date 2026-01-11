@@ -22,11 +22,8 @@ export const useAnalysis = () => {
 
     const updateBestTrade = useCallback((analysis: AnalysisResult | null) => {
         if (!analysis) return;
-        setBestTrade((prev) => {
-            if (!prev) return analysis;
-            if (analysis.confidence > prev.confidence) return analysis;
-            return prev;
-        });
+        // Always update with the latest analysis to ensure fresh chart data
+        setBestTrade(analysis);
     }, []);
 
     const runDeepBacktest = useCallback(async (symbol: string, period: string = '1y') => {

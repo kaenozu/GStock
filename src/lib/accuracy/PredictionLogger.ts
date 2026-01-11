@@ -39,7 +39,7 @@ export class PredictionLogger {
     
     // Add regime as metadata if available
     if (params.regime) {
-      (record as any).regime = params.regime;
+      record.regime = params.regime;
     }
     
     const records = this.getAll();

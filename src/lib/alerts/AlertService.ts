@@ -144,7 +144,7 @@ export class AlertService {
   private static playAlertSound(signal: 'BUY' | 'SELL' | 'HOLD'): void {
     try {
       if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        this.audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       }
       
       const ctx = this.audioContext;

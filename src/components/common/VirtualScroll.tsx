@@ -165,7 +165,7 @@ export function VariableVirtualScroll<T>({
     });
 
     // 観測対象を設定
-    itemRefs.current.forEach((element, index) => {
+    itemRefs.current.forEach((element) => {
       if (element) {
         observer.observe(element);
       }

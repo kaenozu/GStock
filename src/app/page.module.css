@@ -402,3 +402,163 @@
     padding: 12px;
     margin-top: 12px;
 }
+
+/* =========================================
+   WatchList Styles
+   ========================================= */
+.watchlistContainer {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.watchlistTitle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent-cyan);
+    margin-bottom: 12px;
+}
+
+.watchlistGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.watchItem {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.watchItem:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent-cyan);
+}
+
+.watchSymbol {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #fff;
+}
+
+.watchStats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.bullText {
+    color: #10b981;
+}
+
+.bearText {
+    color: #ef4444;
+}
+
+.allStocksHeader {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.allStocksGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.stockCard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    transition: all 0.2s;
+}
+
+.stockCard:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.stockName {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--foreground);
+    cursor: pointer;
+}
+
+.stockName:hover {
+    color: var(--accent-cyan);
+}
+
+.addWatchButton {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.addWatchButton:hover {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.addWatchButton.watched {
+    color: #fbbf24;
+}
+
+/* =========================================
+   Chart Loading State
+   ========================================= */
+.chartLoading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 300px;
+    color: var(--text-muted);
+    gap: 12px;
+}
+
+.chartSpinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent-cyan);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.chartLoadingText {
+    font-size: 0.85rem;
+}

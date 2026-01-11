@@ -80,7 +80,7 @@ export class Historian {
                     close: this.round(quote.close[i]),
                     volume: quote.volume[i] || 0
                 };
-            }).filter((d: any) => d !== null);
+            }).filter((d: StockDataPoint | null): d is StockDataPoint => d !== null);
 
             return formatted.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 

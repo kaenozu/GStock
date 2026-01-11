@@ -1,32 +1,45 @@
+/**
+ * SignalCard Component
+ * @description AIシグナルと価格表示カード
+ * @module components/dashboard/SignalCard
+ */
+
 import React from 'react';
-import { Target, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Target, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { AnalysisResult, DisplaySignal } from '@/types/market';
 import { Skeleton, SkeletonCard } from '@/components/common/Skeleton';
+import { NormalizedPrice } from '@/lib/websocket';
 
 interface SignalCardProps {
   scanningSymbol: string | null;
   isScanLoading: boolean;
-  isPaused: boolean;
+  isPaused?: boolean; // Reserved for future use
   currentAnalysis: AnalysisResult | null;
   displaySignal: DisplaySignal;
   bestTrade: AnalysisResult | null;
   isInWatchlist: boolean;
   onToggleWatchlist: (symbol: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') => void;
   children?: React.ReactNode;
+  /** リアルタイム価格（WebSocketから） */
+  realtimePrice?: NormalizedPrice | null;
 }
 
 const SignalCardComponent: React.FC<SignalCardProps> = ({
   scanningSymbol,
   isScanLoading,
-  isPaused,
+  isPaused: _isPaused,
   currentAnalysis,
   displaySignal,
   bestTrade,
   isInWatchlist,
   onToggleWatchlist,
-  children
+  children,
+  realtimePrice,
 }) => {
+  // リアルタイム価格があればそれを使用、なければ分析結果の価格
+  const displayPrice = realtimePrice?.price ?? currentAnalysis?.stats?.price ?? 0;
+  const isRealtimeActive = !!realtimePrice;
   const getSignalIcon = () => {
     switch (displaySignal.type) {
       case 'BUY': return <TrendingUp className={styles.signalIcon} />;
@@ -67,7 +80,12 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
         </div>
         {currentAnalysis && (
           <div className={styles.liveAnalysisData}>
-            <span>💰 ${currentAnalysis.stats?.price?.toFixed(2) || '0.00'}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {isRealtimeActive && (
+                <Zap size={12} color="#10b981" style={{ animation: 'pulse 1s infinite' }} />
+              )}
+              💰 ${displayPrice.toFixed(2)}
+            </span>
             <span>🎯 {currentAnalysis.confidence}%</span>
           </div>
         )}
