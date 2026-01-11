@@ -1,17 +1,18 @@
 'use client';
-
+ 
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { Zap, Play, Pause, Layers, FlaskConical } from 'lucide-react';
+import { Zap, Play, Pause, Layers, FlaskConical, Settings as SettingsIcon } from 'lucide-react';
 import styles from './page.module.css';
 import { ChartSettings, DisplaySignal, ChartMarker } from '@/types/market';
 import { CONFIDENCE_THRESHOLD, MONITOR_LIST } from '@/config/constants';
-
+ 
 // Hooks
 import { useScanning } from '@/hooks/useScanning';
 import { usePersistence } from '@/hooks/usePersistence';
 import { useAnalysis } from '@/hooks/useAnalysis';
-
+import { useApiKey } from '@/hooks/useApiKey';
+ 
 // Components
 import { SignalCard } from '@/components/dashboard/SignalCard';
 import { NeuralMonitor } from '@/components/dashboard/NeuralMonitor';
@@ -24,8 +25,11 @@ import { EarningsPanel } from '@/components/dashboard/EarningsPanel';
 import { AccuracyPanel } from '@/components/dashboard/AccuracyPanel';
 import { AlertSettingsPanel } from '@/components/dashboard/AlertSettingsPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
-import { VirtualScroll } from '@/components/common/VirtualScroll';
 import { SettingsPanel } from '@/components/common/SettingsPanel';
+import { ThemeInitializer } from '@/components/common/ThemeInitializer';
+import { DataManager } from '@/components/common/DataManager';
+
+
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -119,6 +123,7 @@ export default function Home() {
 
   return (
     <main className={`${styles.main} ${isLive ? styles.liveModeActive : ''}`}>
+      <ThemeInitializer />
       <div className={styles.container}>
         {/* Header */}
         <header className={styles.header}>

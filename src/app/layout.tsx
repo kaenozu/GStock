@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GStock | 次世代株価予想ダッシュボード",
-  description: "AIとテクニカル分析を融合した、投資家のための高度な株価予想プラットフォーム",
+  title: "GStock | 次世代株価予測ダッシュボード",
+  description: "AIとテクニカル分析を融合した、投資家のための高度な株価予測プラットフォーム",
 };
 
 export default function RootLayout({
