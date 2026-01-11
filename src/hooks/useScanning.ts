@@ -193,6 +193,16 @@ export const useScanning = (
 
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+<<<<<<< HEAD
+            console.error(`Scan error for ${symbol}:`, error);
+
+            // Track failed symbols to skip them temporarily
+            setFailedSymbols(prev => new Set([...prev, symbol]));
+            setScanError(`${symbol}: ${errorMsg}`);
+
+            // Clear error after 5 seconds
+            setTimeout(() => setScanError(null), 5000);
+=======
             
             ErrorLogger.error(errorMsg, 'Scanner', { symbol });
             
@@ -211,6 +221,7 @@ export const useScanning = (
             }
             
             setTimeout(() => setScanError(null), ERROR_CLEAR_DELAY_MS);
+>>>>>>> origin/main
         } finally {
             setIsScanLoading(false);
         }
@@ -256,11 +267,35 @@ export const useScanning = (
         });
 
         const runScan = () => {
+<<<<<<< HEAD
+            // Skip failed symbols for this cycle
+            let attempts = 0;
+            let symbol: string;
+            do {
+                symbol = MONITOR_LIST[symbolIndexRef.current % MONITOR_LIST.length];
+                symbolIndexRef.current++;
+                attempts++;
+            } while (failedSymbols.has(symbol) && attempts < MONITOR_LIST.length);
+
+            if (attempts >= MONITOR_LIST.length) {
+                // All symbols failed, reset and try again
+                setFailedSymbols(new Set());
+                symbol = MONITOR_LIST[0];
+            }
+
+            scanSymbol(symbol);
+        };
+
+        // Phase 19: Run auto-evaluation on startup
+        AutoEvaluator.evaluatePending();
+
+=======
             const symbol = getNextSymbol();
             scanSymbol(symbol);
         };
 
         // 初回スキャン
+>>>>>>> origin/main
         runScan();
         
         // 定期スキャン

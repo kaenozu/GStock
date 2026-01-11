@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Zap, Play, Pause, Layers, FlaskConical, BarChart3, TrendingUp, Settings } from 'lucide-react';
 import styles from './page.module.css';
@@ -35,8 +35,14 @@ const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr
 
 export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
+<<<<<<< HEAD
+  const [earningsMarkers, setEarningsMarkers] = useState<ChartMarker[]>([]);
+  const [nextEarningsDate, setNextEarningsDate] = useState<string | null>(null);
+  const [earningsTooltip, setEarningsTooltip] = useState<string>('');
+=======
   // Earnings markers prepared for future integration
   const earningsMarkers: ChartMarker[] = [];
+>>>>>>> origin/main
 
   const {
     watchlist, setWatchlist,
@@ -89,6 +95,37 @@ export default function Home() {
     }
     return null;
   }, [bestTrade]);
+
+  // Fetch earnings data when symbol changes
+  useEffect(() => {
+    const symbol = currentAnalysis?.symbol || scanningSymbol;
+    if (!symbol) {
+      setNextEarningsDate(null);
+      setEarningsTooltip('');
+      return;
+    }
+
+    const fetchEarnings = async () => {
+      try {
+        const res = await fetch(`/api/earnings?symbol=${symbol}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.length > 0 && data[0].date) {
+          setNextEarningsDate(data[0].date);
+          const eps = data[0].epsEstimate ? `EPS Est: $${data[0].epsEstimate}` : 'EPS: TBD';
+          setEarningsTooltip(`${symbol} Earnings\\n${eps}`);
+        } else {
+          setNextEarningsDate(null);
+          setEarningsTooltip('');
+        }
+      } catch {
+        setNextEarningsDate(null);
+        setEarningsTooltip('');
+      }
+    };
+
+    fetchEarnings();
+  }, [currentAnalysis?.symbol, scanningSymbol]);
 
   // Derived Signal Logic
   const displaySignal: DisplaySignal = useMemo(() => {
@@ -249,6 +286,8 @@ export default function Home() {
                 indicators={showIndicators ? currentAnalysis.chartIndicators : undefined}
                 markers={earningsMarkers}
                 settings={chartSettings}
+                earningsDate={nextEarningsDate}
+                earningsTooltip={earningsTooltip}
               />
             )}
           </div>
@@ -269,7 +308,7 @@ export default function Home() {
                   watchlist={watchlist}
                   allSymbols={MONITOR_LIST}
                   onSelectSymbol={(symbol) => {
-                    console.log('Select', symbol);
+                    // Symbol selected from watchlist - could trigger analysis
                   }}
                   onToggleWatch={(symbol) => {
                     handleToggleWatchlist(symbol, 0, 'NEUTRAL');

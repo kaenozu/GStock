@@ -103,7 +103,8 @@
 - [x] **Toast Notifications**: Error/success feedback using Sonner library.
 - [x] **Japanese Stock Fix**: `validateSymbol()` updated for numeric prefixes (7203.T, 9984.T).
 - [ ] **Accuracy Data Collection**: 2-week observation period.
-- [ ] **Error Logging Enhancement**: Centralized error collection.
+- [x] **Error Logging Enhancement**: Centralized error collection and ErrorBoundary.
+- [x] **SignalCard Refactoring**: Migrated to Tailwind CSS.
 
 ## 📋 Phase 20B: Intelligence Expansion (Pending)
 **Timeline: After 2-week data collection**
