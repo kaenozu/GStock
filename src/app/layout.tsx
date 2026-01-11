@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 import { Toaster } from 'sonner';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,7 +21,9 @@ export default function RootLayout({
     <html lang="ja" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         <div className="app-container">
-          {children}
+          <ErrorBoundary name="RootLayout">
+            {children}
+          </ErrorBoundary>
         </div>
         <Toaster theme="dark" richColors position="bottom-right" />
       </body>
