@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // インメモリキャッシュ（プロダクションではRedisなどを推奨）
 class APICache {
-  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+  private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
   
-  set(key: string, data: any, ttl: number = 30000): void {
+  set(key: string, data: unknown, ttl: number = 30000): void {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -17,7 +17,7 @@ class APICache {
     }
   }
   
-  get(key: string): any {
+  get(key: string): unknown {
     const item = this.cache.get(key);
     if (!item) return null;
     
@@ -29,12 +29,28 @@ class APICache {
     return item.data;
   }
   
+  getEntry(key: string): { data: unknown; timestamp: number; ttl: number } | null {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() - item.timestamp > item.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return item;
+  }
+  
   delete(key: string): void {
     this.cache.delete(key);
   }
   
   clear(): void {
     this.cache.clear();
+  }
+  
+  reset(): void {
+    this.clear();
   }
   
   private cleanup(): void {
@@ -55,6 +71,14 @@ class APICache {
 }
 
 const apiCache = new APICache();
+
+export function clearCache(): void {
+  apiCache.clear();
+}
+
+export function resetCache(): void {
+  apiCache.reset();
+}
 
 // キャッシュミドルウェア
 export function withCache(
@@ -78,7 +102,7 @@ export function withCache(
     }
     
     // キャッシュをチェック
-    const cached = apiCache.get(cacheKey);
+    const cached = apiCache.getEntry(cacheKey);
     if (cached) {
       const response = NextResponse.json(cached.data);
       response.headers.set('X-Cache', 'HIT');
@@ -92,7 +116,7 @@ export function withCache(
     // キャッシュに保存
     if (response.ok) {
       const responseData = await response.json();
-      apiCache.set(cacheKey, { data: responseData }, ttl);
+      apiCache.set(cacheKey, responseData, ttl);
       
       const newResponse = NextResponse.json(responseData);
       newResponse.headers.set('X-Cache', 'MISS');
@@ -108,8 +132,11 @@ export function withCache(
 // デフォルトキャッシュキー生成
 function generateDefaultCacheKey(req: NextRequest, varyHeaders: string[] = []): string {
   const url = req.url;
-  const varyParams = varyHeaders.map((header: string) => req.headers.get(header)).filter(Boolean);  
-  return `${url}:${varyParams.join('|')}`;
+  const urlObj = new URL(url);
+  const varyParams = varyHeaders.map((header: string) => req.headers.get(header)).filter(Boolean);
+  
+  // URLパスとクエリパラメータを含める
+  return `${urlObj.pathname}${urlObj.search}:${varyParams.join('|')}`;
 }
 
 // ストックデータ専用キャッシュ
@@ -120,7 +147,13 @@ export function withStockCache(
   return withCache(handler, {
     ttl,
     keyGenerator: (req) => {
-      const { searchParams } = new URL(req.url);
+      let urlObj;
+      try {
+        urlObj = new URL(req.url);
+      } catch {
+        urlObj = new URL(req.url, 'http://localhost:3000');
+      }
+      const { searchParams } = urlObj;
       const symbol = searchParams.get('symbol');
       return `stock:${symbol}`;
     }
@@ -155,7 +188,7 @@ export function withBacktestCache(
 }
 
 // キャッシュ管理API
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const stats = apiCache.getStats();
   
   return NextResponse.json({
@@ -169,7 +202,7 @@ export async function GET(req: NextRequest) {
 }
 
 // キャッシュクリアAPI
-export async function DELETE(req: NextRequest) {
+export async function DELETE(_req: NextRequest) {
   apiCache.clear();
   
   return NextResponse.json({
