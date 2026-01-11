@@ -142,7 +142,7 @@ describe('PortfolioBacktest', () => {
     describe('PORTFOLIO_TEMPLATES', () => {
         it('テンプレートの配分比率が100%になる', () => {
             for (const [name, assets] of Object.entries(PORTFOLIO_TEMPLATES)) {
-                const total = assets.reduce((sum, a) => sum + a.weight, 0);
+                const total = (assets as any[]).reduce((sum: number, a: any) => sum + a.weight, 0);
                 expect(total).toBe(100);
             }
         });
