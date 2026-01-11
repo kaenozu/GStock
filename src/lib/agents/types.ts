@@ -1,21 +1,60 @@
-import { StockDataPoint, MarketRegime, TradeSentiment } from '@/types/market';
+/**
+ * Agent Types - AIエージェントの型定義
+ * @module lib/agents/types
+ */
 
+import { StockDataPoint, MarketRegime } from '@/types/market';
+
+/** エージェントの役割 */
+export type AgentRole = 'CHAIRMAN' | 'TREND' | 'REVERSAL' | 'VOLATILE' | 'FUNDAMENTAL' | 'MACRO' | 'NEWS' | 'OPTION';
+
+/** エージェントの分析結果 */
 export interface AgentResult {
+    /** エージェント名 */
     name: string;
-    role: Agent['role'];
+    /** 役割 */
+    role: AgentRole;
+    /** シグナル */
     signal: 'BUY' | 'SELL' | 'HOLD';
+    /** 信頼度（0-100） */
     confidence: number;
+    /** 判断理由 */
     reason: string;
-    sentiment: TradeSentiment;
+    /** センチメント */
+    sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
 }
 
+/**
+ * エージェントインターフェース
+ * @interface Agent
+ */
 export interface Agent {
+    /** エージェントID */
     id: string;
+    /** エージェント名 */
     name: string;
-    role: 'CHAIRMAN' | 'TREND' | 'REVERSAL' | 'VOLATILE' | 'VOLUME' | 'FUNDAMENTAL' | 'SENTIMENT' | 'MACRO' | 'OPTION';
-
+    /** 役割 */
+    role: AgentRole;
     /**
-     * Analyze market data and return an opinion
+     * 分析を実行
+     * @param data - 株価データ
+     * @param regime - 市場環境（オプション）
+     * @returns 分析結果
      */
-    analyze(data: StockDataPoint[], marketRegime?: MarketRegime): AgentResult;
+    analyze(data: StockDataPoint[], regime?: MarketRegime): AgentResult;
 }
+
+/** エージェントの重み付け */
+export type AgentWeights = Record<AgentRole, number>;
+
+/** デフォルトの重み付け */
+export const DEFAULT_AGENT_WEIGHTS: AgentWeights = {
+    CHAIRMAN: 2.0,
+    VOLATILE: 1.5,
+    TREND: 1.0,
+    REVERSAL: 1.0,
+    FUNDAMENTAL: 1.0,
+    MACRO: 0.8,
+    NEWS: 0.5,
+    OPTION: 0.7,
+};

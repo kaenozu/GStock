@@ -1,3 +1,25 @@
+/**
+ * Prediction Engine - G-Engine Prime
+ * @description AIエージェント評議会による市場予測エンジン
+ * @module lib/api/prediction-engine
+ * 
+ * ## アーキテクチャ
+ * 
+ * 1. **テクニカル分析層** (calculateScore)
+ *    - SMA, RSI, MACD, ADX, BB, ATRを使用
+ *    - Market Regime (市場環境) を判定
+ * 
+ * 2. **エージェント層** (Council)
+ *    - ChairmanAgent: 総合判断
+ *    - TrendAgent: トレンドフォロー
+ *    - ReversalAgent: 逆張り
+ *    - VolatilityAgent: ボラティリティブレイクアウト
+ * 
+ * 3. **コンセンサス層** (Consensus Engine)
+ *    - 各エージェントの投票を重み付け平均
+ *    - 最終的なシグナルを出力
+ */
+
 import { SMA, RSI, MACD, ADX, BollingerBands, ATR } from 'technicalindicators';
 import type { MACDOutput } from 'technicalindicators/declarations/moving_averages/MACD';
 import type { ADXOutput } from 'technicalindicators/declarations/directionalmovement/ADX';
@@ -8,8 +30,33 @@ import { TrendAgent } from '@/lib/agents/TrendAgent';
 import { ReversalAgent } from '@/lib/agents/ReversalAgent';
 import { VolatilityAgent } from '@/lib/agents/VolatilityAgent';
 
+/** スコア計算結果 */
+interface ScoreResult {
+    /** 信頼度 (0-100) */
+    confidence: number;
+    /** センチメント */
+    sentiment: 'BULLISH' | 'BEARISH';
+    /** 検出されたシグナル */
+    signals: string[];
+    /** 最終スコア */
+    finalScore: number;
+    /** 市場環境 */
+    regime: MarketRegime;
+}
+
 /**
- * 内部用: 単一時点の指標値からスコアとシグナルを算出する
+ * 内部用: 単一時点の指標値からスコアとシグナルを算出
+ * 
+ * @param price - 現在価格
+ * @param sma20 - 20日移動平均
+ * @param sma50 - 50日移動平均
+ * @param rsi - RSI値
+ * @param macd - MACD出力
+ * @param prevMacd - 前日のMACD出力
+ * @param adx - ADX出力
+ * @param bb - ボリンジャーバンド出力
+ * @param atr - ATR値
+ * @returns スコア計算結果
  */
 const calculateScore = (
     price: number,
@@ -21,7 +68,7 @@ const calculateScore = (
     adx: ADXOutput,
     bb: BollingerBandsOutput,
     atr: number
-): { confidence: number, sentiment: 'BULLISH' | 'BEARISH', signals: string[], finalScore: number, regime: MarketRegime } => {
+): ScoreResult => {
 
     let bullScore = 0;
     let bearScore = 0;
@@ -159,6 +206,16 @@ const calculateScore = (
 
 /**
  * G-Engine Prime: 最新の市場予測を返す
+ * 
+ * @param data - 株価データ（最低50日分必要）
+ * @returns 分析結果（データ不足時はデフォルト値）
+ * 
+ * @example
+ * ```typescript
+ * const analysis = calculateAdvancedPredictions(stockData);
+ * console.log(analysis.sentiment); // 'BULLISH' | 'BEARISH' | 'NEUTRAL'
+ * console.log(analysis.confidence); // 0-100
+ * ```
  */
 export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisResult => {
     if (data.length < 50) return {
@@ -328,10 +385,22 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     };
 };
 
+/** 履歴シグナルの型 */
+export interface HistoricalSignal {
+    time: string;
+    price: number;
+    confidence: number;
+    sentiment: 'BULLISH' | 'BEARISH';
+    signals: string[];
+}
+
 /**
- * バックテスト用: 全期間のAI判断履歴を生成する
+ * バックテスト用: 全期間のAI判断履歴を生成
+ * 
+ * @param data - 株価データ（最低50日分必要）
+ * @returns 各日のシグナル配列（データ不足時は空配列）
  */
-export const calculateHistoricalSignals = (data: StockDataPoint[]) => {
+export const calculateHistoricalSignals = (data: StockDataPoint[]): HistoricalSignal[] => {
     if (data.length < 50) return [];
 
     const closingPrices = data.map((d) => d.close);

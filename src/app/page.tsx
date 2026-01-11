@@ -33,7 +33,8 @@ const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr
 
 export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
-  const [earningsMarkers, setEarningsMarkers] = useState<ChartMarker[]>([]);
+  // Earnings markers prepared for future integration
+  const earningsMarkers: ChartMarker[] = [];
 
   const {
     watchlist, setWatchlist,
@@ -96,18 +97,8 @@ export default function Home() {
     }
   }, [bestTrade, isPaused]);
 
-  // Handler for Earnings dates -> Chart markers
-  const _handleEarningsDates = (dates: string[]) => {
-    const markers: ChartMarker[] = dates.map((date, i) => ({
-      time: date,
-      position: 'aboveBar',
-      color: i === 0 ? '#f59e0b' : '#6366f1', // First is next earnings (amber), rest are past (indigo)
-      shape: 'circle',
-      text: i === 0 ? '📅 次回決算' : '📊',
-      size: i === 0 ? 2 : 1,
-    }));
-    setEarningsMarkers(markers);
-  };
+  // Note: Earnings markers feature is prepared but not yet integrated
+  // The earningsMarkers state can be populated via EarningsPanel callback when needed
 
   // Handler for Watchlist Toggle
   const handleToggleWatchlist = (symbol: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') => {
