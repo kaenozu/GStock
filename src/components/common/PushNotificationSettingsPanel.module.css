@@ -1,0 +1,132 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px;
+}
+
+.title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.message {
+    color: #666;
+    margin: 0;
+}
+
+.error {
+    padding: 12px;
+    background-color: #fee;
+    border: 1px solid #fcc;
+    border-radius: 4px;
+    color: #c33;
+    font-size: 14px;
+}
+
+.status,
+.warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.label {
+    font-weight: 500;
+}
+
+.statusValue {
+    font-weight: 600;
+}
+
+.statusValue.subscribed {
+    color: #22c55e;
+}
+
+.statusValue.notSubscribed {
+    color: #f97316;
+}
+
+.permissionStatus {
+    font-size: 12px;
+    color: #f97316;
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tokenInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.tokenLabel {
+    font-size: 12px;
+    color: #666;
+}
+
+.token {
+    font-size: 12px;
+    word-break: break-all;
+    background-color: #e5e5e5;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.button.subscribe {
+    background-color: #22c55e;
+    color: white;
+}
+
+.button.subscribe:hover:not(:disabled) {
+    background-color: #16a34a;
+}
+
+.button.unsubscribe {
+    background-color: #f97316;
+    color: white;
+}
+
+.button.unsubscribe:hover:not(:disabled) {
+    background-color: #ea580c;
+}
+
+.closeButton {
+    margin-top: 8px;
+    padding: 8px 16px;
+    background-color: #e5e5e5;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.closeButton:hover {
+    background-color: #d4d4d4;
+}

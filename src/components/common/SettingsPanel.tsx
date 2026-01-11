@@ -1,14 +1,15 @@
 'use client';
  
 import React, { useState } from 'react';
-import { Settings, X, Type, Key, Palette, Database } from 'lucide-react';
+import { Settings, X, Type, Key, Palette, Database, Bell } from 'lucide-react';
 import { useSettings, FontSize } from '@/hooks/useSettings';
 import { ThemeToggle } from './ThemeToggle';
 import { ApiKeySettingsPanel } from './ApiKeySettingsPanel';
 import { DataManager } from './DataManager';
+import { PushNotificationSettingsPanel } from './PushNotificationSettingsPanel';
 import styles from './SettingsPanel.module.css';
- 
-type Tab = 'general' | 'theme' | 'api' | 'data';
+  
+type Tab = 'general' | 'theme' | 'api' | 'data' | 'push';
  
 export const SettingsPanel: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -69,6 +70,13 @@ export const SettingsPanel: React.FC = () => {
                 <Database size={14} />
                 データ
               </button>
+              <button
+                className={`${styles.tab} ${activeTab === 'push' ? styles.activeTab : ''}`}
+                onClick={() => setActiveTab('push')}
+              >
+                <Bell size={14} />
+                通知
+              </button>
             </div>
 
             <div className={styles.content}>
@@ -118,6 +126,10 @@ export const SettingsPanel: React.FC = () => {
 
               {activeTab === 'data' && (
                 <DataManager />
+              )}
+
+              {activeTab === 'push' && (
+                <PushNotificationSettingsPanel />
               )}
             </div>
           </div>

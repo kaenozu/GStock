@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { createChart, ColorType, IChartApi, CandlestickSeries, LineSeries, ISeriesApi } from 'lightweight-charts';
 import { StockDataPoint, PredictionPoint, ChartIndicators, ChartMarker, ChartSettings } from '@/types/market';
+import { useChartWorker } from '@/hooks/useChartWorker';
 
 interface ChartProps {
     data: StockDataPoint[];
@@ -23,6 +24,9 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
         lowerBand?: ISeriesApi<'Line'>;
         prediction?: ISeriesApi<'Line'>;
     }>({});
+    const [workerIndicators, setWorkerIndicators] = useState<ChartIndicators>({ sma20: [], sma50: [], upperBand: [], lowerBand: [] });
+
+    const { initWorker, updateData, calculateIndicator, onDataUpdated, onIndicatorsCalculated, terminateWorker } = useChartWorker();
 
     const normalizedSettings = useMemo(() => ({
         showSMA20: settings?.showSMA20 ?? true,
@@ -55,6 +59,31 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                 height: 400,
             });
             chartRef.current = chart;
+
+            onDataUpdated((processedData) => {
+                if (seriesRef.current.candlestick) {
+                    seriesRef.current.candlestick.setData(processedData);
+                }
+            });
+
+            onIndicatorsCalculated((result) => {
+                const newIndicators = { ...workerIndicators };
+                switch (result.indicator) {
+                    case 'SMA':
+                        if (result.indicator === 'SMA' && normalizedSettings.showSMA20) {
+                            newIndicators.sma20 = result.result;
+                        }
+                        break;
+                    case 'BB':
+                        if (normalizedSettings.showBollingerBands) {
+                            newIndicators.upperBand = result.result;
+                        }
+                        break;
+                }
+                setWorkerIndicators(newIndicators);
+            });
+
+            initWorker('STOCK');
         } catch (e) {
             console.error('Failed to create chart instance:', e);
             return;
@@ -72,8 +101,9 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                     console.error('Error during chart cleanup:', e);
                 }
             }
+            terminateWorker();
         };
-    }, [handleResize]);
+    }, [handleResize, normalizedSettings, onDataUpdated, onIndicatorsCalculated, initWorker, terminateWorker, workerIndicators]);
 
     useEffect(() => {
         const chart = chartRef.current;
@@ -89,70 +119,83 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                     wickDownColor: '#ef4444',
                 });
             }
-            
+
             if (data && data.length > 0) {
+                updateData(data);
                 seriesRef.current.candlestick.setData(data);
-                
+
                 chart.timeScale().setVisibleLogicalRange({
                     from: data.length - 20,
                     to: data.length + 15,
                 });
+
+                if (normalizedSettings.showSMA20) {
+                    calculateIndicator('SMA', 20);
+                }
+                if (normalizedSettings.showSMA50) {
+                    calculateIndicator('SMA', 50);
+                }
+                if (normalizedSettings.showBollingerBands) {
+                    calculateIndicator('BB', 20);
+                }
             }
         };
 
         updateCandlestickSeries();
-    }, [data]);
+    }, [data, normalizedSettings, updateData, calculateIndicator]);
 
     useEffect(() => {
         const chart = chartRef.current;
-        if (!chart || !indicators) return;
+        if (!chart) return;
+
+        const effectiveIndicators = indicators ?? workerIndicators;
 
         const updateIndicators = () => {
             const { sma20, sma50, upperBand, lowerBand } = seriesRef.current;
 
             if (normalizedSettings.showSMA20) {
-                if (!sma20 && indicators.sma20.length > 0) {
+                if (!sma20 && effectiveIndicators.sma20.length > 0) {
                     seriesRef.current.sma20 = chart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 1 });
                 }
                 if (seriesRef.current.sma20) {
-                    seriesRef.current.sma20.setData(indicators.sma20);
+                    seriesRef.current.sma20.setData(effectiveIndicators.sma20);
                 }
             } else if (sma20) {
                 sma20.setData([]);
             }
 
             if (normalizedSettings.showSMA50) {
-                if (!sma50 && indicators.sma50.length > 0) {
+                if (!sma50 && effectiveIndicators.sma50.length > 0) {
                     seriesRef.current.sma50 = chart.addSeries(LineSeries, { color: '#6366f1', lineWidth: 1 });
                 }
                 if (seriesRef.current.sma50) {
-                    seriesRef.current.sma50.setData(indicators.sma50);
+                    seriesRef.current.sma50.setData(effectiveIndicators.sma50);
                 }
             } else if (sma50) {
                 sma50.setData([]);
             }
 
             if (normalizedSettings.showBollingerBands) {
-                if (!upperBand && indicators.upperBand.length > 0) {
-                    seriesRef.current.upperBand = chart.addSeries(LineSeries, { 
-                        color: 'rgba(139, 92, 246, 0.5)', 
-                        lineWidth: 1, 
-                        lineStyle: 2 
+                if (!upperBand && effectiveIndicators.upperBand.length > 0) {
+                    seriesRef.current.upperBand = chart.addSeries(LineSeries, {
+                        color: 'rgba(139, 92, 246, 0.5)',
+                        lineWidth: 1,
+                        lineStyle: 2
                     });
                 }
                 if (seriesRef.current.upperBand) {
-                    seriesRef.current.upperBand.setData(indicators.upperBand);
+                    seriesRef.current.upperBand.setData(effectiveIndicators.upperBand);
                 }
 
-                if (!lowerBand && indicators.lowerBand.length > 0) {
-                    seriesRef.current.lowerBand = chart.addSeries(LineSeries, { 
-                        color: 'rgba(139, 92, 246, 0.5)', 
-                        lineWidth: 1, 
-                        lineStyle: 2 
+                if (!lowerBand && effectiveIndicators.lowerBand.length > 0) {
+                    seriesRef.current.lowerBand = chart.addSeries(LineSeries, {
+                        color: 'rgba(139, 92, 246, 0.5)',
+                        lineWidth: 1,
+                        lineStyle: 2
                     });
                 }
                 if (seriesRef.current.lowerBand) {
-                    seriesRef.current.lowerBand.setData(indicators.lowerBand);
+                    seriesRef.current.lowerBand.setData(effectiveIndicators.lowerBand);
                 }
             } else {
                 if (upperBand) upperBand.setData([]);
@@ -161,7 +204,7 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
         };
 
         updateIndicators();
-    }, [indicators, normalizedSettings]);
+    }, [indicators, workerIndicators, normalizedSettings]);
 
     useEffect(() => {
         const chart = chartRef.current;

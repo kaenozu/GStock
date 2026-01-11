@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Ignore scripts folder:
+    "scripts/**",
   ]),
   // Temporarily downgrade some errors to warnings for existing files
   {
