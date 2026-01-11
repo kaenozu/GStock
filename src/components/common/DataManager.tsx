@@ -10,6 +10,19 @@ export const DataManager: React.FC = () => {
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [stats, setStats] = useState<{
+        totalEntries: number;
+        uniqueSymbols: string[];
+        oldestEntry?: Date;
+        newestEntry?: Date;
+        storageSize: number;
+    }>({
+        totalEntries: 0,
+        uniqueSymbols: [],
+        oldestEntry: undefined,
+        newestEntry: undefined,
+        storageSize: 0
+    });
     const [storageStats, setStorageStats] = useState({
         totalSize: 0,
         totalSizeFormatted: '',
@@ -19,20 +32,26 @@ export const DataManager: React.FC = () => {
 
     useEffect(() => {
         const loadStats = async () => {
-            const stats = await StorageManager.getStorageStats();
-            setStorageStats(stats);
+            try {
+                const [historyStats, storageInfo] = await Promise.all([
+                    AnalysisHistoryService.getStats(),
+                    StorageManager.getStorageStats()
+                ]);
+                setStats(historyStats);
+                setStorageStats(storageInfo);
+            } catch (error) {
+                console.error('[DataManager] Failed to load stats:', error);
+            }
         };
         loadStats();
     }, []);
-
-    const stats = AnalysisHistoryService.getStats();
 
     const handleExport = useCallback(async () => {
         setIsExporting(true);
         setMessage(null);
 
         try {
-            const json = AnalysisHistoryService.exportToJson();
+            const json = await AnalysisHistoryService.exportToJson();
             const blob = new Blob([json], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -61,7 +80,7 @@ export const DataManager: React.FC = () => {
 
         try {
             const text = await file.text();
-            const success = AnalysisHistoryService.importFromJson(text);
+            const success = await AnalysisHistoryService.importFromJson(text);
 
             if (success) {
                 setMessage({ type: 'success', text: '履歴データをインポートしました' });
@@ -78,21 +97,31 @@ export const DataManager: React.FC = () => {
         }
     }, []);
 
-    const handleClear = useCallback(() => {
+    const handleClear = useCallback(async () => {
         if (confirm('すべての履歴データを削除しますか？この操作は取り消せません。')) {
-            AnalysisHistoryService.clearAll();
-            setMessage({ type: 'success', text: '履歴データをクリアしました' });
-            setTimeout(() => setMessage(null), 3000);
+            try {
+                await AnalysisHistoryService.clearAll();
+                const newStats = await AnalysisHistoryService.getStats();
+                setStats(newStats);
+                setMessage({ type: 'success', text: '履歴データをクリアしました' });
+                setTimeout(() => setMessage(null), 3000);
+            } catch (error) {
+                setMessage({ type: 'error', text: 'クリアに失敗しました' });
+            }
         }
     }, []);
 
     const handleClearCache = useCallback(async () => {
         if (confirm('キャッシュをクリアしますか？')) {
-            StorageManager.cleanupOldEntries();
-            const newStats = await StorageManager.getStorageStats();
-            setStorageStats(newStats);
-            setMessage({ type: 'success', text: 'キャッシュをクリアしました' });
-            setTimeout(() => setMessage(null), 3000);
+            try {
+                await StorageManager.cleanupOldEntries();
+                const newStats = await StorageManager.getStorageStats();
+                setStorageStats(newStats);
+                setMessage({ type: 'success', text: 'キャッシュをクリアしました' });
+                setTimeout(() => setMessage(null), 3000);
+            } catch (error) {
+                setMessage({ type: 'error', text: 'クリアに失敗しました' });
+            }
         }
     }, []);
 

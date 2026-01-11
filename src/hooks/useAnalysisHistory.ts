@@ -7,49 +7,94 @@ import { AnalysisHistoryService, AnalysisHistoryEntry } from '@/lib/storage/Anal
 export function useAnalysisHistory(symbol?: string) {
     const [history, setHistory] = useState<AnalysisHistoryEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [stats, setStats] = useState<{
+        totalEntries: number;
+        uniqueSymbols: string[];
+        oldestEntry?: Date;
+        newestEntry?: Date;
+        storageSize: number;
+    }>({
+        totalEntries: 0,
+        uniqueSymbols: [],
+        oldestEntry: undefined,
+        newestEntry: undefined,
+        storageSize: 0
+    });
 
     useEffect(() => {
-        setIsLoading(true);
-        
-        const loadHistory = () => {
-            AnalysisHistoryService.loadFromLocalStorage();
-            const entries = symbol 
-                ? AnalysisHistoryService.get(symbol)
-                : AnalysisHistoryService.getRecent(50);
-            setHistory(entries);
-            setIsLoading(false);
+        const loadHistory = async () => {
+            setIsLoading(true);
+            try {
+                const entries = symbol
+                    ? await AnalysisHistoryService.get(symbol)
+                    : await AnalysisHistoryService.getRecent(50);
+                setHistory(entries);
+
+                const statsData = await AnalysisHistoryService.getStats();
+                setStats(statsData);
+            } catch (error) {
+                console.error('[useAnalysisHistory] Failed to load history:', error);
+            } finally {
+                setIsLoading(false);
+            }
         };
 
         loadHistory();
     }, [symbol]);
 
-    const add = useCallback((analysis: AnalysisResult, notes?: string) => {
+    const add = useCallback(async (analysis: AnalysisResult, notes?: string) => {
         if (!symbol) return;
-        AnalysisHistoryService.add(symbol, analysis, notes);
-        const entries = AnalysisHistoryService.get(symbol);
-        setHistory(entries);
+        try {
+            await AnalysisHistoryService.add(symbol, analysis, notes);
+            const entries = await AnalysisHistoryService.get(symbol);
+            setHistory(entries);
+
+            const statsData = await AnalysisHistoryService.getStats();
+            setStats(statsData);
+        } catch (error) {
+            console.error('[useAnalysisHistory] Failed to add entry:', error);
+        }
     }, [symbol]);
 
-    const remove = useCallback((id: string) => {
-        AnalysisHistoryService.delete(id);
-        const entries = symbol 
-            ? AnalysisHistoryService.get(symbol)
-            : AnalysisHistoryService.getRecent(50);
-        setHistory(entries);
+    const remove = useCallback(async (id: number) => {
+        try {
+            await AnalysisHistoryService.delete(id);
+            const entries = symbol
+                ? await AnalysisHistoryService.get(symbol)
+                : await AnalysisHistoryService.getRecent(50);
+            setHistory(entries);
+
+            const statsData = await AnalysisHistoryService.getStats();
+            setStats(statsData);
+        } catch (error) {
+            console.error('[useAnalysisHistory] Failed to remove entry:', error);
+        }
     }, [symbol]);
 
-    const clearSymbol = useCallback(() => {
+    const clearSymbol = useCallback(async () => {
         if (!symbol) return;
-        AnalysisHistoryService.clearSymbol(symbol);
-        setHistory([]);
+        try {
+            await AnalysisHistoryService.clearSymbol(symbol);
+            setHistory([]);
+
+            const statsData = await AnalysisHistoryService.getStats();
+            setStats(statsData);
+        } catch (error) {
+            console.error('[useAnalysisHistory] Failed to clear symbol:', error);
+        }
     }, [symbol]);
 
-    const clearAll = useCallback(() => {
-        AnalysisHistoryService.clearAll();
-        setHistory([]);
+    const clearAll = useCallback(async () => {
+        try {
+            await AnalysisHistoryService.clearAll();
+            setHistory([]);
+
+            const statsData = await AnalysisHistoryService.getStats();
+            setStats(statsData);
+        } catch (error) {
+            console.error('[useAnalysisHistory] Failed to clear all:', error);
+        }
     }, []);
-
-    const stats = AnalysisHistoryService.getStats();
 
     return {
         history,

@@ -1,10 +1,10 @@
 import { AnalysisResult } from '@/types/market';
+import { indexedDBCache } from '@/lib/cache/IndexedDBCache';
 
-const HISTORY_KEY = 'gstock_analysis_history';
-const MAX_HISTORY_SIZE = 100;
+const MAX_HISTORY_SIZE = 500;
 
 export interface AnalysisHistoryEntry {
-    id: string;
+    id: number;
     symbol: string;
     analysis: AnalysisResult;
     timestamp: number;
@@ -12,44 +12,39 @@ export interface AnalysisHistoryEntry {
 }
 
 export class AnalysisHistoryService {
-    private static history: Map<string, AnalysisHistoryEntry> = new Map();
+    private static isInitialized = false;
+    private static inMemoryCache: Map<number, AnalysisHistoryEntry> = new Map();
+    private static nextId = 1;
 
-    static saveToLocalStorage(): void {
-        if (typeof window === 'undefined') return;
-
-        try {
-            const entries = Array.from(this.history.values());
-            const sortedEntries = entries
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, MAX_HISTORY_SIZE);
-
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(sortedEntries));
-        } catch (error) {
-            console.error('[AnalysisHistory] Failed to save to localStorage:', error);
+    private static async ensureInitialized(): Promise<void> {
+        if (!this.isInitialized) {
+            await indexedDBCache.init();
+            await this.loadFromIndexedDB();
+            this.isInitialized = true;
         }
     }
 
-    static loadFromLocalStorage(): void {
-        if (typeof window === 'undefined') return;
-
+    private static async loadFromIndexedDB(): Promise<void> {
         try {
-            const stored = localStorage.getItem(HISTORY_KEY);
-            if (!stored) return;
-
-            const entries: AnalysisHistoryEntry[] = JSON.parse(stored);
-            
-            this.history.clear();
-            entries.forEach(entry => {
-                this.history.set(entry.id, entry);
+            const entries = await indexedDBCache.getAll('analysis-history');
+            this.inMemoryCache.clear();
+            let maxId = 0;
+            entries.forEach((entry: AnalysisHistoryEntry) => {
+                if (entry.id > maxId) {
+                    maxId = entry.id;
+                }
+                this.inMemoryCache.set(entry.id, entry);
             });
+            this.nextId = maxId + 1;
         } catch (error) {
-            console.error('[AnalysisHistory] Failed to load from localStorage:', error);
+            console.error('[AnalysisHistory] Failed to load from IndexedDB:', error);
         }
     }
 
-    static add(symbol: string, analysis: AnalysisResult, notes?: string): void {
-        const id = `${symbol}-${Date.now()}`;
-        
+    static async add(symbol: string, analysis: AnalysisResult, notes?: string): Promise<void> {
+        await this.ensureInitialized();
+
+        const id = this.nextId++;
         const entry: AnalysisHistoryEntry = {
             id,
             symbol,
@@ -58,79 +53,94 @@ export class AnalysisHistoryService {
             notes
         };
 
-        this.history.set(id, entry);
-        this.enforceMaxSize();
-        this.saveToLocalStorage();
+        await indexedDBCache.set('analysis-history', id.toString(), entry);
+        this.inMemoryCache.set(id, entry);
+
+        await this.enforceMaxSize();
     }
 
-    static get(symbol: string, limit?: number): AnalysisHistoryEntry[] {
-        const entries = Array.from(this.history.values())
+    static async get(symbol: string, limit?: number): Promise<AnalysisHistoryEntry[]> {
+        await this.ensureInitialized();
+
+        const entries = Array.from(this.inMemoryCache.values())
             .filter(entry => entry.symbol === symbol)
             .sort((a, b) => b.timestamp - a.timestamp);
 
         return limit ? entries.slice(0, limit) : entries;
     }
 
-    static getAll(limit?: number): AnalysisHistoryEntry[] {
-        const entries = Array.from(this.history.values())
+    static async getAll(limit?: number): Promise<AnalysisHistoryEntry[]> {
+        await this.ensureInitialized();
+
+        const entries = Array.from(this.inMemoryCache.values())
             .sort((a, b) => b.timestamp - a.timestamp);
 
         return limit ? entries.slice(0, limit) : entries;
     }
 
-    static getRecent(limit: number = 20): AnalysisHistoryEntry[] {
+    static async getRecent(limit: number = 20): Promise<AnalysisHistoryEntry[]> {
         return this.getAll(limit);
     }
 
-    static delete(id: string): void {
-        this.history.delete(id);
-        this.saveToLocalStorage();
+    static async delete(id: number): Promise<void> {
+        await this.ensureInitialized();
+
+        await indexedDBCache.delete('analysis-history', id.toString());
+        this.inMemoryCache.delete(id);
     }
 
-    static clearSymbol(symbol: string): void {
-        for (const [id, entry] of this.history.entries()) {
+    static async clearSymbol(symbol: string): Promise<void> {
+        await this.ensureInitialized();
+
+        for (const [id, entry] of this.inMemoryCache.entries()) {
             if (entry.symbol === symbol) {
-                this.history.delete(id);
+                await indexedDBCache.delete('analysis-history', id.toString());
+                this.inMemoryCache.delete(id);
             }
         }
-        this.saveToLocalStorage();
     }
 
-    static clearAll(): void {
-        this.history.clear();
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem(HISTORY_KEY);
-        }
+    static async clearAll(): Promise<void> {
+        await this.ensureInitialized();
+
+        await indexedDBCache.clear('analysis-history');
+        this.inMemoryCache.clear();
+        this.nextId = 1;
     }
 
-    private static enforceMaxSize(): void {
-        if (this.history.size <= MAX_HISTORY_SIZE) return;
+    private static async enforceMaxSize(): Promise<void> {
+        if (this.inMemoryCache.size <= MAX_HISTORY_SIZE) return;
 
-        const entries = Array.from(this.history.values())
+        const entries = Array.from(this.inMemoryCache.values())
             .sort((a, b) => a.timestamp - b.timestamp);
 
-        const toRemove = this.history.size - MAX_HISTORY_SIZE;
-        
+        const toRemove = this.inMemoryCache.size - MAX_HISTORY_SIZE;
+
         for (let i = 0; i < toRemove; i++) {
-            this.history.delete(entries[i].id);
+            const entry = entries[i];
+            await indexedDBCache.delete('analysis-history', entry.id.toString());
+            this.inMemoryCache.delete(entry.id);
         }
     }
 
-    static getStats(): {
+    static async getStats(): Promise<{
         totalEntries: number;
         uniqueSymbols: string[];
         oldestEntry?: Date;
         newestEntry?: Date;
         storageSize: number;
-    } {
-        const entries = Array.from(this.history.values());
+    }> {
+        await this.ensureInitialized();
+
+        const entries = Array.from(this.inMemoryCache.values());
         const uniqueSymbols = new Set(entries.map(e => e.symbol));
         const timestamps = entries.map(e => e.timestamp);
 
+        const dbStats = await indexedDBCache.getStats();
+
         let storageSize = 0;
-        if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem(HISTORY_KEY);
-            storageSize = stored ? new Blob([stored]).size : 0;
+        if (dbStats['analysis-history']) {
+            storageSize = dbStats['analysis-history'] * 1000;
         }
 
         return {
@@ -142,30 +152,41 @@ export class AnalysisHistoryService {
         };
     }
 
-    static exportToJson(): string {
-        const entries = Array.from(this.history.values())
+    static async exportToJson(): Promise<string> {
+        await this.ensureInitialized();
+
+        const entries = Array.from(this.inMemoryCache.values())
             .sort((a, b) => b.timestamp - a.timestamp);
-        
+
         return JSON.stringify(entries, null, 2);
     }
 
-    static importFromJson(json: string): boolean {
+    static async importFromJson(json: string): Promise<boolean> {
         try {
+            await this.ensureInitialized();
+
             const entries: AnalysisHistoryEntry[] = JSON.parse(json);
-            
+
             if (!Array.isArray(entries)) {
                 throw new Error('Invalid JSON format');
             }
 
-            entries.forEach(entry => {
-                if (entry.id && entry.symbol && entry.analysis) {
-                    this.history.set(entry.id, entry);
+            for (const entry of entries) {
+                if (entry.symbol && entry.analysis) {
+                    const newEntry: AnalysisHistoryEntry = {
+                        id: this.nextId++,
+                        symbol: entry.symbol,
+                        analysis: entry.analysis,
+                        timestamp: entry.timestamp || Date.now(),
+                        notes: entry.notes
+                    };
+                    await indexedDBCache.set('analysis-history', newEntry.id.toString(), newEntry);
+                    this.inMemoryCache.set(newEntry.id, newEntry);
                 }
-            });
+            }
 
-            this.enforceMaxSize();
-            this.saveToLocalStorage();
-            
+            await this.enforceMaxSize();
+
             return true;
         } catch (error) {
             console.error('[AnalysisHistory] Failed to import JSON:', error);
