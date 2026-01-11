@@ -25,11 +25,44 @@ export class InternalPaperBroker implements BrokerProvider {
     }
 
     /**
-     * ポートフォリオを取得
+     * ポートフォリオを取得（時価評価付き）
      * @returns ポートフォリオ状態
      */
     async getPortfolio(): Promise<Portfolio> {
-        return this.engine.getPortfolio();
+        const portfolio = this.engine.getPortfolio();
+        
+        // ポジションがあれば時価評価を取得
+        if (portfolio.positions.length > 0) {
+            const prices = await this.fetchCurrentPrices(portfolio.positions.map(p => p.symbol));
+            return this.engine.updateEquityWithPrices(prices);
+        }
+        
+        return portfolio;
+    }
+    
+    /**
+     * 複数銘柄の現在価格を取得
+     * @private
+     */
+    private async fetchCurrentPrices(symbols: string[]): Promise<Record<string, number>> {
+        const prices: Record<string, number> = {};
+        
+        // 並列で価格取得
+        await Promise.all(symbols.map(async (symbol) => {
+            try {
+                const res = await fetch(`http://localhost:${process.env.PORT || 8000}/api/quotes?symbol=${symbol}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.price) {
+                        prices[symbol] = data.price;
+                    }
+                }
+            } catch {
+                // エラー時はスキップ（取得価格を使用）
+            }
+        }));
+        
+        return prices;
     }
 
     /**

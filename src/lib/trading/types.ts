@@ -11,6 +11,12 @@ export interface Position {
     quantity: number;
     /** 平均取得価格（手数料込み） */
     averagePrice: number;
+    /** 現在価格（時価評価用、オプショナル） */
+    currentPrice?: number;
+    /** 評価損益（計算済み、オプショナル） */
+    unrealizedPnL?: number;
+    /** 評価損益率（%、オプショナル） */
+    unrealizedPnLPercent?: number;
 }
 
 /** 取引記録 */

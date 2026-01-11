@@ -24,15 +24,51 @@ const ERROR_TOAST_THRESHOLD = 3;
 const ERROR_CLEAR_DELAY_MS = 5000;
 
 /**
- * Calculate RSI and derive sentiment from stock data
+ * Calculate ADX (Average Directional Index) for trend strength
+ * ADX > 25: Strong trend, ADX < 20: Weak/No trend
+ */
+function calculateADX(history: StockDataPoint[], period: number = 14): number {
+    if (history.length < period + 1) return 20; // Default neutral
+    
+    const data = history.slice(-(period + 1));
+    let sumDX = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+        const high = data[i].high;
+        const low = data[i].low;
+        const prevHigh = data[i - 1].high;
+        const prevLow = data[i - 1].low;
+        const prevClose = data[i - 1].close;
+        
+        const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
+        const plusDM = high - prevHigh > prevLow - low ? Math.max(high - prevHigh, 0) : 0;
+        const minusDM = prevLow - low > high - prevHigh ? Math.max(prevLow - low, 0) : 0;
+        
+        if (tr > 0) {
+            const plusDI = (plusDM / tr) * 100;
+            const minusDI = (minusDM / tr) * 100;
+            const diSum = plusDI + minusDI;
+            if (diSum > 0) {
+                sumDX += (Math.abs(plusDI - minusDI) / diSum) * 100;
+            }
+        }
+    }
+    
+    return sumDX / period;
+}
+
+/**
+ * Calculate RSI, ADX and derive sentiment from stock data
+ * Improved: Uses ADX to determine if RSI signals are reliable
  */
 function calculateAnalysis(history: StockDataPoint[]): {
     sentiment: TradeSentiment;
     confidence: number;
     rsi: number;
     regime: MarketRegime;
+    adx?: number;
 } {
-    if (history.length < 14) {
+    if (history.length < 20) {
         return { sentiment: 'NEUTRAL', confidence: 50, rsi: 50, regime: 'SIDEWAYS' };
     }
 
@@ -49,36 +85,72 @@ function calculateAnalysis(history: StockDataPoint[]): {
     const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
     const rsi = 100 - (100 / (1 + rs));
 
+    // Calculate ADX for trend strength
+    const adx = calculateADX(history);
+    const isStrongTrend = adx > 25;
+    const isWeakTrend = adx < 20;
+
     // Calculate short-term trend (SMA5 vs SMA20)
     const sma5 = history.slice(-5).reduce((a, b) => a + b.close, 0) / 5;
-    const sma20 = history.slice(-20).reduce((a, b) => a + b.close, 0) / Math.min(20, history.length);
+    const sma20 = history.slice(-20).reduce((a, b) => a + b.close, 0) / 20;
     const trendStrength = ((sma5 - sma20) / sma20) * 100;
+    const isBullishTrend = sma5 > sma20;
 
-    // Determine sentiment
+    // Determine sentiment with ADX-aware logic
     let sentiment: TradeSentiment = 'NEUTRAL';
     let confidence = 50;
 
-    if (rsi > 70) {
-        sentiment = 'BEARISH'; // Overbought - expect reversal
-        confidence = Math.min(90, 50 + (rsi - 70) * 2);
-    } else if (rsi < 30) {
-        sentiment = 'BULLISH'; // Oversold - expect reversal
-        confidence = Math.min(90, 50 + (30 - rsi) * 2);
-    } else if (trendStrength > 2) {
-        sentiment = 'BULLISH';
-        confidence = Math.min(80, 50 + trendStrength * 5);
-    } else if (trendStrength < -2) {
-        sentiment = 'BEARISH';
-        confidence = Math.min(80, 50 + Math.abs(trendStrength) * 5);
+    // Strong trend: Follow the trend, ignore overbought/oversold
+    if (isStrongTrend) {
+        if (isBullishTrend) {
+            sentiment = 'BULLISH';
+            // RSI > 50 in uptrend = momentum confirmation
+            confidence = Math.min(85, 60 + (rsi - 50) * 0.5 + (adx - 25) * 0.5);
+        } else {
+            sentiment = 'BEARISH';
+            confidence = Math.min(85, 60 + (50 - rsi) * 0.5 + (adx - 25) * 0.5);
+        }
+    }
+    // Weak trend: RSI extremes are more reliable for reversals
+    else if (isWeakTrend) {
+        if (rsi > 70) {
+            sentiment = 'BEARISH';
+            confidence = Math.min(80, 55 + (rsi - 70) * 1.5);
+        } else if (rsi < 30) {
+            sentiment = 'BULLISH';
+            confidence = Math.min(80, 55 + (30 - rsi) * 1.5);
+        }
+    }
+    // Medium trend: Balanced approach
+    else {
+        if (rsi > 70 && !isBullishTrend) {
+            sentiment = 'BEARISH';
+            confidence = Math.min(75, 50 + (rsi - 70));
+        } else if (rsi < 30 && isBullishTrend) {
+            sentiment = 'BULLISH';
+            confidence = Math.min(75, 50 + (30 - rsi));
+        } else if (trendStrength > 2) {
+            sentiment = 'BULLISH';
+            confidence = Math.min(70, 50 + trendStrength * 3);
+        } else if (trendStrength < -2) {
+            sentiment = 'BEARISH';
+            confidence = Math.min(70, 50 + Math.abs(trendStrength) * 3);
+        }
     }
 
     // Determine regime
     let regime: MarketRegime = 'SIDEWAYS';
-    if (rsi > 60 && trendStrength > 1) regime = 'BULL_TREND';
-    else if (rsi < 40 && trendStrength < -1) regime = 'BEAR_TREND';
-    else if (Math.abs(trendStrength) > 3) regime = 'VOLATILE';
+    if (isStrongTrend && isBullishTrend) regime = 'BULL_TREND';
+    else if (isStrongTrend && !isBullishTrend) regime = 'BEAR_TREND';
+    else if (adx > 30 && Math.abs(trendStrength) > 3) regime = 'VOLATILE';
 
-    return { sentiment, confidence: Math.round(confidence), rsi: Math.round(rsi), regime };
+    return { 
+        sentiment, 
+        confidence: Math.round(confidence), 
+        rsi: Math.round(rsi), 
+        regime,
+        adx: Math.round(adx)
+    };
 }
 
 /**

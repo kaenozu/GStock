@@ -267,13 +267,31 @@ export class PaperTradingEngine {
     /**
      * 時価でポートフォリオ評価額を更新
      * @param prices - 銘柄ごとの現在価格
+     * @returns 更新後のポートフォリオ
      */
-    public updateEquityWithPrices(prices: Record<string, number>): void {
-        const positionValue = this.portfolio.positions.reduce((sum, p) => {
-            const currentPrice = prices[p.symbol] || p.averagePrice;
-            return sum + (p.quantity * currentPrice);
-        }, 0);
-        this.portfolio.equity = this.portfolio.cash + positionValue;
+    public updateEquityWithPrices(prices: Record<string, number>): Portfolio {
+        let totalPositionValue = 0;
+        
+        // 各ポジションの時価評価を計算
+        for (const position of this.portfolio.positions) {
+            const currentPrice = prices[position.symbol] || position.averagePrice;
+            const marketValue = position.quantity * currentPrice;
+            const costBasis = position.quantity * position.averagePrice;
+            const unrealizedPnL = marketValue - costBasis;
+            const unrealizedPnLPercent = costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
+            
+            // ポジションに時価情報を追加
+            position.currentPrice = currentPrice;
+            position.unrealizedPnL = Math.round(unrealizedPnL * 100) / 100;
+            position.unrealizedPnLPercent = Math.round(unrealizedPnLPercent * 100) / 100;
+            
+            totalPositionValue += marketValue;
+        }
+        
+        this.portfolio.equity = this.portfolio.cash + totalPositionValue;
+        this.portfolio.lastUpdated = new Date().toISOString();
+        
+        return this.getPortfolio();
     }
 
     /**
