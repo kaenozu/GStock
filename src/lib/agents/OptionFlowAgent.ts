@@ -35,7 +35,6 @@ export class OptionFlowAgent implements Agent {
         const { callVolume, putVolume, callOI, putOI, impliedVolatility, institutionalActivity, maxPain } = optionFlow;
         const currentPrice = data.length > 0 ? data[data.length - 1].close : 0;
 
-        const totalVolume = callVolume + putVolume;
         const putCallRatio = callVolume > 0 ? putVolume / callVolume : 0;
         const oiRatio = callOI > 0 ? putOI / callOI : 0;
 
