@@ -259,10 +259,7 @@ export default function Home() {
                 />
                 <HistoryPanel history={history} />
                 <FinancialsPanel symbol={currentAnalysis?.symbol || ''} />
-                <EarningsPanel 
-                  symbol={currentAnalysis?.symbol || ''}
-                  onEarningsDates={handleEarningsDates}
-                />
+                <EarningsPanel symbol={currentAnalysis?.symbol || ''} />
               </>
 
               {/* Trade Tab */}
