@@ -4,23 +4,67 @@
  */
 
 const SETTINGS_KEY = 'gstock_alert_settings';
+const ALERT_HISTORY_KEY = 'gstock_alert_history';
 
 export interface AlertSettings {
   enabled: boolean;
   soundEnabled: boolean;
   minConfidence: number; // Only alert if confidence >= this
+  enablePriceAlerts: boolean;
+  enableVolumeAlerts: boolean;
+  enableEarningsAlerts: boolean;
+  quietHours: {
+    enabled: boolean;
+    start: string; // HH:MM format
+    end: string; // HH:MM format
+  };
+}
+
+export interface AlertHistory {
+  id: string;
+  symbol: string;
+  signal: 'BUY' | 'SELL' | 'HOLD';
+  confidence: number;
+  price: number;
+  timestamp: number;
+  type: 'SIGNAL' | 'PRICE' | 'VOLUME' | 'EARNINGS';
+}
+
+export interface PriceAlert {
+  id: string;
+  symbol: string;
+  targetPrice: number;
+  condition: 'ABOVE' | 'BELOW';
+  enabled: boolean;
+}
+
+export interface VolumeAlert {
+  id: string;
+  symbol: string;
+  thresholdMultiplier: number; // e.g., 2 for 2x average volume
+  enabled: boolean;
 }
 
 const DEFAULT_SETTINGS: AlertSettings = {
   enabled: true,
   soundEnabled: false,
   minConfidence: 60,
+  enablePriceAlerts: false,
+  enableVolumeAlerts: false,
+  enableEarningsAlerts: true,
+  quietHours: {
+    enabled: false,
+    start: '22:00',
+    end: '08:00'
+  }
 };
 
 export class AlertService {
   private static lastSignal: Map<string, string> = new Map();
   private static audioContext: AudioContext | null = null;
-  
+  private static priceAlerts: Map<string, PriceAlert[]> = new Map();
+  private static volumeAlerts: Map<string, VolumeAlert[]> = new Map();
+
   /**
    * Request notification permission
    */
@@ -73,6 +117,29 @@ export class AlertService {
     const updated = { ...current, ...settings };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
   }
+
+  /**
+   * Check if currently in quiet hours
+   */
+  static isQuietHours(): boolean {
+    const settings = this.getSettings();
+    if (!settings.quietHours.enabled) return false;
+
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    
+    const [startHour, startMin] = settings.quietHours.start.split(':').map(Number);
+    const [endHour, endMin] = settings.quietHours.end.split(':').map(Number);
+    
+    const startTime = startHour * 60 + startMin;
+    const endTime = endHour * 60 + endMin;
+    
+    if (startTime < endTime) {
+      return currentTime >= startTime && currentTime < endTime;
+    } else {
+      return currentTime >= startTime || currentTime < endTime;
+    }
+  }
   
   /**
    * Send alert for signal change
@@ -86,7 +153,7 @@ export class AlertService {
   }): Promise<boolean> {
     const settings = this.getSettings();
     
-    if (!settings.enabled || !this.isAvailable()) {
+    if (!settings.enabled || !this.isAvailable() || this.isQuietHours()) {
       return false;
     }
     
@@ -94,15 +161,13 @@ export class AlertService {
       return false;
     }
     
-    // Check if signal changed
     const lastSignal = this.lastSignal.get(params.symbol);
     const currentSignalKey = `${params.signal}-${params.confidence}`;
     
     if (lastSignal === currentSignalKey) {
-      return false; // No change
+      return false;
     }
     
-    // Only alert on actionable signals (BUY/SELL), not HOLD
     if (params.signal === 'HOLD') {
       this.lastSignal.set(params.symbol, currentSignalKey);
       return false;
@@ -110,31 +175,163 @@ export class AlertService {
     
     this.lastSignal.set(params.symbol, currentSignalKey);
     
-    // Create notification
     const icon = params.signal === 'BUY' ? '🟢' : '🔴';
     const title = `${icon} ${params.symbol}: ${params.signal}`;
     const body = `信頼度: ${params.confidence}% | 価格: $${params.price.toFixed(2)}`;
+    
+    const notification = this.createNotification(title, body, params.symbol);
+    
+    this.addToHistory({
+      id: Date.now().toString(),
+      symbol: params.symbol,
+      signal: params.signal,
+      confidence: params.confidence,
+      price: params.price,
+      timestamp: Date.now(),
+      type: 'SIGNAL'
+    });
+    
+    if (notification && settings.soundEnabled) {
+      this.playAlertSound(params.signal);
+    }
+    
+    return notification !== null;
+  }
+
+  /**
+   * Price alert management
+   */
+  static addPriceAlert(alert: Omit<PriceAlert, 'id'>): string {
+    const id = Date.now().toString();
+    const newAlert: PriceAlert = { ...alert, id };
+    
+    const alerts = this.priceAlerts.get(alert.symbol) || [];
+    alerts.push(newAlert);
+    this.priceAlerts.set(alert.symbol, alerts);
+    
+    return id;
+  }
+
+  static removePriceAlert(symbol: string, alertId: string): void {
+    const alerts = this.priceAlerts.get(symbol) || [];
+    this.priceAlerts.set(symbol, alerts.filter(a => a.id !== alertId));
+  }
+
+  static getPriceAlerts(symbol: string): PriceAlert[] {
+    return this.priceAlerts.get(symbol) || [];
+  }
+
+  static checkPriceAlerts(symbol: string, currentPrice: number): void {
+    const settings = this.getSettings();
+    if (!settings.enablePriceAlerts || !settings.enabled) return;
+
+    const alerts = this.getPriceAlerts(symbol);
+    
+    alerts.forEach(alert => {
+      if (!alert.enabled) return;
+
+      const triggered = alert.condition === 'ABOVE' 
+        ? currentPrice >= alert.targetPrice
+        : currentPrice <= alert.targetPrice;
+
+      if (triggered) {
+        this.createNotification(
+          `📊 ${symbol} Price Alert`,
+          `Price ${alert.condition === 'ABOVE' ? 'above' : 'below'} $${alert.targetPrice}`,
+          symbol
+        );
+        
+        alert.enabled = false;
+        this.removePriceAlert(symbol, alert.id);
+      }
+    });
+  }
+
+  /**
+   * Volume alert management
+   */
+  static addVolumeAlert(alert: Omit<VolumeAlert, 'id'>): string {
+    const id = Date.now().toString();
+    const newAlert: VolumeAlert = { ...alert, id };
+    
+    const alerts = this.volumeAlerts.get(alert.symbol) || [];
+    alerts.push(newAlert);
+    this.volumeAlerts.set(alert.symbol, alerts);
+    
+    return id;
+  }
+
+  static removeVolumeAlert(symbol: string, alertId: string): void {
+    const alerts = this.volumeAlerts.get(symbol) || [];
+    this.volumeAlerts.set(symbol, alerts.filter(a => a.id !== alertId));
+  }
+
+  static getVolumeAlerts(symbol: string): VolumeAlert[] {
+    return this.volumeAlerts.get(symbol) || [];
+  }
+
+  static checkVolumeAlerts(symbol: string, currentVolume: number, avgVolume: number): void {
+    const settings = this.getSettings();
+    if (!settings.enableVolumeAlerts || !settings.enabled) return;
+
+    const alerts = this.getVolumeAlerts(symbol);
+    
+    alerts.forEach(alert => {
+      if (!alert.enabled) return;
+
+      const threshold = avgVolume * alert.thresholdMultiplier;
+      
+      if (currentVolume >= threshold) {
+        this.createNotification(
+          `📈 ${symbol} Volume Alert`,
+          `Volume ${alert.thresholdMultiplier}x average: ${currentVolume.toLocaleString()}`,
+          symbol
+        );
+        
+        alert.enabled = false;
+        this.removeVolumeAlert(symbol, alert.id);
+      }
+    });
+  }
+
+  /**
+   * Earnings alert
+   */
+  static async earningsAlert(symbol: string, earningsDate: string, epsEstimate: number | null): Promise<void> {
+    const settings = this.getSettings();
+    if (!settings.enableEarningsAlerts || !settings.enabled) return;
+
+    const title = `📅 ${symbol} Earnings`;
+    let body = `Earnings on ${earningsDate}`;
+    
+    if (epsEstimate) {
+      body += ` | EPS Estimate: $${epsEstimate.toFixed(2)}`;
+    }
+
+    this.createNotification(title, body, symbol);
+  }
+  
+  /**
+   * Create notification with common settings
+   */
+  private static createNotification(title: string, body: string, symbol: string): Notification | null {
+    if (!this.isAvailable() || this.isQuietHours()) {
+      return null;
+    }
     
     try {
       const notification = new Notification(title, {
         body,
         icon: '/favicon.ico',
-        tag: `gstock-${params.symbol}`, // Replace previous notification for same symbol
+        tag: `gstock-${symbol}`,
         requireInteraction: false,
       });
       
-      // Auto-close after 10 seconds
       setTimeout(() => notification.close(), 10000);
-      
-      // Play sound if enabled
-      if (settings.soundEnabled) {
-        this.playAlertSound(params.signal);
-      }
-      
-      return true;
+      return notification;
     } catch (error) {
       console.error('AlertService: Failed to create notification:', error);
-      return false;
+      return null;
     }
   }
   
@@ -154,8 +351,7 @@ export class AlertService {
       oscillator.connect(gainNode);
       gainNode.connect(ctx.destination);
       
-      // Different tones for BUY vs SELL
-      oscillator.frequency.value = signal === 'BUY' ? 880 : 440; // A5 for BUY, A4 for SELL
+      oscillator.frequency.value = signal === 'BUY' ? 880 : 440;
       oscillator.type = 'sine';
       
       gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
@@ -167,11 +363,55 @@ export class AlertService {
       console.error('AlertService: Failed to play sound:', error);
     }
   }
+
+  /**
+   * Alert history management
+   */
+  private static addToHistory(alert: AlertHistory): void {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const history = this.getAlertHistory();
+      history.unshift(alert);
+      
+      const maxHistory = 100;
+      const trimmedHistory = history.slice(0, maxHistory);
+      
+      localStorage.setItem(ALERT_HISTORY_KEY, JSON.stringify(trimmedHistory));
+    } catch (error) {
+      console.error('AlertService: Failed to save alert history:', error);
+    }
+  }
+
+  static getAlertHistory(): AlertHistory[] {
+    if (typeof window === 'undefined') return [];
+    
+    try {
+      const stored = localStorage.getItem(ALERT_HISTORY_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  static clearAlertHistory(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(ALERT_HISTORY_KEY);
+  }
   
   /**
    * Clear last signal cache (for testing)
    */
   static clearCache(): void {
     this.lastSignal.clear();
+  }
+
+  /**
+   * Reset all alerts
+   */
+  static resetAll(): void {
+    this.lastSignal.clear();
+    this.priceAlerts.clear();
+    this.volumeAlerts.clear();
   }
 }

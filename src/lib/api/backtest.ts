@@ -77,33 +77,6 @@ const runSimulation = (
       }
     }
   }
-    // EXIT (売り)
-    // 1. ベア転換 または
-    // 2. ブル継続だが信頼度が売り閾値以下に低下
-    else if (position !== null) {
-      const shouldSell = (sentiment === 'BEARISH') || (sentiment === 'BULLISH' && confidence <= sellThreshold);
-
-      if (shouldSell) {
-        const sellValue = position.amount * currentPrice;
-        const profit = sellValue - (position.amount * position.entryPrice);
-
-        if (profit > 0) winCount++;
-        tradeCount++;
-
-        balance = sellValue;
-        position = null;
-
-        markers.push({
-          time: currentTime,
-          position: 'aboveBar',
-          color: profit > 0 ? '#4CAF50' : '#FF5252',
-          shape: 'arrowDown',
-          text: `SELL (${profit > 0 ? '+' : ''}${Math.round(profit)})`,
-          size: 2
-        });
-      }
-    }
-  }
 
   // 最終ポジション評価
   if (position !== null) {

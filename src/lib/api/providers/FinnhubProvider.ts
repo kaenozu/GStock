@@ -1,5 +1,6 @@
 import { StockDataPoint, EarningsEvent, EarningsData } from '@/types/market';
 import { StockProvider } from './StockProvider';
+import { defaultRetryStrategy } from '../retry-strategy';
 
 export interface CompanyFinancials {
     symbol: string;
@@ -23,58 +24,74 @@ export class FinnhubProvider implements StockProvider {
         this.apiKey = process.env.FINNHUB_API_KEY || '';
     }
 
-    async fetchData(symbol: string): Promise<StockDataPoint[]> {
-        const to = Math.floor(Date.now() / 1000);
-        const from = to - (180 * 24 * 60 * 60); // 6 months
-
-        const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${this.apiKey}`;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Finnhub Error: ${response.status}`);
+    async isAvailable(): Promise<boolean> {
+        if (!this.apiKey) return false;
+        try {
+            await this.fetchQuote('AAPL');
+            return true;
+        } catch {
+            return false;
         }
+    }
 
-        const data = await response.json();
-        if (data.s === 'no_data') return [];
+    async fetchData(symbol: string): Promise<StockDataPoint[]> {
+        return defaultRetryStrategy.execute(async () => {
+            const to = Math.floor(Date.now() / 1000);
+            const from = to - (180 * 24 * 60 * 60); // 6 months
 
-        return data.t.map((ts: number, i: number) => ({
-            time: new Date(ts * 1000).toISOString().split('T')[0],
-            open: this.round(data.o[i]),
-            high: this.round(data.h[i]),
-            low: this.round(data.l[i]),
-            close: this.round(data.c[i]),
-            volume: data.v[i]
-        }));
+            const url = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${this.apiKey}`;
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Finnhub Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.s === 'no_data') return [];
+
+            return data.t.map((ts: number, i: number) => ({
+                time: new Date(ts * 1000).toISOString().split('T')[0],
+                open: this.round(data.o[i]),
+                high: this.round(data.h[i]),
+                low: this.round(data.l[i]),
+                close: this.round(data.c[i]),
+                volume: data.v[i]
+            }));
+        }).then(result => result.data);
     }
 
     async fetchQuote(symbol: string): Promise<number> {
-        const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.apiKey}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Finnhub Quote Error: ${response.status}`);
-        const data = await response.json();
-        return data.c;
+        return defaultRetryStrategy.execute(async () => {
+            const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.apiKey}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Finnhub Quote Error: ${response.status}`);
+            const data = await response.json();
+            return data.c;
+        }).then(result => result.data);
     }
 
     async fetchFinancials(symbol: string): Promise<CompanyFinancials> {
-        const url = `https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${this.apiKey}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Finnhub Financials Error: ${response.status}`);
-        const data = await response.json();
+        return defaultRetryStrategy.execute(async () => {
+            const url = `https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${this.apiKey}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Finnhub Financials Error: ${response.status}`);
+            const data = await response.json();
 
-        const m = data.metric || {};
-        return {
-            symbol,
-            pe: m.peBasicExclExtraTTM ?? null,
-            eps: m.epsBasicExclExtraItemsTTM ?? null,
-            epsGrowth: m.epsGrowth5Y ?? null,
-            roe: m.roeTTM ?? null,
-            revenueGrowth: m.revenueGrowth5Y ?? null,
-            marketCap: m.marketCapitalization ?? null,
-            dividendYield: m.dividendYieldIndicatedAnnual ?? null,
-            beta: m.beta ?? null,
-            _52wHigh: m['52WeekHigh'] ?? null,
-            _52wLow: m['52WeekLow'] ?? null,
-        };
+            const m = data.metric || {};
+            return {
+                symbol,
+                pe: m.peBasicExclExtraTTM ?? null,
+                eps: m.epsBasicExclExtraItemsTTM ?? null,
+                epsGrowth: m.epsGrowth5Y ?? null,
+                roe: m.roeTTM ?? null,
+                revenueGrowth: m.revenueGrowth5Y ?? null,
+                marketCap: m.marketCapitalization ?? null,
+                dividendYield: m.dividendYieldIndicatedAnnual ?? null,
+                beta: m.beta ?? null,
+                _52wHigh: m['52WeekHigh'] ?? null,
+                _52wLow: m['52WeekLow'] ?? null,
+            };
+        }).then(result => result.data);
     }
 
     private round(num: number): number {
@@ -82,52 +99,54 @@ export class FinnhubProvider implements StockProvider {
     }
 
     async fetchEarnings(symbol: string): Promise<EarningsData> {
-        // Fetch earnings calendar
-        const calendarUrl = `https://finnhub.io/api/v1/calendar/earnings?symbol=${symbol}&token=${this.apiKey}`;
-        const calendarRes = await fetch(calendarUrl);
-        if (!calendarRes.ok) throw new Error(`Finnhub Earnings Error: ${calendarRes.status}`);
-        const calendarData = await calendarRes.json();
+        return defaultRetryStrategy.execute(async () => {
+            // Fetch earnings calendar
+            const calendarUrl = `https://finnhub.io/api/v1/calendar/earnings?symbol=${symbol}&token=${this.apiKey}`;
+            const calendarRes = await fetch(calendarUrl);
+            if (!calendarRes.ok) throw new Error(`Finnhub Earnings Error: ${calendarRes.status}`);
+            const calendarData = await calendarRes.json();
 
-        // Fetch historical earnings
-        const historyUrl = `https://finnhub.io/api/v1/stock/earnings?symbol=${symbol}&token=${this.apiKey}`;
-        const historyRes = await fetch(historyUrl);
-        if (!historyRes.ok) throw new Error(`Finnhub Earnings History Error: ${historyRes.status}`);
-        const historyData = await historyRes.json();
+            // Fetch historical earnings
+            const historyUrl = `https://finnhub.io/api/v1/stock/earnings?symbol=${symbol}&token=${this.apiKey}`;
+            const historyRes = await fetch(historyUrl);
+            if (!historyRes.ok) throw new Error(`Finnhub Earnings History Error: ${historyRes.status}`);
+            const historyData = await historyRes.json();
 
-        // Parse next earnings date from calendar
-        let nextEarningsDate: string | null = null;
-        if (calendarData.earningsCalendar && calendarData.earningsCalendar.length > 0) {
-            const upcoming = calendarData.earningsCalendar.find(
-                (e: { date: string }) => new Date(e.date) >= new Date()
-            );
-            if (upcoming) {
-                nextEarningsDate = upcoming.date;
+            // Parse next earnings date from calendar
+            let nextEarningsDate: string | null = null;
+            if (calendarData.earningsCalendar && calendarData.earningsCalendar.length > 0) {
+                const upcoming = calendarData.earningsCalendar.find(
+                    (e: { date: string }) => new Date(e.date) >= new Date()
+                );
+                if (upcoming) {
+                    nextEarningsDate = upcoming.date;
+                }
             }
-        }
 
-        // Parse historical earnings
-        const history: EarningsEvent[] = (historyData || []).map((e: {
-            period: string;
-            actual: number | null;
-            estimate: number | null;
-            surprisePercent: number | null;
-            revenueActual?: number | null;
-            revenueEstimate?: number | null;
-        }) => ({
-            date: e.period,
-            epsActual: e.actual,
-            epsEstimate: e.estimate,
-            surprise: e.surprisePercent,
-            revenueActual: e.revenueActual ?? null,
-            revenueEstimate: e.revenueEstimate ?? null,
-            period: this.formatPeriod(e.period),
-        })).slice(0, 8);
+            // Parse historical earnings
+            const history: EarningsEvent[] = (historyData || []).map((e: {
+                period: string;
+                actual: number | null;
+                estimate: number | null;
+                surprisePercent: number | null;
+                revenueActual?: number | null;
+                revenueEstimate?: number | null;
+            }) => ({
+                date: e.period,
+                epsActual: e.actual,
+                epsEstimate: e.estimate,
+                surprise: e.surprisePercent,
+                revenueActual: e.revenueActual ?? null,
+                revenueEstimate: e.revenueEstimate ?? null,
+                period: this.formatPeriod(e.period),
+            })).slice(0, 8);
 
-        return {
-            symbol,
-            nextEarningsDate,
-            history,
-        };
+            return {
+                symbol,
+                nextEarningsDate,
+                history,
+            };
+        }).then(result => result.data);
     }
 
     private formatPeriod(dateStr: string): string {
