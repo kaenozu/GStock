@@ -20,20 +20,31 @@ export const Tooltip: React.FC<TooltipProps> = ({
   const containerRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (isVisible && tooltipRef.current && containerRef.current) {
+    // Reset position when visibility changes or position prop changes
+    if (!isVisible) return;
+    
+    // Use requestAnimationFrame to defer position calculation
+    const frame = requestAnimationFrame(() => {
+      if (!tooltipRef.current || !containerRef.current) return;
+      
       const tooltip = tooltipRef.current.getBoundingClientRect();
       const container = containerRef.current.getBoundingClientRect();
       
       // Adjust position if tooltip goes off screen
+      let newPosition = position;
       if (position === 'top' && container.top - tooltip.height < 10) {
-        setActualPosition('bottom');
+        newPosition = 'bottom';
       } else if (position === 'bottom' && container.bottom + tooltip.height > window.innerHeight - 10) {
-        setActualPosition('top');
-      } else {
-        setActualPosition(position);
+        newPosition = 'top';
       }
-    }
-  }, [isVisible, position]);
+      
+      if (newPosition !== actualPosition) {
+        setActualPosition(newPosition);
+      }
+    });
+    
+    return () => cancelAnimationFrame(frame);
+  }, [isVisible, position, actualPosition]);
 
   return (
     <span

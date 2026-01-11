@@ -18,7 +18,7 @@ export class FundamentalAgent {
         const { financials } = input;
 
         let score = 50;
-        let reasons: string[] = [];
+        const reasons: string[] = [];
 
         // P/E Analysis
         if (financials.pe !== null) {

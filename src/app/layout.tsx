@@ -20,11 +20,11 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <div className="app-container">
-          <ErrorBoundary name="RootLayout">
+        <ErrorBoundary name="RootLayout">
+          <div className="app-container">
             {children}
-          </ErrorBoundary>
-        </div>
+          </div>
+        </ErrorBoundary>
         <Toaster theme="dark" richColors position="bottom-right" />
       </body>
     </html>

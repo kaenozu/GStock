@@ -1,9 +1,10 @@
 /**
  * AutoEvaluator - Automatically evaluates pending predictions
  * Phase 19: The Nervous System
+ * Updated for Phase 20A: Uses server-side API
  */
 
-import { PredictionLogger } from './PredictionLogger';
+import { PredictionClient } from './PredictionClient';
 import { PredictionRecord } from '@/types/accuracy';
 
 export class AutoEvaluator {
@@ -18,7 +19,7 @@ export class AutoEvaluator {
     this.isRunning = true;
     
     try {
-      const pending = PredictionLogger.getPending();
+      const pending = await PredictionClient.getPending();
       if (pending.length === 0) return 0;
       
       let evaluatedCount = 0;
@@ -37,7 +38,7 @@ export class AutoEvaluator {
           const price = await this.fetchCurrentPrice(symbol);
           if (price > 0) {
             for (const record of records) {
-              PredictionLogger.evaluate(record.id, price);
+              await PredictionClient.evaluate(record.id, price);
               evaluatedCount++;
             }
           }

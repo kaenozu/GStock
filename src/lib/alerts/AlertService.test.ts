@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AlertService, AlertSettings } from './AlertService';
+import { AlertService } from './AlertService';
 
 // Fresh storage for each test
 let mockStorage: Record<string, string> = {};

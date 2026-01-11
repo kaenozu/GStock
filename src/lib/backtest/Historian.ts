@@ -29,12 +29,14 @@ export class Historian {
 
             // Valid for 24 hours
             if ((now - mtime) < 24 * 60 * 60 * 1000) {
+                console.log(`[Historian] Cache Hit: ${symbol} (${period})`);
                 const raw = fs.readFileSync(cacheFile, 'utf-8');
                 return JSON.parse(raw);
             }
         }
 
         // 2. Fetch from API
+        console.log(`[Historian] Fetching from API: ${symbol} (${period})`);
         const data = await this.fetchFromYahoo(symbol, period);
 
         if (data.length > 0) {
@@ -78,7 +80,7 @@ export class Historian {
                     close: this.round(quote.close[i]),
                     volume: quote.volume[i] || 0
                 };
-            }).filter((d: any) => d !== null);
+            }).filter((d: StockDataPoint | null): d is StockDataPoint => d !== null);
 
             return formatted.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 

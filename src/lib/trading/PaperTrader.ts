@@ -1,94 +1,204 @@
-import fs from 'fs';
+/**
+ * PaperTradingEngine - 模擬取引エンジン
+ * @description 仮想ポートフォリオの取引を管理する
+ * @module lib/trading/PaperTrader
+ */
+
+import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
-import { Portfolio, Trade, TradeRequest } from './types';
+import crypto from 'crypto';
+import { Portfolio, Trade, TradeRequest, TradingConfig } from './types';
 import { CircuitBreaker } from '@/lib/risk/CircuitBreaker';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+/** データディレクトリのパス（環境変数で上書き可能） */
+const DATA_DIR = process.env.GSTOCK_DATA_DIR || path.join(process.cwd(), 'data');
 const PORTFOLIO_FILE = path.join(DATA_DIR, 'paper_portfolio.json');
 
-const INITIAL_CASH = 1000000; // 1M JPY
+/** デフォルト設定 */
+const DEFAULT_CONFIG: TradingConfig = {
+    initialCash: 1000000, // 1M JPY
+    commissionRate: 0.001, // 0.1% 片道手数料
+    slippageRate: 0.0005, // 0.05% スリッページ
+};
 
+/**
+ * 模擬取引エンジン
+ * @class PaperTradingEngine
+ */
 export class PaperTradingEngine {
     private portfolio: Portfolio;
+    private config: TradingConfig;
+    private savePromise: Promise<void> | null = null;
 
-    constructor() {
-        this.portfolio = this.loadState();
+    /**
+     * @param config - 取引設定（オプション）
+     */
+    constructor(config?: Partial<TradingConfig>) {
+        this.config = { ...DEFAULT_CONFIG, ...config };
+        this.portfolio = this.loadStateSync();
     }
 
-    private loadState(): Portfolio {
+    /**
+     * ポートフォリオ状態を同期的に読み込み（初期化用）
+     * @private
+     */
+    private loadStateSync(): Portfolio {
         try {
-            if (!fs.existsSync(DATA_DIR)) {
-                fs.mkdirSync(DATA_DIR, { recursive: true });
+            if (!fsSync.existsSync(DATA_DIR)) {
+                fsSync.mkdirSync(DATA_DIR, { recursive: true });
             }
 
-            if (fs.existsSync(PORTFOLIO_FILE)) {
-                const data = fs.readFileSync(PORTFOLIO_FILE, 'utf-8');
+            if (fsSync.existsSync(PORTFOLIO_FILE)) {
+                const data = fsSync.readFileSync(PORTFOLIO_FILE, 'utf-8');
                 return JSON.parse(data);
             }
         } catch (error) {
             console.error("Failed to load portfolio:", error);
         }
 
-        // Default Initial State
+        return this.createInitialPortfolio();
+    }
+
+    /**
+     * 初期ポートフォリオを作成
+     * @private
+     */
+    private createInitialPortfolio(): Portfolio {
+        const now = new Date().toISOString();
         return {
-            cash: INITIAL_CASH,
-            equity: INITIAL_CASH,
-            initialHash: INITIAL_CASH,
+            cash: this.config.initialCash,
+            equity: this.config.initialCash,
+            dailyStartEquity: this.config.initialCash, // 日次開始時点の評価額
             positions: [],
             trades: [],
-            lastUpdated: new Date().toISOString()
+            lastUpdated: now,
+            dayStartDate: now.split('T')[0], // 日付のみ保存
         };
     }
 
-    private saveState() {
-        try {
-            if (!fs.existsSync(DATA_DIR)) {
-                fs.mkdirSync(DATA_DIR, { recursive: true });
+    /**
+     * ポートフォリオ状態を非同期で保存
+     * @private
+     */
+    private async saveStateAsync(): Promise<void> {
+        // 既に保存中の場合は待機
+        if (this.savePromise) {
+            await this.savePromise;
+        }
+
+        this.savePromise = (async () => {
+            try {
+                if (!fsSync.existsSync(DATA_DIR)) {
+                    await fs.mkdir(DATA_DIR, { recursive: true });
+                }
+                await fs.writeFile(PORTFOLIO_FILE, JSON.stringify(this.portfolio, null, 2));
+            } catch (error) {
+                console.error("Failed to save portfolio:", error);
+                throw error; // エラーを上位に伝播
+            } finally {
+                this.savePromise = null;
             }
-            fs.writeFileSync(PORTFOLIO_FILE, JSON.stringify(this.portfolio, null, 2));
-        } catch (error) {
-            console.error("Failed to save portfolio:", error);
+        })();
+
+        return this.savePromise;
+    }
+
+    /**
+     * 日次リセットのチェックと実行
+     * @private
+     */
+    private checkDailyReset(): void {
+        const today = new Date().toISOString().split('T')[0];
+        if (this.portfolio.dayStartDate !== today) {
+            this.portfolio.dayStartDate = today;
+            this.portfolio.dailyStartEquity = this.portfolio.equity;
         }
     }
 
+    /**
+     * 現在のポートフォリオを取得
+     * @returns Portfolio - ポートフォリオ状態
+     */
     public getPortfolio(): Portfolio {
-        // Recalculate equity based on latest logical state (prices might be stale here, caller should update them for display)
-        // But for trading logic, we return the state.
-        return this.portfolio;
+        this.checkDailyReset();
+        return { ...this.portfolio };
     }
 
-    public executeTrade(request: TradeRequest): { success: boolean, message: string, trade?: Trade } {
-        // 0. Circuit Breaker Check (Iron Dome)
+    /**
+     * 取引手数料を計算
+     * @param amount - 取引金額
+     * @returns 手数料
+     */
+    private calculateCommission(amount: number): number {
+        return amount * this.config.commissionRate;
+    }
+
+    /**
+     * スリッページを適用した価格を計算
+     * @param price - 基準価格
+     * @param side - 売買方向
+     * @returns スリッページ適用後の価格
+     */
+    private applySlippage(price: number, side: 'BUY' | 'SELL'): number {
+        const slippage = price * this.config.slippageRate;
+        return side === 'BUY' ? price + slippage : price - slippage;
+    }
+
+    /**
+     * 暗号学的に安全なIDを生成
+     * @private
+     */
+    private generateSecureId(): string {
+        return crypto.randomUUID();
+    }
+
+    /**
+     * 取引を実行
+     * @param request - 取引リクエスト
+     * @returns 取引結果
+     */
+    public async executeTrade(request: TradeRequest): Promise<{ success: boolean; message: string; trade?: Trade }> {
+        this.checkDailyReset();
+
+        // Circuit Breaker チェック
         const safetyCheck = CircuitBreaker.checkTrade(this.portfolio, request);
         if (!safetyCheck.allowed) {
             console.warn(`[Iron Dome] Trade Rejected: ${safetyCheck.reason}`);
             return { success: false, message: safetyCheck.reason || "Risk Check Failed" };
         }
 
-        const { symbol, side, price, reason } = request;
-        const quantity = request.quantity || 1; // Default to 1 unit if not specified (should be improved)
-        const totalCost = price * quantity;
+        const { symbol, side, reason } = request;
+        const quantity = request.quantity || 1;
+        
+        // スリッページを適用した実効価格
+        const executionPrice = this.applySlippage(request.price, side);
+        const grossAmount = executionPrice * quantity;
+        const commission = this.calculateCommission(grossAmount);
 
         if (side === 'BUY') {
+            const totalCost = grossAmount + commission;
+            
             if (this.portfolio.cash < totalCost) {
-                return { success: false, message: "Insufficient Funds" };
+                return { success: false, message: `Insufficient Funds (Required: ¥${totalCost.toLocaleString()}, Available: ¥${this.portfolio.cash.toLocaleString()})` };
             }
 
-            // Deduct Cash
+            // 現金を減らす
             this.portfolio.cash -= totalCost;
 
-            // Update Position
+            // ポジション更新
             const existingPos = this.portfolio.positions.find(p => p.symbol === symbol);
             if (existingPos) {
-                // Average Price Calculation
-                const totalValue = (existingPos.quantity * existingPos.averagePrice) + totalCost;
+                // 平均取得価格の再計算（手数料込み）
+                const existingCost = existingPos.quantity * existingPos.averagePrice;
+                const newCost = totalCost;
                 existingPos.quantity += quantity;
-                existingPos.averagePrice = totalValue / existingPos.quantity;
+                existingPos.averagePrice = (existingCost + newCost) / existingPos.quantity;
             } else {
                 this.portfolio.positions.push({
                     symbol,
                     quantity,
-                    averagePrice: price
+                    averagePrice: totalCost / quantity, // 手数料込みの平均取得価格
                 });
             }
 
@@ -98,41 +208,92 @@ export class PaperTradingEngine {
                 return { success: false, message: "Insufficient Holdings" };
             }
 
-            // Add Cash
-            this.portfolio.cash += totalCost;
+            // 現金を増やす（手数料を引く）
+            const netProceeds = grossAmount - commission;
+            this.portfolio.cash += netProceeds;
 
-            // Update Position
+            // ポジション更新
             existingPos.quantity -= quantity;
             if (existingPos.quantity === 0) {
                 this.portfolio.positions = this.portfolio.positions.filter(p => p.symbol !== symbol);
             }
         }
 
-        // Record Trade
+        // 評価額を更新
+        this.updateEquity();
+
+        // 取引記録
         const trade: Trade = {
-            id: Math.random().toString(36).substring(7),
+            id: this.generateSecureId(),
             timestamp: new Date().toISOString(),
             symbol,
             side,
             quantity,
-            price,
-            total: totalCost,
-            reason
+            price: executionPrice,
+            total: grossAmount,
+            commission,
+            reason: reason || 'Manual Trade',
         };
-        this.portfolio.trades.unshift(trade); // Add to top
-        if (this.portfolio.trades.length > 50) this.portfolio.trades.pop(); // Keep last 50
+
+        this.portfolio.trades.unshift(trade);
+        if (this.portfolio.trades.length > 50) {
+            this.portfolio.trades.pop();
+        }
 
         this.portfolio.lastUpdated = new Date().toISOString();
-        this.saveState();
+
+        // 非同期で保存（エラーをキャッチしてログ）
+        this.saveStateAsync().catch(err => {
+            console.error('[PaperTrader] Failed to persist trade:', err);
+        });
 
         return { success: true, message: "Order Executed", trade };
     }
 
-    // New method to manually reset or inject funds (cheat code for debugging)
-    public resetAccount() {
-        if (fs.existsSync(PORTFOLIO_FILE)) {
-            fs.unlinkSync(PORTFOLIO_FILE);
+    /**
+     * 評価額を更新（ポジションの時価評価は呼び出し側で行う想定）
+     * @private
+     */
+    private updateEquity(): void {
+        // 簡易計算：現金 + ポジションの取得原価ベース
+        // 実際の時価評価は呼び出し側で価格情報を渡して行う
+        const positionValue = this.portfolio.positions.reduce(
+            (sum, p) => sum + (p.quantity * p.averagePrice),
+            0
+        );
+        this.portfolio.equity = this.portfolio.cash + positionValue;
+    }
+
+    /**
+     * 時価でポートフォリオ評価額を更新
+     * @param prices - 銘柄ごとの現在価格
+     */
+    public updateEquityWithPrices(prices: Record<string, number>): void {
+        const positionValue = this.portfolio.positions.reduce((sum, p) => {
+            const currentPrice = prices[p.symbol] || p.averagePrice;
+            return sum + (p.quantity * currentPrice);
+        }, 0);
+        this.portfolio.equity = this.portfolio.cash + positionValue;
+    }
+
+    /**
+     * アカウントをリセット
+     */
+    public async resetAccount(): Promise<void> {
+        try {
+            if (fsSync.existsSync(PORTFOLIO_FILE)) {
+                await fs.unlink(PORTFOLIO_FILE);
+            }
+        } catch (error) {
+            console.error('Failed to delete portfolio file:', error);
         }
-        this.portfolio = this.loadState();
+        this.portfolio = this.createInitialPortfolio();
+    }
+
+    /**
+     * 取引設定を取得
+     */
+    public getConfig(): TradingConfig {
+        return { ...this.config };
     }
 }

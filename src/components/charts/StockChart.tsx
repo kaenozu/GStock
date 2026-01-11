@@ -1,6 +1,10 @@
 'use client';
 
+<<<<<<< HEAD
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+=======
+import React, { useEffect, useRef } from 'react';
+>>>>>>> origin/main
 import { createChart, ColorType, IChartApi, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { StockDataPoint, PredictionPoint, ChartIndicators, ChartMarker, ChartSettings } from '@/types/market';
 import { EarningsOverlay, EarningsMarker } from './EarningsOverlay';
@@ -15,7 +19,11 @@ interface ChartProps {
     earningsTooltip?: string;
 }
 
+<<<<<<< HEAD
 const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, indicators, markers, settings, earningsDate, earningsTooltip }) => {
+=======
+const StockChart: React.FC<ChartProps> = React.memo(function StockChart({ data, predictionData, indicators, markers, settings }) {
+>>>>>>> origin/main
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const [earningsMarkers, setEarningsMarkers] = useState<EarningsMarker[]>([]);
@@ -89,8 +97,10 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                     wickDownColor: '#ef4444',
                 });
 
+                console.log('[StockChart] Data received:', data?.length, 'points');
                 if (data && data.length > 0) {
                     candlestickSeries.setData(data);
+                    console.log('[StockChart] Chart data set successfully');
 
                     chart.timeScale().setVisibleLogicalRange({
                         from: data.length - 20,

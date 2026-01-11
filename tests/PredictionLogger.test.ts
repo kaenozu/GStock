@@ -3,7 +3,7 @@
  * Phase 20A-2: Stability Sprint
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 // Mock localStorage and window
 const localStorageMock = (() => {
@@ -57,7 +57,7 @@ describe('PredictionLogger', () => {
         regime: 'VOLATILE',
       });
 
-      expect((record as any).regime).toBe('VOLATILE');
+      expect(record.regime).toBe('VOLATILE');
     });
 
     it('should persist records to storage', () => {

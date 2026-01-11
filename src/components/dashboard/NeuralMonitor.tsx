@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, Zap, Activity, HelpCircle } from 'lucide-react';
+import { Brain, Zap, Activity } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { AnalysisResult } from '@/types/market';
 import { TermWithTooltip } from '@/components/common/Tooltip';
@@ -10,7 +10,7 @@ interface NeuralMonitorProps {
     confidence: number;
 }
 
-export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(({ analysis, isPaused, confidence }) => {
+export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(function NeuralMonitor({ analysis, isPaused, confidence }) {
     if (!analysis || isPaused || !analysis.signals) {
         return null;
     }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Simple API key authentication middleware
-export function withAuth(handler: (req: NextRequest, context?: any) => Promise<NextResponse>) {
-    return async (req: NextRequest, context?: any) => {
+export function withAuth(handler: (req: NextRequest, context?: unknown) => Promise<NextResponse>) {
+    return async (req: NextRequest, context?: unknown) => {
         // Skip auth for development if needed
         if (process.env.NODE_ENV === 'development' && process.env.SKIP_AUTH === 'true') {
             return handler(req, context);

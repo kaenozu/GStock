@@ -4,13 +4,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Zap, Play, Pause, Layers, FlaskConical, BarChart3, TrendingUp, Settings } from 'lucide-react';
 import styles from './page.module.css';
-import { ChartSettings, DisplaySignal, ChartMarker } from '@/types/market';
+import { DisplaySignal, ChartMarker } from '@/types/market';
 import { CONFIDENCE_THRESHOLD, MONITOR_LIST } from '@/config/constants';
 
 // Hooks
 import { useScanning } from '@/hooks/useScanning';
 import { usePersistence } from '@/hooks/usePersistence';
 import { useAnalysis } from '@/hooks/useAnalysis';
+import { useRealtimePrice } from '@/hooks/useRealtimePrice';
 
 // Components
 import { SignalCard } from '@/components/dashboard/SignalCard';
@@ -24,17 +25,24 @@ import { EarningsPanel } from '@/components/dashboard/EarningsPanel';
 import { AccuracyPanel } from '@/components/dashboard/AccuracyPanel';
 import { AlertSettingsPanel } from '@/components/dashboard/AlertSettingsPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
-import { VirtualScroll } from '@/components/common/VirtualScroll';
+// VirtualScroll available but not currently used
 import { SettingsPanel } from '@/components/common/SettingsPanel';
-import { TabPanel, Tab } from '@/components/common/TabPanel';
+import { TabPanel } from '@/components/common/TabPanel';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { ConnectionStatusIndicator } from '@/components/common/ConnectionStatus';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
 export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
+<<<<<<< HEAD
   const [earningsMarkers, setEarningsMarkers] = useState<ChartMarker[]>([]);
   const [nextEarningsDate, setNextEarningsDate] = useState<string | null>(null);
   const [earningsTooltip, setEarningsTooltip] = useState<string>('');
+=======
+  // Earnings markers prepared for future integration
+  const earningsMarkers: ChartMarker[] = [];
+>>>>>>> origin/main
 
   const {
     watchlist, setWatchlist,
@@ -50,7 +58,6 @@ export default function Home() {
     setShowIndicators,
     updateBestTrade,
     chartSettings,
-    setChartSettings,
     deepReport,
     isBacktestLoading,
     runDeepBacktest,
@@ -62,6 +69,22 @@ export default function Home() {
     updateBestTrade,
     (item) => setHistory(prev => [item, ...prev.slice(0, 99)])
   );
+
+  // WebSocketリアルタイム価格
+  const {
+    prices: realtimePrices,
+    status: wsStatus,
+    error: wsError,
+    subscribe: wsSubscribe,
+    isEnabled: wsEnabled,
+  } = useRealtimePrice();
+
+  // スキャン中のシンボルをWebSocketで購読
+  React.useEffect(() => {
+    if (scanningSymbol && wsEnabled) {
+      wsSubscribe(scanningSymbol);
+    }
+  }, [scanningSymbol, wsEnabled, wsSubscribe]);
 
   const currentAnalysis = useMemo(() => {
     if (bestTrade && bestTrade.history) {
@@ -129,29 +152,20 @@ export default function Home() {
     }
   }, [bestTrade, isPaused]);
 
-  // Handler for Earnings dates -> Chart markers
-  const handleEarningsDates = (dates: string[]) => {
-    const markers: ChartMarker[] = dates.map((date, i) => ({
-      time: date,
-      position: 'aboveBar',
-      color: i === 0 ? '#f59e0b' : '#6366f1', // First is next earnings (amber), rest are past (indigo)
-      shape: 'circle',
-      text: i === 0 ? '📅 次回決算' : '📊',
-      size: i === 0 ? 2 : 1,
-    }));
-    setEarningsMarkers(markers);
-  };
+  // Note: Earnings markers feature is prepared but not yet integrated
+  // The earningsMarkers state can be populated via EarningsPanel callback when needed
 
   // Handler for Watchlist Toggle
   const handleToggleWatchlist = (symbol: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') => {
     if (watchlist.some(item => item.symbol === symbol)) {
       setWatchlist(watchlist.filter(item => item.symbol !== symbol));
     } else {
-      setWatchlist([...watchlist, { symbol, price, changePercent: 0, sentiment: sentiment as any }]);
+      setWatchlist([...watchlist, { symbol, price, changePercent: 0, sentiment: sentiment as 'BULLISH' | 'BEARISH' | 'NEUTRAL' }]);
     }
   };
 
   return (
+    <ErrorBoundary>
     <main className={`${styles.main} ${isLive ? styles.liveModeActive : ''}`}>
       <div className={styles.container}>
         {/* Header */}
@@ -201,6 +215,13 @@ export default function Home() {
               指標
             </button>
             <SettingsPanel />
+            {wsEnabled && (
+              <ConnectionStatusIndicator
+                status={wsStatus}
+                error={wsError}
+                compact
+              />
+            )}
           </div>
         </header>
 
@@ -223,6 +244,7 @@ export default function Home() {
               bestTrade={bestTrade}
               isInWatchlist={watchlist.some(item => item.symbol === scanningSymbol)}
               onToggleWatchlist={handleToggleWatchlist}
+              realtimePrice={scanningSymbol ? realtimePrices[scanningSymbol] : null}
             >
               {/* Backtest Integration */}
               {!deepReport && bestTrade && (
@@ -325,5 +347,6 @@ export default function Home() {
         </div>
       </div>
     </main>
+    </ErrorBoundary>
   );
 }
