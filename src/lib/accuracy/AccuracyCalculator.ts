@@ -47,13 +47,25 @@ export class AccuracyCalculator {
     const confidenceCalibration = averageConfidence > 0
       ? hitRate / averageConfidence
       : 0;
-    
+
+    // Regime calculation helper
+    const getRegimeForPrediction = (predicted: 'BULLISH' | 'BEARISH' | 'NEUTRAL', actual: 'UP' | 'DOWN' | 'FLAT'): string => {
+      if (actual === 'FLAT' || predicted === 'NEUTRAL') return 'SIDEWAYS';
+      if (predicted === 'BULLISH' && actual === 'UP') return 'BULL_TREND';
+      if (predicted === 'BEARISH' && actual === 'DOWN') return 'BEAR_TREND';
+      return 'VOLATILE';
+    };
+
     // Accuracy by regime
     const byRegime: AccuracyMetrics['byRegime'] = {};
     const regimes = ['BULL_TREND', 'BEAR_TREND', 'SIDEWAYS', 'VOLATILE', 'SQUEEZE'];
-    
+
     for (const regime of regimes) {
-      const regimeRecords = evaluated.filter(r => (r as any).regime === regime);
+      const regimeRecords = evaluated.filter(r => {
+        const actual = r.actualDirection || 'FLAT';
+        const predicted = r.predictedDirection;
+        return getRegimeForPrediction(predicted, actual) === regime;
+      });
       const regimeCorrect = regimeRecords.filter(r => r.isCorrect);
       byRegime[regime] = {
         total: regimeRecords.length,

@@ -16,12 +16,12 @@ export interface OptimizationResult {
  */
 const runSimulation = (
   data: StockDataPoint[],
-  aiSignals: any[],
+  aiSignals: unknown[],
   params: BacktestParams,
   initialBalance: number
 ): BacktestResult => {
   let balance = initialBalance;
-  let position: { entryPrice: number, amount: number } | null = null;
+  let position: { entryPrice: number; amount: number } | null = null;
   let winCount = 0;
   let tradeCount = 0;
   const markers: ChartMarker[] = [];
@@ -29,10 +29,10 @@ const runSimulation = (
   const { buyThreshold, sellThreshold } = params;
 
   for (const signal of aiSignals) {
-    const currentPrice = signal.price;
-    const currentTime = signal.time;
-    const confidence = signal.confidence;
-    const sentiment = signal.sentiment;
+    const currentPrice = (signal as { price?: number }).price || 0;
+    const currentTime = (signal as { time?: string }).time || '';
+    const confidence = (signal as { confidence?: number }).confidence || 0;
+    const sentiment = (signal as { sentiment?: string }).sentiment || 'NEUTRAL';
 
     // ENTRY (買い)
     // 信頼度が買い閾値以上ならエントリー
@@ -50,6 +50,33 @@ const runSimulation = (
         size: 2
       });
     }
+    // EXIT (売り)
+    // 1. ベア転換または
+    // 2. ブル継続だが信頼度が売り閾値以下に低下
+    else if (position !== null) {
+      const shouldSell = (sentiment === 'BEARISH') || (sentiment === 'BULLISH' && confidence <= sellThreshold);
+
+      if (shouldSell) {
+        const sellValue = position.amount * currentPrice;
+        const profit = sellValue - (position.amount * position.entryPrice);
+
+        if (profit > 0) winCount++;
+        tradeCount++;
+
+        balance = sellValue;
+        position = null;
+
+        markers.push({
+          time: currentTime,
+          position: 'aboveBar',
+          color: profit > 0 ? '#4CAF50' : '#FF5252',
+          shape: 'arrowDown',
+          text: `SELL (${profit > 0 ? '+' : ''}${Math.round(profit)})`,
+          size: 2
+        });
+      }
+    }
+  }
     // EXIT (売り)
     // 1. ベア転換 または
     // 2. ブル継続だが信頼度が売り閾値以下に低下

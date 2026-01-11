@@ -67,7 +67,7 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({
       }));
   }, [assets]);
 
-  // Custom tooltip
+  // Custom tooltip component (defined outside render)
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { name: string; value: number; amount?: number } }> }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -88,7 +88,7 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({
     return null;
   };
 
-  // Simple legend component
+  // Simple legend component (defined outside render)
   const SimpleLegend = () => (
     <div className={styles.legend}>
       {currentData.map((entry, index) => (

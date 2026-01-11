@@ -9,22 +9,25 @@ export const usePersistence = () => {
     const [executionMode, setExecutionMode] = useState<ExecutionMode>('PAPER');
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
+        const initializePersistence = () => {
+            if (typeof window === 'undefined') return;
 
-        const savedWatchlist = localStorage.getItem('gstock-watchlist');
-        if (savedWatchlist) {
-            try { setWatchlist(JSON.parse(savedWatchlist)); } catch (e) { }
-        }
+            const savedWatchlist = localStorage.getItem('gstock-watchlist');
+            if (savedWatchlist) {
+                try { setWatchlist(JSON.parse(savedWatchlist)); } catch { }
+            }
 
-        const savedHistory = localStorage.getItem('gstock-history');
-        if (savedHistory) {
-            try { setHistory(JSON.parse(savedHistory)); } catch (e) { }
-        }
+            const savedHistory = localStorage.getItem('gstock-history');
+            if (savedHistory) {
+                try { setHistory(JSON.parse(savedHistory)); } catch { }
+            }
 
-        const savedMode = localStorage.getItem('gstock-mode');
-        if (savedMode === 'LIVE' || savedMode === 'PAPER') {
-            setExecutionMode(savedMode);
-        }
+            const savedMode = localStorage.getItem('gstock-mode');
+            if (savedMode === 'LIVE' || savedMode === 'PAPER') {
+                setExecutionMode(savedMode);
+            }
+        };
+        initializePersistence();
     }, []);
 
     useEffect(() => {

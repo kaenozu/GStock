@@ -153,13 +153,12 @@ export function VariableVirtualScroll<T>({
       const newHeights = new Map(itemHeights);
       
       entries.forEach(entry => {
-        const index = parseInt(entry.target.getAttribute('data-index') || '0');
         const height = entry.contentRect.height;
-        
-        if (height > 0 && height !== newHeights.get(index)) {
-          newHeights.set(index, height);
-        }
-      });
+
+      if (height > 0 && height !== newHeights.get(index)) {
+        newHeights.set(index, height);
+      }
+    });
       
       setItemHeights(newHeights);
     });

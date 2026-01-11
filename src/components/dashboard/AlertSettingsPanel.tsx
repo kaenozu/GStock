@@ -10,9 +10,12 @@ export const AlertSettingsPanel: React.FC = () => {
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'default'>('default');
   
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPermissionStatus(Notification.permission);
-    }
+    const checkPermission = () => {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setPermissionStatus(Notification.permission);
+      }
+    };
+    checkPermission();
   }, []);
   
   const handleRequestPermission = async () => {

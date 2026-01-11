@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+type HandlerContext = Record<string, unknown> | undefined;
+
 // Simple API key authentication middleware
-export function withAuth(handler: (req: NextRequest, context?: any) => Promise<NextResponse>) {
-    return async (req: NextRequest, context?: any) => {
+export function withAuth(handler: (req: NextRequest, context?: HandlerContext) => Promise<NextResponse>) {
+    return async (req: NextRequest, context?: HandlerContext) => {
         // Skip auth for development if needed
         if (process.env.NODE_ENV === 'development' && process.env.SKIP_AUTH === 'true') {
             return handler(req, context);
@@ -30,31 +32,43 @@ export function withAuth(handler: (req: NextRequest, context?: any) => Promise<N
     };
 }
 
+interface TradeRequest {
+    symbol: string;
+    side: 'BUY' | 'SELL';
+    quantity: number;
+    price: number;
+}
+
+interface ValidationResult {
+    valid: boolean;
+    errors?: string[];
+}
+
 // Input validation utilities
 export function validateSymbol(symbol: string): boolean {
     // Basic symbol validation: 1-5 letters, optionally with .extension
     return /^[A-Z]{1,5}(\.[A-Z]{1,3})?$/.test(symbol.toUpperCase());
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function validateTradeRequest(data: any): { valid: boolean; errors?: string[] } {
+export function validateTradeRequest(data: unknown): ValidationResult {
     const errors: string[] = [];
+    const tradeData = data as TradeRequest;
 
-    if (!data.symbol || typeof data.symbol !== 'string') {
+    if (!tradeData.symbol || typeof tradeData.symbol !== 'string') {
         errors.push('Symbol is required and must be a string');
-    } else if (!validateSymbol(data.symbol)) {
+    } else if (!validateSymbol(tradeData.symbol)) {
         errors.push('Invalid symbol format');
     }
 
-    if (!data.side || !['BUY', 'SELL'].includes(data.side)) {
+    if (!tradeData.side || !['BUY', 'SELL'].includes(tradeData.side)) {
         errors.push('Side must be either BUY or SELL');
     }
 
-    if (!data.quantity || typeof data.quantity !== 'number' || data.quantity <= 0) {
+    if (!tradeData.quantity || typeof tradeData.quantity !== 'number' || tradeData.quantity <= 0) {
         errors.push('Quantity must be a positive number');
     }
 
-    if (!data.price || typeof data.price !== 'number' || data.price <= 0) {
+    if (!tradeData.price || typeof tradeData.price !== 'number' || tradeData.price <= 0) {
         errors.push('Price must be a positive number');
     }
 

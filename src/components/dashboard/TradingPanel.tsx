@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, History, PlayCircle } from 'lucide-react';
+import { History } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { Portfolio, Trade } from '@/lib/trading/types';
 import { Skeleton } from '@/components/common/Skeleton';
@@ -94,10 +94,9 @@ export const TradingPanel = React.memo(({ symbol, currentPrice, executionMode }:
     return (
         <div className={styles.card} style={{ borderColor: 'var(--accent-purple)' }}>
             <div className={styles.cardHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <DollarSign size={20} color="var(--accent-purple)" />
-                    <h2 className={styles.cardTitle}>仮想ポートフォリオ (Iron Dome)</h2>
-                </div>
+             <div className={styles.cardHeader}>
+                 <h2 className={styles.cardTitle}>仮想ポートフォリオ (Iron Dome)</h2>
+             </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
