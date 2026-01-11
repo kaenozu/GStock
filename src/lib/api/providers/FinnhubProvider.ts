@@ -1,4 +1,4 @@
-import { StockDataPoint } from '@/types/market';
+import { StockDataPoint, InsiderSentimentData } from '@/types/market';
 import { StockProvider } from './StockProvider';
 
 export interface CompanyFinancials {
@@ -106,6 +106,35 @@ export class FinnhubProvider implements StockProvider {
             }));
         } catch (error) {
             console.error(`[Finnhub] Earnings calendar error for ${symbol}:`, error);
+            return [];
+        }
+    }
+
+    async fetchInsiderSentiment(symbol: string): Promise<InsiderSentimentData[]> {
+        const from = '2022-01-01'; // Fetch sufficiently long history
+        const to = new Date().toISOString().split('T')[0];
+        const url = `https://finnhub.io/api/v1/stock/insider-sentiment?symbol=${symbol}&from=${from}&to=${to}&token=${this.apiKey}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Finnhub Insider Sentiment Error: ${response.status}`);
+            const data = await response.json();
+
+            if (!data.data || !Array.isArray(data.data)) return [];
+
+            // Sort by Date Descending
+            return data.data.map((item: any) => ({
+                symbol: item.symbol,
+                year: item.year,
+                month: item.month,
+                change: item.change,
+                mspr: item.mspr
+            })).sort((a: InsiderSentimentData, b: InsiderSentimentData) => {
+                if (a.year !== b.year) return b.year - a.year;
+                return b.month - a.month;
+            });
+        } catch (error) {
+            console.error(`[Finnhub] Insider Sentiment error for ${symbol}:`, error);
             return [];
         }
     }
