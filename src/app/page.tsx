@@ -35,14 +35,9 @@ const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr
 
 export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
-<<<<<<< HEAD
   const [earningsMarkers, setEarningsMarkers] = useState<ChartMarker[]>([]);
   const [nextEarningsDate, setNextEarningsDate] = useState<string | null>(null);
   const [earningsTooltip, setEarningsTooltip] = useState<string>('');
-=======
-  // Earnings markers prepared for future integration
-  const earningsMarkers: ChartMarker[] = [];
->>>>>>> origin/main
 
   const {
     watchlist, setWatchlist,
