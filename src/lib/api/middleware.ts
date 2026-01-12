@@ -25,7 +25,7 @@ function getAuthMode(): AuthMode {
 export function withAuth(handler: (req: NextRequest, context?: unknown) => Promise<NextResponse>) {
     return async (req: NextRequest, context?: unknown) => {
         const authMode = getAuthMode();
-        
+
         // No authentication required
         if (authMode === 'none') {
             return handler(req, context);
@@ -77,6 +77,30 @@ export function validateTradeRequest(data: any): { valid: boolean; errors?: stri
 
     if (!data.price || typeof data.price !== 'number' || data.price <= 0) {
         errors.push('Price must be a positive number');
+    }
+
+    return {
+        valid: errors.length === 0,
+        errors: errors.length > 0 ? errors : undefined
+    };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function validateScanRequest(data: any): { valid: boolean; errors?: string[] } {
+    const errors: string[] = [];
+
+    if (!data.symbols || !Array.isArray(data.symbols) || data.symbols.length === 0) {
+        errors.push('Symbols array is required and cannot be empty');
+        return { valid: false, errors };
+    }
+
+    if (data.symbols.some((s: any) => typeof s !== 'string')) {
+        errors.push('All symbols must be strings');
+    }
+
+    // Optional period check
+    if (data.period && typeof data.period !== 'string') {
+        errors.push('Period must be a string');
     }
 
     return {

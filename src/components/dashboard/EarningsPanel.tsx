@@ -31,11 +31,11 @@ export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
             setError(null);
             try {
                 const res = await fetch(`/api/earnings?symbol=${symbol}`);
-                if (!res.ok) throw new Error('Failed to fetch earnings');
+                if (!res.ok) throw new Error('決算情報を取得できませんでした');
                 const data = await res.json();
                 setEarnings(data);
             } catch (e: unknown) {
-                setError(e instanceof Error ? e.message : 'Unknown error');
+                setError(e instanceof Error ? e.message : '予期しないエラーが発生しました');
             } finally {
                 setLoading(false);
             }
@@ -109,7 +109,7 @@ export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
                             background: daysUntil !== null && daysUntil <= 7 ? '#ef4444' : '#10b981',
                             padding: '2px 8px',
                             borderRadius: '12px',
-                            fontSize: '0.7rem',
+                            fontSize: '0.75rem',
                             fontWeight: 'bold',
                         }}>
                             {daysUntil !== null ? (daysUntil <= 0 ? 'TODAY' : `${daysUntil} days`) : '-'}
@@ -148,7 +148,7 @@ export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
             )}
 
             {earnings.length > 1 && (
-                <div style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: '#64748b' }}>
+                <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
                     +{earnings.length - 1} more upcoming
                 </div>
             )}

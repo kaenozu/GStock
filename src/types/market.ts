@@ -126,3 +126,12 @@ export interface EarningsData {
   nextEarningsDate: string | null;
   history: EarningsEvent[];
 }
+
+// Insider Sentiment Types
+export interface InsiderSentimentData {
+  symbol: string;
+  year: number;
+  month: number;
+  change: number;      // Net buying/selling share value/volume
+  mspr: number;        // Monthly Share Purchase Ratio
+}

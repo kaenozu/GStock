@@ -4,7 +4,7 @@
  * @module lib/trading/providers/InternalBroker
  */
 
-import { Portfolio, Trade, TradeRequest, BrokerProvider } from '../types';
+import { Portfolio, Trade, TradeRequest, BrokerProvider, OrderType } from '../types';
 import { PaperTradingEngine } from '../PaperTrader';
 
 /**
@@ -14,7 +14,7 @@ import { PaperTradingEngine } from '../PaperTrader';
 export class InternalPaperBroker implements BrokerProvider {
     /** ブローカー名 */
     readonly name = 'Internal PaperAccount';
-    
+
     private engine: PaperTradingEngine;
 
     /**
@@ -30,23 +30,23 @@ export class InternalPaperBroker implements BrokerProvider {
      */
     async getPortfolio(): Promise<Portfolio> {
         const portfolio = this.engine.getPortfolio();
-        
+
         // ポジションがあれば時価評価を取得
         if (portfolio.positions.length > 0) {
             const prices = await this.fetchCurrentPrices(portfolio.positions.map(p => p.symbol));
             return this.engine.updateEquityWithPrices(prices);
         }
-        
+
         return portfolio;
     }
-    
+
     /**
      * 複数銘柄の現在価格を取得
      * @private
      */
     private async fetchCurrentPrices(symbols: string[]): Promise<Record<string, number>> {
         const prices: Record<string, number> = {};
-        
+
         // 並列で価格取得
         await Promise.all(symbols.map(async (symbol) => {
             try {
@@ -61,7 +61,7 @@ export class InternalPaperBroker implements BrokerProvider {
                 // エラー時はスキップ（取得価格を使用）
             }
         }));
-        
+
         return prices;
     }
 
@@ -76,19 +76,20 @@ export class InternalPaperBroker implements BrokerProvider {
      * @throws 取引失敗時
      */
     async executeTrade(
-        symbol: string, 
-        side: 'BUY' | 'SELL', 
-        quantity: number, 
-        price: number, 
+        symbol: string,
+        side: 'BUY' | 'SELL',
+        quantity: number,
+        price: number,
+        orderType: OrderType,
         reason: string
     ): Promise<Trade> {
-        const req: TradeRequest = { symbol, side, quantity, price, reason };
+        const req: TradeRequest = { symbol, side, quantity, price, orderType, reason };
         const result = await this.engine.executeTrade(req);
-        
+
         if (!result.success || !result.trade) {
             throw new Error(result.message);
         }
-        
+
         return result.trade;
     }
 }
