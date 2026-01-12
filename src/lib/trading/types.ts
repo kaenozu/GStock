@@ -3,6 +3,9 @@
  * @module lib/trading/types
  */
 
+/** 注文タイプ */
+export type OrderType = 'MARKET' | 'LIMIT';
+
 /** ポジション（保有銘柄） */
 export interface Position {
     /** 銘柄シンボル */
@@ -37,6 +40,8 @@ export interface Trade {
     total: number;
     /** 手数料 */
     commission: number;
+    /** 注文タイプ */
+    orderType: OrderType;
     /** 取引理由 */
     reason?: string;
 }
@@ -57,7 +62,7 @@ export interface Portfolio {
     trades: Trade[];
     /** 最終更新日時 */
     lastUpdated: string;
-    
+
     // 後方互換性のためのエイリアス（旧: initialHash）
     /** @deprecated dailyStartEquityを使用してください */
     initialHash?: number;
@@ -71,8 +76,10 @@ export interface TradeRequest {
     side: 'BUY' | 'SELL';
     /** 数量（省略時は1） */
     quantity?: number;
-    /** 注文価格 */
+    /** 注文価格（指値の場合は必須） */
     price: number;
+    /** 注文タイプ（省略時はMARKET） */
+    orderType?: OrderType;
     /** 取引理由 */
     reason?: string;
 }
@@ -97,6 +104,7 @@ export interface BrokerProvider {
         side: 'BUY' | 'SELL',
         quantity: number,
         price: number,
+        orderType: OrderType,
         reason?: string
     ): Promise<Trade>;
 }
