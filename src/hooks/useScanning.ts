@@ -15,6 +15,7 @@ import { ErrorLogger } from '@/lib/errors';
 import { toast } from 'sonner';
 import { KnowledgeAgent, RiskParameters } from '@/lib/agents/KnowledgeAgent';
 import { CONFIDENCE_THRESHOLD } from '@/config/constants';
+import { useSoundSystem } from '@/hooks/useSoundSystem';
 
 /** スキャン間隔（ミリ秒） */
 const SCAN_INTERVAL_MS = 10000;
@@ -169,6 +170,7 @@ export const useScanning = (
     isAutoTrading: boolean = false,
     handleAutoTrade?: (request: any) => Promise<any>
 ) => {
+    const { play } = useSoundSystem();
     const [scanningSymbol, setScanningSymbol] = useState<string | null>(null);
     const [isScanLoading, setIsScanLoading] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
@@ -236,6 +238,7 @@ export const useScanning = (
 
             // 信頼度が高い場合は履歴に追加
             if (result.confidence >= 70) {
+                play('signal');
                 addToHistory({
                     symbol,
                     type: result.sentiment === 'BULLISH' ? 'BUY' : result.sentiment === 'BEARISH' ? 'SELL' : 'HOLD',

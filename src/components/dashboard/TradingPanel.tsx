@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/common/Skeleton';
 import { toast } from 'sonner';
 import { safeToLocaleTimeString } from '@/lib/utils/format';
 import { ErrorLogger } from '@/lib/errors';
+import { useSoundSystem } from '@/hooks/useSoundSystem';
 
 /** TradingPanelのProps */
 interface TradingPanelProps {
@@ -88,6 +89,7 @@ export const TradingPanel = React.memo(function TradingPanel({
     currentPrice,
     executionMode
 }: TradingPanelProps) {
+    const { play } = useSoundSystem();
     const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
     const [loading, setLoading] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -159,12 +161,15 @@ export const TradingPanel = React.memo(function TradingPanel({
                 toast.success(`${action}注文が送信されました`, {
                     description: `${symbol} x ${quantity} (${orderType})`
                 });
+                play('execution');
                 setRefreshTrigger(prev => prev + 1);
             } else {
                 const err = await res.json();
+                play('error');
                 toast.error(`注文失敗`, { description: err.error });
             }
         } catch {
+            play('error');
             ErrorLogger.error('Trade execution failed', 'TradingPanel', { symbol, side });
             toast.error("取引実行エラー", { description: "ネットワークまたはサーバーエラー" });
         } finally {
