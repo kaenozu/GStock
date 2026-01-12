@@ -13,6 +13,9 @@ import { PredictionClient, AutoEvaluator } from '@/lib/accuracy';
 import { AlertService } from '@/lib/alerts';
 import { ErrorLogger } from '@/lib/errors';
 import { toast } from 'sonner';
+import { KnowledgeAgent, RiskParameters } from '@/lib/agents/KnowledgeAgent';
+import { CONFIDENCE_THRESHOLD } from '@/config/constants';
+import { useSoundSystem } from '@/hooks/useSoundSystem';
 
 /** スキャン間隔（ミリ秒） */
 const SCAN_INTERVAL_MS = 10000;
@@ -29,21 +32,21 @@ const ERROR_CLEAR_DELAY_MS = 5000;
  */
 function calculateADX(history: StockDataPoint[], period: number = 14): number {
     if (history.length < period + 1) return 20; // Default neutral
-    
+
     const data = history.slice(-(period + 1));
     let sumDX = 0;
-    
+
     for (let i = 1; i < data.length; i++) {
         const high = data[i].high;
         const low = data[i].low;
         const prevHigh = data[i - 1].high;
         const prevLow = data[i - 1].low;
         const prevClose = data[i - 1].close;
-        
+
         const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
         const plusDM = high - prevHigh > prevLow - low ? Math.max(high - prevHigh, 0) : 0;
         const minusDM = prevLow - low > high - prevHigh ? Math.max(prevLow - low, 0) : 0;
-        
+
         if (tr > 0) {
             const plusDI = (plusDM / tr) * 100;
             const minusDI = (minusDM / tr) * 100;
@@ -53,7 +56,7 @@ function calculateADX(history: StockDataPoint[], period: number = 14): number {
             }
         }
     }
-    
+
     return sumDX / period;
 }
 
@@ -144,10 +147,10 @@ function calculateAnalysis(history: StockDataPoint[]): {
     else if (isStrongTrend && !isBullishTrend) regime = 'BEAR_TREND';
     else if (adx > 30 && Math.abs(trendStrength) > 3) regime = 'VOLATILE';
 
-    return { 
-        sentiment, 
-        confidence: Math.round(confidence), 
-        rsi: Math.round(rsi), 
+    return {
+        sentiment,
+        confidence: Math.round(confidence),
+        rsi: Math.round(rsi),
         regime,
         adx: Math.round(adx)
     };
@@ -163,8 +166,11 @@ function calculateAnalysis(history: StockDataPoint[]): {
 export const useScanning = (
     isPaused: boolean,
     updateBestTrade: (result: AnalysisResult | null) => void,
-    addToHistory: (item: TradeHistoryItem) => void
+    addToHistory: (item: TradeHistoryItem) => void,
+    isAutoTrading: boolean = false,
+    handleAutoTrade?: (request: any) => Promise<any>
 ) => {
+    const { play } = useSoundSystem();
     const [scanningSymbol, setScanningSymbol] = useState<string | null>(null);
     const [isScanLoading, setIsScanLoading] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
@@ -181,7 +187,7 @@ export const useScanning = (
         const handleVisibilityChange = () => {
             isVisibleRef.current = !document.hidden;
         };
-        
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []);
@@ -232,6 +238,7 @@ export const useScanning = (
 
             // 信頼度が高い場合は履歴に追加
             if (result.confidence >= 70) {
+                play('signal');
                 addToHistory({
                     symbol,
                     type: result.sentiment === 'BULLISH' ? 'BUY' : result.sentiment === 'BEARISH' ? 'SELL' : 'HOLD',
@@ -249,6 +256,46 @@ export const useScanning = (
                 regime: result.marketRegime,
             }).catch(() => { /* ignore */ });
 
+            // Auto Trading Execution
+            if (isAutoTrading && handleAutoTrade && result.sentiment !== 'NEUTRAL' && result.confidence >= CONFIDENCE_THRESHOLD) {
+                // Calculate position size and limit price
+                const riskParams: RiskParameters = {
+                    accountEquity: 1000000, // Mock equity for now, ideally fetched from usePortfolio
+                    riskPerTradePercent: 0.02, // 2% risk
+                    maxPositionSizePercent: 0.2 // Max 20% allocation
+                };
+
+                const setup = {
+                    symbol,
+                    price: lastPrice,
+                    confidence: result.confidence,
+                    sentiment: result.sentiment
+                };
+
+                const quantity = KnowledgeAgent.calculatePositionSize(setup, riskParams);
+                const limitPrice = KnowledgeAgent.calculateLimitPrice(setup);
+
+                // Execute Trade
+                handleAutoTrade({
+                    symbol,
+                    side: result.sentiment === 'BULLISH' ? 'BUY' : 'SELL',
+                    type: 'LIMIT',
+                    quantity,
+                    price: limitPrice,
+                    reason: `Auto-Bot: ${result.sentiment} (Conf: ${result.confidence}%)`
+                }).then((trade) => {
+                    toast.success(`🤖 Auto-Trade Executed: ${symbol}`, {
+                        description: `${result.sentiment} ${quantity} shares @ $${limitPrice}`
+                    });
+                    console.log(`[Auto-Bot] Executed: ${symbol}, Qty: ${quantity}, Price: ${limitPrice}`);
+                }).catch(err => {
+                    console.error('[Auto-Bot] Execution Failed:', err);
+                    toast.error(`🤖 Auto-Trade Failed: ${symbol}`, {
+                        description: err.message
+                    });
+                });
+            }
+
             // アラート送信
             const signalType = result.sentiment === 'BULLISH' ? 'BUY' : result.sentiment === 'BEARISH' ? 'SELL' : 'HOLD';
             AlertService.alert({
@@ -265,14 +312,15 @@ export const useScanning = (
 
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+
             ErrorLogger.error(errorMsg, 'Scanner', { symbol });
-            
+
             // 失敗銘柄を追跡
             if (!failedSymbolsList.includes(symbol)) {
                 setFailedSymbolsList(prev => [...prev, symbol]);
             }
             setScanError(`${symbol}: ${errorMsg}`);
-            
+
             // 複数失敗時にトースト表示
             if (failedSymbolsList.length >= ERROR_TOAST_THRESHOLD) {
                 toast.error('複数の銘柄でエラー', {
@@ -280,7 +328,7 @@ export const useScanning = (
                     id: 'scan-error',
                 });
             }
-            
+
             setTimeout(() => setScanError(null), ERROR_CLEAR_DELAY_MS);
         } finally {
             setIsScanLoading(false);
@@ -293,19 +341,19 @@ export const useScanning = (
     const getNextSymbol = useCallback((): string => {
         let attempts = 0;
         let symbol: string;
-        
+
         do {
             symbol = MONITOR_LIST[symbolIndexRef.current % MONITOR_LIST.length];
             symbolIndexRef.current++;
             attempts++;
         } while (failedSymbols.has(symbol) && attempts < MONITOR_LIST.length);
-        
+
         if (attempts >= MONITOR_LIST.length) {
             // 全銘柄失敗時はリセット
             setFailedSymbolsList([]);
             return MONITOR_LIST[0];
         }
-        
+
         return symbol;
     }, [failedSymbols]);
 
@@ -333,7 +381,7 @@ export const useScanning = (
 
         // 初回スキャン
         runScan();
-        
+
         // 定期スキャン
         intervalRef.current = setInterval(runScan, SCAN_INTERVAL_MS);
 
@@ -345,10 +393,10 @@ export const useScanning = (
         };
     }, [isPaused, scanSymbol, getNextSymbol]);
 
-    return { 
-        scanningSymbol, 
-        isScanLoading, 
-        scanError, 
+    return {
+        scanningSymbol,
+        isScanLoading,
+        scanError,
         failedSymbols,
         /** 失敗銘柄を手動リセット */
         resetFailedSymbols: useCallback(() => setFailedSymbolsList([]), []),
