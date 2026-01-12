@@ -11,29 +11,28 @@ import { StockDataPoint } from '@/types/market';
 function generateMockData(days: number, trend: 'up' | 'down' | 'sideways' = 'sideways'): StockDataPoint[] {
     const data: StockDataPoint[] = [];
     let price = 100;
-    
+
     for (let i = 0; i < days; i++) {
         const date = new Date();
         date.setDate(date.getDate() - (days - i));
-        
+
         let change = (Math.random() - 0.5) * 4;
         if (trend === 'up') change += 0.5;
         if (trend === 'down') change -= 0.5;
-        
+
         price = Math.max(10, price + change);
         const high = price + Math.random() * 2;
         const low = price - Math.random() * 2;
-        
+
         data.push({
             time: date.toISOString().split('T')[0],
             open: price - Math.random(),
             high,
             low,
-            close: price,
-            volume: Math.floor(Math.random() * 1000000) + 100000
+            close: price
         });
     }
-    
+
     return data;
 }
 
@@ -55,10 +54,10 @@ describe('StockAnalyzer', () => {
         it('上昇トレンドでRSIが高くなる', () => {
             const uptrend = Array(20).fill(0).map((_, i) => 100 + i * 2);
             const downtrend = Array(20).fill(0).map((_, i) => 140 - i * 2);
-            
+
             const rsiUp = StockAnalyzer.calculateRSI(uptrend);
             const rsiDown = StockAnalyzer.calculateRSI(downtrend);
-            
+
             expect(rsiUp).toBeGreaterThan(rsiDown);
         });
     });
@@ -95,7 +94,7 @@ describe('StockAnalyzer', () => {
         it('データが少ない場合はニュートラルを返す', () => {
             const data = generateMockData(10);
             const result = StockAnalyzer.analyze(data);
-            
+
             expect(result.sentiment).toBe('NEUTRAL');
             expect(result.confidence).toBe(50);
             expect(result.regime).toBe('SIDEWAYS');
@@ -104,7 +103,7 @@ describe('StockAnalyzer', () => {
         it('十分なデータで有効な分析結果を返す', () => {
             const data = generateMockData(50);
             const result = StockAnalyzer.analyze(data);
-            
+
             expect(['BULLISH', 'BEARISH', 'NEUTRAL']).toContain(result.sentiment);
             expect(result.confidence).toBeGreaterThanOrEqual(0);
             expect(result.confidence).toBeLessThanOrEqual(100);
@@ -116,7 +115,7 @@ describe('StockAnalyzer', () => {
         it('上昇トレンドでBULLISHを返す傾向がある', () => {
             const data = generateMockData(50, 'up');
             const result = StockAnalyzer.analyze(data);
-            
+
             // 強い上昇トレンドならBULLISHの可能性が高い
             // ただしランダム性があるので必ずしもそうならない
             expect(['BULLISH', 'NEUTRAL']).toContain(result.sentiment);
@@ -127,7 +126,7 @@ describe('StockAnalyzer', () => {
         it('完全な分析結果を生成する', () => {
             const data = generateMockData(50);
             const result = StockAnalyzer.createAnalysisResult('AAPL', data);
-            
+
             expect(result.symbol).toBe('AAPL');
             expect(result.history).toHaveLength(50);
             expect(result).toHaveProperty('predictions');
@@ -142,7 +141,7 @@ describe('StockAnalyzer', () => {
 
         it('空のデータでエラーにならない', () => {
             const result = StockAnalyzer.createAnalysisResult('AAPL', []);
-            
+
             expect(result.symbol).toBe('AAPL');
             expect(result.sentiment).toBe('NEUTRAL');
             expect(result.confidence).toBe(50);
