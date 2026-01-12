@@ -39,7 +39,7 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
                     fetch(`/api/insider?symbol=${symbol}`)
                 ]);
 
-                if (!finRes.ok) throw new Error('Failed to fetch financials');
+                if (!finRes.ok) throw new Error('財務データを取得できませんでした');
                 const finJson = await finRes.json();
                 setData(finJson);
 
@@ -50,7 +50,7 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
                     }
                 }
             } catch (e: unknown) {
-                setError(e instanceof Error ? e.message : 'An unknown error occurred');
+                setError(e instanceof Error ? e.message : '予期しないエラーが発生しました');
             } finally {
                 setLoading(false);
             }

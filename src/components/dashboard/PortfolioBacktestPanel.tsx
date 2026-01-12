@@ -90,7 +90,7 @@ export const PortfolioBacktestPanel: React.FC = () => {
             for (const asset of assets) {
                 const response = await fetch(`/api/stock?symbol=${asset.symbol}`);
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch data for ${asset.symbol}`);
+                    throw new Error(`${asset.symbol}のデータを取得できませんでした。しばらくしてから再試行してください。`);
                 }
                 const data = await response.json();
                 if (data.error) {
@@ -107,7 +107,7 @@ export const PortfolioBacktestPanel: React.FC = () => {
 
             setResult(backtestResult);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Unknown error');
+            setError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
         } finally {
             setIsLoading(false);
         }

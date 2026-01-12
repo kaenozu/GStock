@@ -31,11 +31,11 @@ export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
             setError(null);
             try {
                 const res = await fetch(`/api/earnings?symbol=${symbol}`);
-                if (!res.ok) throw new Error('Failed to fetch earnings');
+                if (!res.ok) throw new Error('決算情報を取得できませんでした');
                 const data = await res.json();
                 setEarnings(data);
             } catch (e: unknown) {
-                setError(e instanceof Error ? e.message : 'Unknown error');
+                setError(e instanceof Error ? e.message : '予期しないエラーが発生しました');
             } finally {
                 setLoading(false);
             }
