@@ -322,9 +322,37 @@ export const TradingPanel = React.memo(function TradingPanel({
                                 border: '1px solid #475569',
                                 borderRadius: '4px',
                                 color: 'white',
-                                textAlign: 'right'
+                                textAlign: 'right',
+                                marginBottom: '4px'
                             }}
                         />
+                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                            {[25, 50, 100].map(pct => (
+                                <button
+                                    key={pct}
+                                    onClick={() => {
+                                        if (!portfolio) return;
+                                        const price = orderType === 'LIMIT' ? limitPrice : currentPrice;
+                                        if (price <= 0) return;
+                                        const maxQty = Math.floor(portfolio.cash / price);
+                                        const qty = Math.max(1, Math.floor(maxQty * (pct / 100)));
+                                        setQuantity(qty);
+                                    }}
+                                    style={{
+                                        padding: '2px 6px',
+                                        fontSize: '0.65rem',
+                                        background: 'rgba(255,255,255,0.1)',
+                                        border: 'none',
+                                        borderRadius: '3px',
+                                        color: '#94a3b8',
+                                        cursor: 'pointer'
+                                    }}
+                                    title={`資産の${pct}%`}
+                                >
+                                    {pct === 100 ? 'MAX' : `${pct}%`}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* 価格入力（指値のみ） */}

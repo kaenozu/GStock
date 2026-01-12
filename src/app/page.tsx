@@ -187,7 +187,7 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
-      <main className={`${styles.main} ${isLive ? styles.liveModeActive : ''}`}>
+      <main className={`${styles.main} ${isLive ? styles.liveModeActive : ''} ${isAutoTrading ? styles.autoModeActive : ''}`}>
         <div className={styles.container}>
           {/* Header */}
           <header className={styles.header}>
