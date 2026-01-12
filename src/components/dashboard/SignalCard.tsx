@@ -86,7 +86,7 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
       <div className="flex justify-between items-center text-xs text-slate-400 mb-4">
         <div className="flex gap-3 items-center">
           <span className="bg-white/5 py-0.5 px-2 rounded flex items-center gap-2">
-            📡 {scanningSymbol || 'Waiting...'}
+            📡 {scanningSymbol || '銘柄選択中...'}
             {isScanLoading && <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse block"></span>}
           </span>
         </div>
