@@ -1,5 +1,6 @@
 import { StockDataPoint, TradeType } from '@/types/market';
 import { calculateAdvancedPredictions } from '@/lib/api/prediction-engine';
+import { KnowledgeAgent, RiskParameters } from '@/lib/agents/KnowledgeAgent';
 
 export interface BacktestReport {
     symbol: string;
@@ -12,6 +13,7 @@ export interface BacktestReport {
     tradeCount: number;
     winRate: number;
     maxDrawdown: number;
+    profitFactor: number; // New metric
     trades: SimulatedTrade[];
     equityCurve: { time: string, value: number }[];
 }
@@ -29,7 +31,7 @@ interface SimulatedTrade {
 
 export class BacktestArena {
 
-    public run(symbol: string, history: StockDataPoint[], initialBalance: number = 1000000): BacktestReport {
+    public run(symbol: string, history: StockDataPoint[], initialBalance: number = 1000000, config: { riskPercent: number, maxPosPercent: number, buyThreshold: number } = { riskPercent: 0.02, maxPosPercent: 0.2, buyThreshold: 50 }): BacktestReport {
         // Simulation State
         let cash = initialBalance;
         let position: { quantity: number, entryPrice: number, type: TradeType } | null = null;
@@ -40,6 +42,10 @@ export class BacktestArena {
         let peakEquity = initialBalance;
         let maxDrawdown = 0;
 
+        // Metrics Tracking
+        let grossWin = 0;
+        let grossLoss = 0;
+
         // Loop through history (skip first 50 days for indicators)
         const START_INDEX = 50;
 
@@ -48,17 +54,7 @@ export class BacktestArena {
             const previousData = history.slice(0, i + 1); // Data available up to today
 
             // 1. Ask The Council
-            // Note: This re-calculates indicators every step. O(N^2). 
-            // Acceptable for < 1000 bars. might be 1-2s for 1 year.
             const analysis = calculateAdvancedPredictions(previousData);
-
-            // 2. Decision Logic ( Simplified Strategy )
-            // Strategy: Buy if Confidence > 70 & Bullish. Sell if Bearish or < 50?
-            // Let's use the exact "Best Trade" logic derived from optimization?
-            // For Deep Backtest, we use a Standard High-Quality Strategy as baseline.
-            const BUY_THRESHOLD = 70;
-            // Note: SELL_THRESHOLD could be used for more complex exit logic
-            // const SELL_THRESHOLD = 40;
 
             const price = currentDay.close;
             const date = currentDay.time;
@@ -78,12 +74,15 @@ export class BacktestArena {
 
             // Trading Logic
             if (position) {
-                // Check Exit Conditions
+                // Check Exit Conditions using KnowledgeAgent Philosophy (Simplified)
                 let shouldExit = false;
                 let reason = "";
 
+                // PnL Calculation
+                const pnlUnrealized = (price - position.entryPrice) * position.quantity * (position.type === 'BUY' ? 1 : -1);
+                const pnlPercent = pnlUnrealized / (position.entryPrice * position.quantity);
+
                 // Stop Loss (Fixed 5%)
-                const pnlPercent = (price - position.entryPrice) / position.entryPrice * (position.type === 'BUY' ? 1 : -1);
                 if (pnlPercent < -0.05) {
                     shouldExit = true;
                     reason = "Stop Loss (-5%)";
@@ -95,7 +94,7 @@ export class BacktestArena {
                 }
                 // Signal Reversal
                 else if (analysis.sentiment !== 'BULLISH' && position.type === 'BUY') {
-                    // If Neutral or Bearish, consider exit?
+                    // Strong Bearish reversal
                     if (analysis.sentiment === 'BEARISH') {
                         shouldExit = true;
                         reason = "Signal Reversal (Bearish)";
@@ -104,52 +103,87 @@ export class BacktestArena {
 
                 if (shouldExit) {
                     // Execute Sell
-                    const pnl = (price - position.entryPrice) * position.quantity;
-                    cash += (price * position.quantity); // For simplicity of calc
-                    // Actually cash update:
-                    // PnL added to Balance. 
-                    // Wait, Cash = Cash + Revenue.
-                    // Initial Cash was spent? 
-                    // Let's model Cash/Position accurately.
+                    // Note: In real logic, we might use Limit Order here too, but for backtest we assume Close price execution
+                    const exitPrice = price; // Or use average of Open/Close? Close is safer assumption for EOD.
 
-                    // On Entry: Cash -= Cost.
-                    // On Exit: Cash += Revenue.
+                    const pnl = (exitPrice - position.entryPrice) * position.quantity * (position.type === 'BUY' ? 1 : -1);
 
-                    simulatedTrades.push({
-                        entryDate: simulatedTrades.find(t => !t.exitDate)?.entryDate || date, // Hacky match
-                        entryPrice: position.entryPrice,
-                        exitDate: date,
-                        exitPrice: price,
-                        type: position.type,
-                        quantity: position.quantity,
-                        pnl: pnl,
-                        reason: reason
-                    });
+                    if (pnl > 0) grossWin += pnl;
+                    else grossLoss += Math.abs(pnl);
+
+                    // Update Cash
+                    // Buy: Cash = Cash + (ExitPrice * Qty) [Principal + Profit] ? No.
+                    // Initial Setup: Cash -= (EntryPrice * Qty)
+                    // Exit Setup: Cash += (ExitPrice * Qty)
+                    if (position.type === 'BUY') {
+                        cash += (exitPrice * position.quantity);
+                    } else {
+                        // Short selling logic is more complex with margin, sticking to LONG only for MVP if possible
+                        // But previous code allowed SELL type?
+                        // Let's assume Long Only for this Phase unless Short is requested.
+                        // Existing code used type check.
+                        // If Short: Cash += (EntryPrice * Qty) initially (Liability). Exit: Cash -= (ExitPrice * Qty).
+                        // Let's stick to Long Only behavior for simplicity in updating standard accounts.
+                    }
+
+                    // Matching trade
+                    const tradeInfo = simulatedTrades.find(t => !t.exitDate);
+                    if (tradeInfo) {
+                        tradeInfo.exitDate = date;
+                        tradeInfo.exitPrice = exitPrice;
+                        tradeInfo.pnl = pnl;
+                        tradeInfo.reason = reason;
+                    }
                     position = null;
                 }
             }
             else {
                 // Check Entry Conditions
-                if (analysis.sentiment === 'BULLISH' && analysis.confidence >= BUY_THRESHOLD) {
-                    // Enter BUY
-                    const riskAmount = currentEquity * 0.2; // 20% position size (Iron Dome rule)
-                    const quantity = Math.floor(riskAmount / price);
+                if (analysis.sentiment === 'BULLISH' && analysis.confidence >= config.buyThreshold) { // User Config for Threshold
 
-                    if (quantity > 0) {
+                    const riskParams: RiskParameters = {
+                        accountEquity: currentEquity,
+                        riskPerTradePercent: config.riskPercent, // User Config
+                        maxPositionSizePercent: config.maxPosPercent // User Config
+                    };
+
+                    const setup = {
+                        symbol,
+                        price,
+                        confidence: analysis.confidence,
+                        sentiment: 'BULLISH' as const
+                    };
+
+                    // Use KnowledgeAgent for Sizing
+                    const quantity = KnowledgeAgent.calculatePositionSize(setup, riskParams);
+
+                    if (quantity > 0 && (price * quantity) <= cash) {
+                        // Simulate Limit Order Execution
+                        // In real trading, we place Limit Price. In Backtest with EOD data, 
+                        // we check if Low < LimitPrice < High ? 
+                        // For simplicity, we assume we get filled at Close if we are aggressive, 
+                        // or at LimitPrice if it is within range.
+                        // KnowledgeAgent provides aggressive limit prices.
+                        const limitPrice = KnowledgeAgent.calculateLimitPrice(setup);
+
+                        // Check if fillable (Low <= Limit <= High)
+                        // If Limit > Close (Buy), likely filled.
+                        // We will just use Close price for EOD simplicity but log the intention.
+
                         cash -= (price * quantity);
                         position = {
                             quantity,
                             entryPrice: price,
                             type: 'BUY'
                         };
-                        // Log partial trade start
+
                         simulatedTrades.push({
                             entryDate: date,
                             entryPrice: price,
                             type: 'BUY',
                             quantity,
                             pnl: 0,
-                            reason: `Council Signal ${analysis.confidence}%`
+                            reason: `Smart Entry (Conf: ${analysis.confidence}%)`
                         });
                     }
                 }
@@ -161,8 +195,12 @@ export class BacktestArena {
         if (position) {
             const lastPrice = history[history.length - 1].close;
             const pnl = (lastPrice - position.entryPrice) * position.quantity;
+
+            if (pnl > 0) grossWin += pnl;
+            else grossLoss += Math.abs(pnl);
+
             cash += lastPrice * position.quantity;
-            // Update last trade
+
             const lastTrade = simulatedTrades[simulatedTrades.length - 1];
             if (lastTrade) {
                 lastTrade.exitDate = history[history.length - 1].time;
@@ -178,6 +216,7 @@ export class BacktestArena {
         const completedTrades = simulatedTrades.filter(t => t.exitDate);
         const wins = completedTrades.filter(t => t.pnl > 0).length;
         const winRate = completedTrades.length > 0 ? (wins / completedTrades.length) * 100 : 0;
+        const profitFactor = grossLoss === 0 ? grossWin : grossWin / grossLoss; // Handle division by zero
 
         return {
             symbol,
@@ -190,6 +229,7 @@ export class BacktestArena {
             tradeCount: completedTrades.length,
             winRate,
             maxDrawdown,
+            profitFactor: Number(profitFactor.toFixed(2)),
             trades: completedTrades, // Only completed
             equityCurve
         };

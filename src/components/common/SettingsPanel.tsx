@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, X, Type } from 'lucide-react';
+import { Settings, X, Type, Volume2 } from 'lucide-react';
 import { useSettings, FontSize } from '@/hooks/useSettings';
+import { useSoundSystem } from '@/hooks/useSoundSystem';
 import styles from './SettingsPanel.module.css';
 
 export const SettingsPanel: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { settings, setFontSize } = useSettings();
+  const { enabled, toggleSound } = useSoundSystem();
 
   const fontSizeOptions: { value: FontSize; label: string }[] = [
     { value: 'small', label: '小' },
@@ -55,6 +57,25 @@ export const SettingsPanel: React.FC = () => {
               </div>
               <div className={styles.preview}>
                 プレビュー: この文字サイズで表示されます
+              </div>
+
+              <div className={styles.sectionTitle} style={{ marginTop: '1.5rem' }}>
+                <Volume2 size={16} />
+                <span>サウンド設定</span>
+              </div>
+              <div style={{ padding: '0 0.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                  <span style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>効果音を有効にする</span>
+                  <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={toggleSound}
+                    style={{ accentColor: 'var(--accent-cyan)', transform: 'scale(1.2)' }}
+                  />
+                </label>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+                  約定時や重要なシグナル発生時に音で通知します
+                </div>
               </div>
             </div>
           </div>

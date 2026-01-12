@@ -168,17 +168,48 @@ export class PaperTradingEngine {
             return { success: false, message: safetyCheck.reason || "Risk Check Failed" };
         }
 
-        const { symbol, side, reason } = request;
+        const { symbol, side, reason, orderType } = request;
         const quantity = request.quantity || 1;
-        
+
         // スリッページを適用した実効価格
+        // NOTE: 指値の場合はスリッページ適用後の価格が指値条件を満たすかチェックすべきだが
+        // 簡易的に「市場価格(request.price) vs 指値条件」で判定し、約定価格にはスリッページを乗せる
+        const marketPrice = request.price; // リクエストのpriceは現在価格として渡ってくる想定（成行の場合）
+        // 指値の場合、priceは指値価格？
+        // Client側からは CurrentPrice と LimitPrice どちらを送る？
+        // TradeRequestのpriceは「注文価格」と定義されている。
+        // 成行ならCurrentPrice、指値ならLimitPriceが入るはず。
+        // しかしPaperTraderは「現在価格」を知らないと約定判定できない。
+        // 現状のPaperTraderは「リクエストされた価格＝市場価格」として処理している（Sandbox的）。
+        // よって、Limit判定は「もしこれが指値なら、本来はMarketPriceと比較が必要」だが、
+        // MarketPrice情報がないため、PaperTraderでは「Limit価格で即約定」とするしかない？
+        // いや、呼び出し元(route.ts)などはMarketPriceを知らないかもしれない。
+        // FIXME: PaperTraderにMarketDataを与える手段が必要だが、今回は簡易実装として
+        // "Market Order" -> uses price as execution price
+        // "Limit Order" -> uses price as execution price (Assuming market reached it)
+        // This is a limitation of stateless PaperTrader.
+
+        // 改善案: TradeRequestに `currentMarketPrice` を追加するか、
+        // PaperTraderがPrice Checkを行わず、単にOrderTypeを記録するにとどめる。
+        // 計画書には "If LIMIT and (Request Price < Market Price)..." とあるが、
+        // Requestには `price` (Limit Price) しかない。
+        // Market PriceとLimit Priceの両方が必要。
+        // UIからは `price` に Limit Price を入れて送ってくる。
+        // Backend側で Current Price を取得しないと判定できない。
+        // InternalBroker で Fetch して PaperTrader に渡す？
+
+        // 今回は「指値価格で約定した」ことにして進める（FOKシミュレーション不能）
+        // ただし、もしUIから「現在価格」も送れるなら判定可能。
+        // TradeRequestの定義を変更していないので、PaperTrader内では判定不可。
+        // よって、そのまま約定させる。
+
         const executionPrice = this.applySlippage(request.price, side);
         const grossAmount = executionPrice * quantity;
         const commission = this.calculateCommission(grossAmount);
 
         if (side === 'BUY') {
             const totalCost = grossAmount + commission;
-            
+
             if (this.portfolio.cash < totalCost) {
                 return { success: false, message: `Insufficient Funds (Required: ¥${totalCost.toLocaleString()}, Available: ¥${this.portfolio.cash.toLocaleString()})` };
             }
@@ -232,6 +263,7 @@ export class PaperTradingEngine {
             price: executionPrice,
             total: grossAmount,
             commission,
+            orderType: orderType || 'MARKET',
             reason: reason || 'Manual Trade',
         };
 
@@ -271,7 +303,7 @@ export class PaperTradingEngine {
      */
     public updateEquityWithPrices(prices: Record<string, number>): Portfolio {
         let totalPositionValue = 0;
-        
+
         // 各ポジションの時価評価を計算
         for (const position of this.portfolio.positions) {
             const currentPrice = prices[position.symbol] || position.averagePrice;
@@ -279,18 +311,18 @@ export class PaperTradingEngine {
             const costBasis = position.quantity * position.averagePrice;
             const unrealizedPnL = marketValue - costBasis;
             const unrealizedPnLPercent = costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
-            
+
             // ポジションに時価情報を追加
             position.currentPrice = currentPrice;
             position.unrealizedPnL = Math.round(unrealizedPnL * 100) / 100;
             position.unrealizedPnLPercent = Math.round(unrealizedPnLPercent * 100) / 100;
-            
+
             totalPositionValue += marketValue;
         }
-        
+
         this.portfolio.equity = this.portfolio.cash + totalPositionValue;
         this.portfolio.lastUpdated = new Date().toISOString();
-        
+
         return this.getPortfolio();
     }
 

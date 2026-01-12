@@ -26,7 +26,7 @@ export const useAnalysis = () => {
         setBestTrade(analysis);
     }, []);
 
-    const runDeepBacktest = useCallback(async (symbol: string, period: string = '1y') => {
+    const runDeepBacktest = useCallback(async (symbol: string, period: string = '1y', config?: { riskPercent: number, maxPosPercent: number }) => {
         setIsBacktestLoading(true);
         setDeepReport(null);
 
@@ -34,7 +34,7 @@ export const useAnalysis = () => {
             const res = await fetch('/api/backtest-history', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, period })
+                body: JSON.stringify({ symbol, period, config })
             });
 
             if (!res.ok) throw new Error('Backtest failed');

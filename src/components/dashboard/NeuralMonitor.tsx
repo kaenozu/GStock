@@ -4,6 +4,70 @@ import styles from '@/app/page.module.css';
 import { AnalysisResult } from '@/types/market';
 import { TermWithTooltip } from '@/components/common/Tooltip';
 
+// Neural Wave Visualizer Component
+const NeuralWaveCanvas = React.memo(({ confidence, isPaused, sentiment }: { confidence: number, isPaused: boolean, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' }) => {
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
+    React.useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let animationFrameId: number;
+        let frame = 0;
+
+        // Configuration
+        const color = sentiment === 'BULLISH' ? '#10b981' : sentiment === 'BEARISH' ? '#ef4444' : '#a855f7';
+        const baseSpeed = isPaused ? 0.02 : 0.05;
+        const ampScale = confidence / 100; // 0.0 to 1.0
+
+        const draw = () => {
+            // Resize logic
+            const { width, height } = canvas.getBoundingClientRect();
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width;
+                canvas.height = height;
+            }
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw 3 waves
+            for (let i = 1; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = i === 2 ? color : `${color}40`; // Middle wave is solid, others transparent
+
+                const freq = i * 0.01 + (confidence * 0.0001);
+                const speed = baseSpeed * i;
+                const amplitude = (height / 4) * (ampScale * (4 - i) * 0.5 + 0.2);
+                // Higher confidence = higher amplitude
+
+                for (let x = 0; x < width; x++) {
+                    const y = height / 2 +
+                        Math.sin(x * freq + frame * speed) * amplitude +
+                        Math.sin(x * freq * 2.5 + frame * speed * 1.5) * (amplitude * 0.3); // Harmonics
+
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+
+            frame += 1;
+            animationFrameId = requestAnimationFrame(draw);
+        };
+
+        draw();
+
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, [confidence, isPaused, sentiment]);
+
+    return <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />;
+});
+
 interface NeuralMonitorProps {
     analysis: AnalysisResult | null;
     isPaused: boolean;
@@ -69,36 +133,18 @@ export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(function N
 
             <div className={styles.neuralContent}>
                 {/* Gauge Section */}
-                <div className={styles.gaugeSection}>
-                    <svg width="120" height="120" viewBox="0 0 100 100">
-                        {/* Background Track */}
-                        <circle
-                            cx="50" cy="50" r={radius}
-                            fill="none"
-                            stroke="rgba(255,255,255,0.05)"
-                            strokeWidth="8"
-                            strokeLinecap="round"
-                            strokeDasharray={`${maxDash} ${circumference}`}
-                            transform="rotate(135 50 50)"
-                        />
-                        {/* Value Track */}
-                        <circle
-                            cx="50" cy="50" r={radius}
-                            fill="none"
-                            stroke={sentimentColor}
-                            strokeWidth="8"
-                            strokeLinecap="round"
-                            strokeDasharray={`${maxDash} ${circumference}`}
-                            strokeDashoffset={strokeDashoffset}
-                            transform="rotate(135 50 50)"
-                            className={styles.gaugeValue}
-                        />
-                    </svg>
-                    <div className={styles.gaugeTextContainer}>
-                        <div className={styles.gaugeScore} style={{ color: sentimentColor }}>
+                {/* Wave Visualization Section */}
+                <div className={styles.gaugeSection} style={{ width: '100%', height: '120px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                    <NeuralWaveCanvas
+                        confidence={confidence}
+                        isPaused={isPaused}
+                        sentiment={analysis.sentiment}
+                    />
+                    <div className={styles.gaugeTextContainer} style={{ pointerEvents: 'none' }}>
+                        <div className={styles.gaugeScore} style={{ color: sentimentColor, textShadow: '0 0 10px rgba(0,0,0,0.8)' }}>
                             {confidence}
                         </div>
-                        <div className={styles.gaugeLabel}><TermWithTooltip term="信頼度">信頼度</TermWithTooltip></div>
+                        <div className={styles.gaugeLabel}>信頼度</div>
                     </div>
                 </div>
 
@@ -115,10 +161,10 @@ export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(function N
                                             analysis.marketRegime === 'SQUEEZE' ? '#a855f7' : '#94a3b8'
                             }}>
                                 {analysis.marketRegime === 'BULL_TREND' ? '上昇トレンド' :
-                                 analysis.marketRegime === 'BEAR_TREND' ? '下落トレンド' :
-                                 analysis.marketRegime === 'VOLATILE' ? '不安定' :
-                                 analysis.marketRegime === 'SQUEEZE' ? 'スクイーズ' :
-                                 analysis.marketRegime === 'SIDEWAYS' ? '横ばい' : analysis.marketRegime}
+                                    analysis.marketRegime === 'BEAR_TREND' ? '下落トレンド' :
+                                        analysis.marketRegime === 'VOLATILE' ? '不安定' :
+                                            analysis.marketRegime === 'SQUEEZE' ? 'スクイーズ' :
+                                                analysis.marketRegime === 'SIDEWAYS' ? '横ばい' : analysis.marketRegime}
                             </span>
                         </div>
                     </div>
@@ -164,5 +210,5 @@ export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(function N
                 </div>
             </div>
         </div>
-);
+    );
 });
