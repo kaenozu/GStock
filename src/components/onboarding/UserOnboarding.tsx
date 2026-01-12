@@ -94,7 +94,7 @@ export function UserOnboarding() {
                             ステップ {state.currentStep + 1} / {steps.length}
                         </div>
                         <div className="progress-bar">
-                            <div
+                            <div 
                                 className="progress-fill"
                                 style={{ width: `${progress}%` }}
                             ></div>
