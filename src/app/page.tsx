@@ -301,9 +301,9 @@ export default function Home() {
                   <BacktestPanel
                     report={deepReport}
                     isLoading={isBacktestLoading}
-                    onRunBacktest={(period) => {
+                    onRunBacktest={(period, config) => {
                       if (!period) setDeepReport(null);
-                      else runDeepBacktest(bestTrade?.symbol || scanningSymbol || '', period);
+                      else runDeepBacktest(bestTrade?.symbol || scanningSymbol || '', period, config);
                     }}
                   />
                 )}
