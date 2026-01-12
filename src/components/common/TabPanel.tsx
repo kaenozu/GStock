@@ -14,6 +14,8 @@ interface TabPanelProps {
   children: React.ReactNode[];
   defaultTab?: string;
   className?: string;
+  activeTabId?: string;
+  onTabChange?: (tabId: string) => void;
 }
 
 export const TabPanel: React.FC<TabPanelProps> = ({
@@ -21,8 +23,17 @@ export const TabPanel: React.FC<TabPanelProps> = ({
   children,
   defaultTab,
   className = '',
+  activeTabId,
+  onTabChange,
 }) => {
-  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
+  const [internalActiveTab, setInternalActiveTab] = useState(defaultTab || tabs[0]?.id);
+  
+  // 外部制御または内部制御
+  const activeTab = activeTabId ?? internalActiveTab;
+  const setActiveTab = (tabId: string) => {
+    setInternalActiveTab(tabId);
+    onTabChange?.(tabId);
+  };
 
   const activeIndex = tabs.findIndex(t => t.id === activeTab);
 

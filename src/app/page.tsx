@@ -12,6 +12,7 @@ import { useScanning } from '@/hooks/useScanning';
 import { usePersistence } from '@/hooks/usePersistence';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import { useRealtimePrice } from '@/hooks/useRealtimePrice';
+import { useKeyboardShortcuts, KeyboardShortcut } from '@/hooks/useKeyboardShortcuts';
 
 // Components
 import { SignalCard } from '@/components/dashboard/SignalCard';
@@ -29,6 +30,7 @@ import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
 import { SettingsPanel } from '@/components/common/SettingsPanel';
 import { TabPanel } from '@/components/common/TabPanel';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { KeyboardShortcutsHelp } from '@/components/common/KeyboardShortcutsHelp';
 import { ConnectionStatusIndicator } from '@/components/common/ConnectionStatus';
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
@@ -39,6 +41,8 @@ export default function Home() {
   const [earningsMarkers, setEarningsMarkers] = useState<ChartMarker[]>([]);
   const [nextEarningsDate, setNextEarningsDate] = useState<string | null>(null);
   const [earningsTooltip, setEarningsTooltip] = useState<string>('');
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [activeTab, setActiveTab] = useState('market');
 
   const {
     watchlist, setWatchlist,
@@ -81,6 +85,48 @@ export default function Home() {
       wsSubscribe(scanningSymbol);
     }
   }, [scanningSymbol, wsEnabled, wsSubscribe]);
+
+  // キーボードショートカット
+  const shortcuts: KeyboardShortcut[] = useMemo(() => [
+    {
+      key: ' ',
+      description: 'スキャン停止/再開',
+      action: () => setIsPaused(prev => !prev),
+    },
+    {
+      key: 'i',
+      description: '指標表示切替',
+      action: () => setShowIndicators(prev => !prev),
+    },
+    {
+      key: 'r',
+      description: 'データ再読み込み',
+      action: () => window.location.reload(),
+    },
+    {
+      key: '1',
+      description: 'Marketタブ',
+      action: () => setActiveTab('market'),
+    },
+    {
+      key: '2',
+      description: 'Tradeタブ',
+      action: () => setActiveTab('trade'),
+    },
+    {
+      key: '3',
+      description: 'Configタブ',
+      action: () => setActiveTab('settings'),
+    },
+    {
+      key: '?',
+      shift: true,
+      description: 'ショートカットヘルプ',
+      action: () => setShowShortcutsHelp(true),
+    },
+  ], [setShowIndicators]);
+
+  useKeyboardShortcuts(shortcuts);
 
   const currentAnalysis = useMemo(() => {
     if (bestTrade && bestTrade.history) {
@@ -303,6 +349,8 @@ export default function Home() {
                 { id: 'settings', label: 'Config', icon: <Settings size={16} /> },
               ]}
               defaultTab="market"
+              activeTabId={activeTab}
+              onTabChange={setActiveTab}
             >
               {/* Market Tab */}
               <>
@@ -349,6 +397,10 @@ export default function Home() {
         </div>
       </div>
     </main>
+    <KeyboardShortcutsHelp 
+      isOpen={showShortcutsHelp} 
+      onClose={() => setShowShortcutsHelp(false)} 
+    />
     </ErrorBoundary>
   );
 }
