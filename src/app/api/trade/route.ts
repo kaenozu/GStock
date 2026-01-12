@@ -47,6 +47,7 @@ export const POST = withAuth(withPortfolioCache(async (request: NextRequest) => 
             tradeRequest.side,
             tradeRequest.quantity || 1,
             tradeRequest.price,
+            tradeRequest.orderType || 'MARKET',
             tradeRequest.reason || 'Council Consensus'
         );
 

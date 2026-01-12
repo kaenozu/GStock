@@ -4,7 +4,7 @@
  * @module lib/trading/providers/AlpacaBroker
  */
 
-import { Portfolio, Trade, Position, BrokerProvider } from '../types';
+import { Portfolio, Trade, Position, BrokerProvider, OrderType } from '../types';
 
 /** Alpaca APIレスポンスのポジション型 */
 interface AlpacaPosition {
@@ -36,7 +36,7 @@ const INITIAL_INVESTMENT = 1000000;
 export class AlpacaBroker implements BrokerProvider {
     /** ブローカー名 */
     readonly name = 'Alpaca (Paper)';
-    
+
     private readonly apiKey: string;
     private readonly secretKey: string;
     private readonly baseUrl: string = 'https://paper-api.alpaca.markets';
@@ -110,20 +110,29 @@ export class AlpacaBroker implements BrokerProvider {
      * @throws APIエラー時
      */
     async executeTrade(
-        symbol: string, 
-        side: 'BUY' | 'SELL', 
-        quantity: number, 
-        price: number, 
+        symbol: string,
+        side: 'BUY' | 'SELL',
+        quantity: number,
+        price: number,
+        orderType: OrderType,
         reason: string
     ): Promise<Trade> {
         const url = `${this.baseUrl}/v2/orders`;
-        const body = {
+
+        // Alpaca Order Payload
+        // type: 'market' | 'limit'
+        // limit_price: number (required if type is limit)
+        const body: any = {
             symbol: symbol,
             qty: String(quantity),
             side: side.toLowerCase(),
-            type: 'market',
+            type: orderType.toLowerCase(),
             time_in_force: 'gtc'
         };
+
+        if (orderType === 'LIMIT') {
+            body.limit_price = String(price);
+        }
 
         const res = await fetch(url, {
             method: 'POST',
@@ -144,9 +153,10 @@ export class AlpacaBroker implements BrokerProvider {
             symbol: symbol,
             side: side,
             quantity: quantity,
-            price: price, // マーケット注文の実際の約定価格は後で確定
+            price: price, // 約定価格は後で確定するが、一旦注文価格を入れておく
             total: price * quantity,
             commission: 0, // Alpacaは手数料無料
+            orderType: orderType,
             reason: reason
         };
     }
