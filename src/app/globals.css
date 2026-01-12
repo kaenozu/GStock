@@ -1,6 +1,10 @@
 :root {
   /* Font Size (adjustable) */
   --base-font-size: 14px;
+  --font-size-xs: 0.75rem;    /* 12px - minimum for labels */
+  --font-size-sm: 0.875rem;   /* 14px - minimum for body text */
+  --font-size-md: 1rem;       /* 16px - standard */
+  --font-size-lg: 1.125rem;   /* 18px */
   
   /* Colors - Cyber Premium Palette */
   --bg-primary: #05070a;

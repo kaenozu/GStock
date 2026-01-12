@@ -134,7 +134,7 @@ export const PortfolioBacktestPanel: React.FC = () => {
                             onClick={() => applyTemplate(name as keyof typeof PORTFOLIO_TEMPLATES)}
                             style={{
                                 padding: '4px 8px',
-                                fontSize: '0.7rem',
+                                fontSize: '0.75rem',
                                 background: 'rgba(255,255,255,0.05)',
                                 border: '1px solid #64748b',
                                 borderRadius: '4px',
@@ -251,7 +251,7 @@ export const PortfolioBacktestPanel: React.FC = () => {
             {/* 設定 */}
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                 <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '4px' }}>期間</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>期間</div>
                     <select
                         value={periodDays}
                         onChange={(e) => setPeriodDays(Number(e.target.value))}
@@ -271,7 +271,7 @@ export const PortfolioBacktestPanel: React.FC = () => {
                     </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '4px' }}>初期資金</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>初期資金</div>
                     <input
                         type="number"
                         value={initialCapital}
@@ -343,7 +343,7 @@ export const PortfolioBacktestPanel: React.FC = () => {
                         marginBottom: '1rem'
                     }}>
                         <div style={{ 
-                            fontSize: '0.7rem', 
+                            fontSize: '0.75rem', 
                             color: '#94a3b8', 
                             marginBottom: '0.5rem' 
                         }}>
@@ -355,7 +355,7 @@ export const PortfolioBacktestPanel: React.FC = () => {
                             gap: '0.75rem' 
                         }}>
                             <div>
-                                <div style={{ fontSize: '0.65rem', color: '#64748b' }}>総リターン</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>総リターン</div>
                                 <div style={{ 
                                     fontSize: '1.25rem', 
                                     fontWeight: 'bold',
@@ -369,31 +369,31 @@ export const PortfolioBacktestPanel: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '0.65rem', color: '#64748b' }}>最終評価額</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>最終評価額</div>
                                 <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>
                                     ${result.finalValue.toLocaleString()}
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '0.65rem', color: '#64748b' }}>年率リターン</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>年率リターン</div>
                                 <div style={{ fontSize: '0.9rem' }}>
                                     {result.annualizedReturn >= 0 ? '+' : ''}{result.annualizedReturn}%
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '0.65rem', color: '#64748b' }}>シャープレシオ</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>シャープレシオ</div>
                                 <div style={{ fontSize: '0.9rem' }}>
                                     {result.sharpeRatio}
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '0.65rem', color: '#64748b' }}>最大DD</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>最大DD</div>
                                 <div style={{ fontSize: '0.9rem', color: '#ef4444' }}>
                                     -{result.maxDrawdown}%
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: '0.65rem', color: '#64748b' }}>ボラティリティ</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>ボラティリティ</div>
                                 <div style={{ fontSize: '0.9rem' }}>
                                     {result.volatility}%
                                 </div>
@@ -402,7 +402,7 @@ export const PortfolioBacktestPanel: React.FC = () => {
                     </div>
 
                     {/* 個別銘柄結果 */}
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
                         個別銘柄リターン
                     </div>
                     {result.assetResults.map((asset, i) => (
@@ -433,7 +433,7 @@ export const PortfolioBacktestPanel: React.FC = () => {
 
                     <div style={{ 
                         marginTop: '0.5rem', 
-                        fontSize: '0.65rem', 
+                        fontSize: '0.75rem', 
                         color: '#64748b',
                         textAlign: 'right' 
                     }}>

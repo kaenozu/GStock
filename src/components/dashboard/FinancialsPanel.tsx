@@ -160,7 +160,7 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
                                 flex: 1,
                                 textAlign: 'center'
                             }}>
-                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{item.year}-{String(item.month).padStart(2, '0')}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{item.year}-{String(item.month).padStart(2, '0')}</div>
                                 <div style={{
                                     fontWeight: 'bold',
                                     color: item.mspr > 20 ? '#10b981' : item.mspr < -20 ? '#ef4444' : '#f59e0b'

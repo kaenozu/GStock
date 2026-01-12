@@ -57,25 +57,25 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
             {/* Key Stats Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>純利益</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>純利益</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: report.profit >= 0 ? '#10b981' : '#ef4444' }}>
                         {report.profit >= 0 ? '+' : ''}{report.profit.toLocaleString()} ({report.profitPercent.toFixed(1)}%)
                     </div>
                 </div>
                 <div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>勝率</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>勝率</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>
                         {report.winRate.toFixed(1)}%
                     </div>
                 </div>
                 <div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>取引数</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>取引数</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>
                         {report.tradeCount}
                     </div>
                 </div>
                 <div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Max Drawdown</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Max Drawdown</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ef4444' }}>
                         {(report.maxDrawdown * 100).toFixed(1)}%
                     </div>

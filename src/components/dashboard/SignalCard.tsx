@@ -121,7 +121,7 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
       </p>
 
       {bestTrade && bestTrade.optimalParams && (
-        <div className="text-[0.7rem] text-gray-400 mt-2 text-center">
+        <div className="text-xs text-gray-400 mt-2 text-center">
           🎛️ 最適化済み: Buy閾値 {bestTrade.optimalParams.buyThreshold}%
         </div>
       )}

@@ -236,7 +236,7 @@
 
     .button {
         padding: 6px 10px;
-        font-size: 12px;
+        font-size: var(--font-size-xs);
     }
 }
 
@@ -251,7 +251,7 @@
 
     .button {
         padding: 6px 8px;
-        font-size: 11px;
+        font-size: var(--font-size-xs);
     }
 }
 

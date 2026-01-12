@@ -168,7 +168,7 @@ export default function Home() {
         <header className={styles.header}>
           <div className={styles.title}>
             <Zap className={styles.icon} />
-            <h1>GStock Prime {isLive && <span style={{ color: '#ef4444', fontSize: '0.6rem', verticalAlign: 'top', border: '1px solid #ef4444', padding: '2px 4px', borderRadius: '4px', marginLeft: '4px' }}>LIVE</span>}</h1>
+            <h1>GStock Prime {isLive && <span style={{ color: '#ef4444', fontSize: '0.7rem', verticalAlign: 'top', border: '1px solid #ef4444', padding: '2px 4px', borderRadius: '4px', marginLeft: '4px' }}>LIVE</span>}</h1>
           </div>
           <div className={styles.controls}>
             {/* Mode Switch */}
