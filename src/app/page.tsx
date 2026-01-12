@@ -29,7 +29,7 @@ import { SettingsPanel } from '@/components/common/SettingsPanel';
 import { TabPanel } from '@/components/common/TabPanel';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ConnectionStatusIndicator } from '@/components/common/ConnectionStatus';
-import { ChartPlaceholder } from '@/components/charts/ChartPlaceholder';
+
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -309,7 +309,7 @@ export default function Home() {
 
             {/* Center Panel */}
             <div className={styles.centerPanel}>
-              {currentAnalysis?.history ? (
+              {currentAnalysis?.history && (
                 <StockChart
                   data={currentAnalysis.history}
                   indicators={showIndicators ? currentAnalysis.chartIndicators : undefined}
@@ -317,12 +317,6 @@ export default function Home() {
                   settings={chartSettings}
                   earningsDate={nextEarningsDate}
                   earningsTooltip={earningsTooltip}
-                />
-              ) : (
-                <ChartPlaceholder
-                  isScanning={isScanLoading}
-                  isPaused={isPaused}
-                  scanningSymbol={scanningSymbol || undefined}
                 />
               )}
             </div>
