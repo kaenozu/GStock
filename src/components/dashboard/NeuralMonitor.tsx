@@ -204,7 +204,7 @@ export const NeuralMonitor: React.FC<NeuralMonitorProps> = React.memo(function N
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Zap size={12} fill="var(--accent-cyan)" color="var(--accent-cyan)" />
-                            {analysis.signals.find(s => s.startsWith('Alpha:'))?.replace('Alpha:', 'Alpha (議長):') || analysis.signals[0] || '沈黙中...'}
+                            {analysis.signals.find(s => s.startsWith('Alpha:'))?.replace('Alpha:', 'Alpha (議長):') || analysis.signals[0] || 'AI分析準備中...'}
                         </div>
                     </div>
                 </div>

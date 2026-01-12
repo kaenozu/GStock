@@ -25,11 +25,11 @@ import { EarningsPanel } from '@/components/dashboard/EarningsPanel';
 import { AccuracyPanel } from '@/components/dashboard/AccuracyPanel';
 import { AlertSettingsPanel } from '@/components/dashboard/AlertSettingsPanel';
 import { PortfolioManager } from '@/components/portfolio/PortfolioManager';
-// VirtualScroll available but not currently used
 import { SettingsPanel } from '@/components/common/SettingsPanel';
 import { TabPanel } from '@/components/common/TabPanel';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ConnectionStatusIndicator } from '@/components/common/ConnectionStatus';
+
 
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
@@ -172,9 +172,6 @@ export default function Home() {
       };
     }
   }, [bestTrade, isPaused]);
-
-  // Note: Earnings markers feature is prepared but not yet integrated
-  // The earningsMarkers state can be populated via EarningsPanel callback when needed
 
   // Handler for Watchlist Toggle
   const handleToggleWatchlist = (symbol: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') => {
