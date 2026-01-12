@@ -2,7 +2,8 @@
 import React from 'react';
 import { BacktestReport } from '@/lib/backtest/BacktestArena';
 import { Activity, Calendar } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { TermWithTooltip } from '@/components/common/Tooltip';
 
 interface BacktestPanelProps {
     report: BacktestReport | null; // Allow generic type if mismatch, but let's assume structure matches
@@ -88,7 +89,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
                     <LineChart data={report.equityCurve}>
                         <XAxis dataKey="time" hide />
                         <YAxis domain={['auto', 'auto']} hide />
-                        <Tooltip
+                        <RechartsTooltip
                             contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '4px' }}
                             itemStyle={{ color: '#fff' }}
                             formatter={(val) => val != null ? `¥${Number(val).toLocaleString()}` : ''}

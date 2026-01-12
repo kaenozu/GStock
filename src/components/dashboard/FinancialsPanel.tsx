@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, BarChart2, AlertCircle } from 'lucide-react';
+import { BarChart2, AlertCircle } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { Skeleton } from '@/components/common/Skeleton';
+import { TermWithTooltip } from '@/components/common/Tooltip';
 import { InsiderSentimentData } from '@/types/market';
 
 interface FinancialData {
@@ -107,50 +108,50 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '0.8rem' }}>
                 <div>
-                    <span style={{ color: '#9ca3af' }}>P/E Ratio</span>
+                    <span style={{ color: '#9ca3af' }}><TermWithTooltip term="P/E">P/E Ratio</TermWithTooltip></span>
                     <div style={{ fontWeight: 'bold', color: getScoreColor(data.pe, 15, 0) }}>
                         {formatNum(data.pe)}
                     </div>
                 </div>
                 <div>
-                    <span style={{ color: '#9ca3af' }}>EPS (TTM)</span>
+                    <span style={{ color: '#9ca3af' }}><TermWithTooltip term="EPS">EPS (TTM)</TermWithTooltip></span>
                     <div style={{ fontWeight: 'bold' }}>${formatNum(data.eps)}</div>
                 </div>
                 <div>
-                    <span style={{ color: '#9ca3af' }}>EPS Growth</span>
+                    <span style={{ color: '#9ca3af' }}><TermWithTooltip term="EPS Growth">EPS Growth</TermWithTooltip></span>
                     <div style={{ fontWeight: 'bold', color: getScoreColor(data.epsGrowth, 10, 0) }}>
                         {formatNum(data.epsGrowth, '%')}
                     </div>
                 </div>
                 <div>
-                    <span style={{ color: '#9ca3af' }}>ROE</span>
+                    <span style={{ color: '#9ca3af' }}><TermWithTooltip term="ROE">ROE</TermWithTooltip></span>
                     <div style={{ fontWeight: 'bold', color: getScoreColor(data.roe, 15, 5) }}>
                         {formatNum(data.roe, '%')}
                     </div>
                 </div>
                 <div>
-                    <span style={{ color: '#9ca3af' }}>Revenue Growth</span>
+                    <span style={{ color: '#9ca3af' }}><TermWithTooltip term="Revenue Growth">Revenue Growth</TermWithTooltip></span>
                     <div style={{ fontWeight: 'bold', color: getScoreColor(data.revenueGrowth, 10, 0) }}>
                         {formatNum(data.revenueGrowth, '%')}
                     </div>
                 </div>
                 <div>
-                    <span style={{ color: '#9ca3af' }}>Market Cap</span>
+                    <span style={{ color: '#9ca3af' }}><TermWithTooltip term="Market Cap">Market Cap</TermWithTooltip></span>
                     <div style={{ fontWeight: 'bold' }}>{formatMktCap(data.marketCap)}</div>
                 </div>
                 <div>
-                    <span style={{ color: '#9ca3af' }}>52W High</span>
+                    <span style={{ color: '#9ca3af' }}><TermWithTooltip term="52W High">52W High</TermWithTooltip></span>
                     <div style={{ fontWeight: 'bold', color: '#10b981' }}>${formatNum(data._52wHigh)}</div>
                 </div>
                 <div>
-                    <span style={{ color: '#9ca3af' }}>52W Low</span>
+                    <span style={{ color: '#9ca3af' }}><TermWithTooltip term="52W Low">52W Low</TermWithTooltip></span>
                     <div style={{ fontWeight: 'bold', color: '#ef4444' }}>${formatNum(data._52wLow)}</div>
                 </div>
             </div>
 
             {insiderData && insiderData.length > 0 && (
                 <div style={{ marginTop: '16px', borderTop: '1px solid #334155', paddingTop: '12px' }}>
-                    <h5 style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#cbd5e1' }}>Insider Confidence (MSPR)</h5>
+                    <h5 style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#cbd5e1' }}><TermWithTooltip term="MSPR">Insider Confidence (MSPR)</TermWithTooltip></h5>
                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                         {insiderData.slice(0, 3).map((item) => (
                             <div key={`${item.year}-${item.month}`} style={{
