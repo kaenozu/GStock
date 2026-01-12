@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, rateLimit, validateScanRequest, withLogging } from '@/lib/api/middleware';
+import { withAuth, rateLimit, validateScanRequest } from '@/lib/api/middleware';
 import { FinnhubProvider } from '@/lib/api/providers/FinnhubProvider';
 import { YahooProvider } from '@/lib/api/providers/YahooProvider';
 import { StockProvider } from '@/lib/api/providers/StockProvider';
@@ -101,9 +101,9 @@ async function handler(request: Request) {
     }
 }
 
-export const POST = withAuth(withLogging(async (request: NextRequest) => {
+export const POST = withAuth(async (request: NextRequest) => {
     if (!checkRateLimit(request)) {
         return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
     return handler(request);
-}));
+});
