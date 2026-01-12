@@ -1,57 +1,75 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Health Check Endpoint
+ * @description サービスの正常性を確認するエンドポイント
+ */
 
-interface HealthResponse {
+import { NextResponse } from 'next/server';
+import fsSync from 'fs';
+import path from 'path';
+
+interface HealthStatus {
     status: 'healthy' | 'degraded' | 'unhealthy';
     timestamp: string;
-    uptime: number;
-    environment: string;
     version: string;
     checks: {
-        api: { status: string; latency?: number };
-        cache: { status: string };
-        database: { status: string };
+        database: boolean;
+        dataDirectory: boolean;
+        memory: {
+            used: number;
+            total: number;
+            percentUsed: number;
+        };
     };
+    uptime: number;
 }
 
-export const GET = async (req: NextRequest) => {
-    const startTime = Date.now();
-    const uptime = process.uptime();
-    const environment = process.env.NODE_ENV || 'unknown';
-    const version = process.env.npm_package_version || '0.1.0';
+const startTime = Date.now();
 
-    const checks = {
-        api: { status: 'ok' } as { status: string; latency?: number },
-        cache: { status: 'ok' },
-        database: { status: 'ok' }
-    };
-
-    // Check API latency (simple self-check)
+export async function GET(): Promise<NextResponse<HealthStatus>> {
+    const dataDir = process.env.GSTOCK_DATA_DIR || path.join(process.cwd(), 'data');
+    
+    // データディレクトリの確認
+    let dataDirOk = false;
     try {
-        checks.api.latency = Date.now() - startTime;
-    } catch (error) {
-        checks.api.status = 'error';
+        dataDirOk = fsSync.existsSync(dataDir);
+        if (!dataDirOk) {
+            fsSync.mkdirSync(dataDir, { recursive: true });
+            dataDirOk = true;
+        }
+    } catch {
+        dataDirOk = false;
     }
 
-    // Determine overall health status
-    const allChecksOk = Object.values(checks).every(check => check.status === 'ok');
-    const anyChecksError = Object.values(checks).some(check => check.status === 'error');
+    // メモリ使用量
+    const memoryUsage = process.memoryUsage();
+    const memoryPercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
 
-    let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-    if (anyChecksError) {
-        status = 'unhealthy';
-    } else if (!allChecksOk) {
+    // ステータス判定
+    let status: HealthStatus['status'] = 'healthy';
+    if (!dataDirOk) {
+        status = 'degraded';
+    }
+    if (memoryPercent > 90) {
         status = 'degraded';
     }
 
-    const response: HealthResponse = {
+    const healthStatus: HealthStatus = {
         status,
         timestamp: new Date().toISOString(),
-        uptime: Math.floor(uptime),
-        environment,
-        version,
-        checks
+        version: process.env.npm_package_version || '1.0.0',
+        checks: {
+            database: true, // 将来のDB接続チェック用
+            dataDirectory: dataDirOk,
+            memory: {
+                used: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+                total: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+                percentUsed: Math.round(memoryPercent),
+            },
+        },
+        uptime: Math.round((Date.now() - startTime) / 1000),
     };
 
-    const statusCode = status === 'unhealthy' ? 503 : 200;
-    return NextResponse.json(response, { status: statusCode });
-};
+    const statusCode = status === 'healthy' ? 200 : status === 'degraded' ? 200 : 503;
+    
+    return NextResponse.json(healthStatus, { status: statusCode });
+}

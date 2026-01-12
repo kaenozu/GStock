@@ -6,9 +6,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     exclude: [
-      'node_modules',
-      'dist',
-      'tests/e2e',
+      '**/node_modules/**',
+      '**/e2e/**',  // Playwrightテストを除外
     ],
   },
 });

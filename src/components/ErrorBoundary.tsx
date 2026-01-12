@@ -1,67 +1,50 @@
 'use client';
 
-import React, { Component, ReactNode, ErrorInfo } from 'react';
-import styles from './GlobalErrorBoundary.module.css';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { TriangleAlert } from 'lucide-react';
 
-interface ErrorBoundaryProps {
+interface Props {
     children: ReactNode;
     fallback?: ReactNode;
-    onError?: (error: Error, errorInfo: ErrorInfo) => void;
+    name?: string;
 }
 
-interface ErrorBoundaryState {
+interface State {
     hasError: boolean;
     error: Error | null;
 }
 
-export class GlobalErrorBoundary extends Component<
-    ErrorBoundaryProps,
-    ErrorBoundaryState
-> {
-    constructor(props: ErrorBoundaryProps) {
+/**
+ * ErrorBoundary - Global error handler for React components
+ * Catches errors and displays fallback UI
+ * Logs errors to server via /api/errors
+ */
+export class ErrorBoundary extends Component<Props, State> {
+    constructor(props: Props) {
         super(props);
         this.state = { hasError: false, error: null };
     }
 
-    static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    static getDerivedStateFromError(error: Error): State {
         return { hasError: true, error };
     }
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error('[GlobalErrorBoundary] Error caught:', error);
-        console.error('[GlobalErrorBoundary] Component stack:', errorInfo.componentStack);
-
-        this.setState({ error });
-
-        if (this.props.onError) {
-            this.props.onError(error, errorInfo);
-        }
-
-        this.logErrorToService(error, errorInfo);
+        // Log to server
+        fetch('/api/errors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                level: 'ERROR',
+                message: `ErrorBoundary caught error in ${this.props.name || 'Component'}: ${error.message}`,
+                context: this.props.name || 'Component',
+                stack: error.stack || errorInfo.componentStack,
+            }),
+        }).catch(() => {
+            // Fallback to console if API fails
+            console.error('[ErrorBoundary]', error, errorInfo);
+        });
     }
-
-    async logErrorToService(error: Error, errorInfo: ErrorInfo) {
-        try {
-            await fetch('/api/errors', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    error: error.message,
-                    stack: error.stack,
-                    componentStack: errorInfo.componentStack,
-                    timestamp: Date.now(),
-                    userAgent: navigator.userAgent,
-                    url: window.location.href,
-                }),
-            });
-        } catch (loggingError) {
-            console.error('[GlobalErrorBoundary] Failed to log error:', loggingError);
-        }
-    }
-
-    handleReset = () => {
-        this.setState({ hasError: false, error: null });
-    };
 
     render() {
         if (this.state.hasError) {
@@ -70,66 +53,24 @@ export class GlobalErrorBoundary extends Component<
             }
 
             return (
-                <div className={styles.container}>
-                    <div className={styles.errorCard}>
-                        <div className={styles.icon}>
-                            <svg
-                                width="64"
-                                height="64"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path
-                                    d="M12 9V2M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 13C12.55 13 13 13.45 13 14C13 14.55 12.55 15 12 15C11.45 15 11 14.55 11 14C11 13.45 11.45 13 12 13ZM11 11H13V13H11V11Z"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </svg>
-                        </div>
-
-                        <h1 className={styles.title}>
-                            エラーが発生しました
-                        </h1>
-
-                        <p className={styles.message}>
-                            申し訳ありませんが、予期しないエラーが発生しました。
-                            <br />
-                            もう一度お試しいただくか、ページを再読み込みしてください。
-                        </p>
-
-                        {process.env.NODE_ENV === 'development' && (
-                            <details className={styles.details}>
-                                <summary className={styles.summary}>
-                                    開発者用の詳細情報
-                                </summary>
-                                <div className={styles.detailContent}>
-                                    <h3 className={styles.detailTitle}>エラーメッセージ</h3>
-                                    <pre className={styles.code}>
-                                        {this.state.error?.message}
-                                    </pre>
-
-                                    {this.state.error?.stack && (
-                                        <>
-                                            <h3 className={styles.detailTitle}>スタックトレース</h3>
-                                            <pre className={styles.code}>
-                                                {this.state.error.stack}
-                                            </pre>
-                                        </>
-                                    )}
-                                </div>
-                            </details>
-                        )}
-
-                        <button
-                            onClick={this.handleReset}
-                            className={styles.resetButton}
-                        >
-                            アプリケーションをリセット
-                        </button>
+                <div className="p-6 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-900/50 flex flex-col items-center justify-center text-center gap-4 m-4">
+                    <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
+                        <TriangleAlert className="w-8 h-8 text-red-600 dark:text-red-400" />
                     </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-red-900 dark:text-red-200">
+                            Something went wrong
+                        </h3>
+                        <p className="text-sm text-red-700 dark:text-red-300 mt-1 max-w-md">
+                            {this.state.error?.message || 'An unexpected error occurred.'}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => this.setState({ hasError: false, error: null })}
+                        className="px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                        Try Again
+                    </button>
                 </div>
             );
         }

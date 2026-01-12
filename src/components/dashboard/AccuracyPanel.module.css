@@ -137,7 +137,7 @@
 }
 
 .calibHint {
-  font-size: 0.7rem;
+  font-size: var(--font-size-xs);
   color: #64748b;
   margin-left: 4px;
 }
@@ -183,7 +183,7 @@
 
 .regimeCount {
   color: #64748b;
-  font-size: 0.7rem;
+  font-size: var(--font-size-xs);
 }
 
 /* Log Section */
@@ -213,7 +213,7 @@
 }
 
 .lastLogged {
-  font-size: 0.7rem;
+  font-size: var(--font-size-xs);
   color: #64748b;
   text-align: center;
   margin-top: 6px;
@@ -223,7 +223,7 @@
 .footer {
   display: flex;
   justify-content: space-between;
-  font-size: 0.7rem;
+  font-size: var(--font-size-xs);
   color: #64748b;
   padding-top: 12px;
   border-top: 1px solid rgba(148, 163, 184, 0.1);

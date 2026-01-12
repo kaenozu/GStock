@@ -93,13 +93,22 @@ export interface ChartMarker {
 }
 
 export interface BacktestResult {
+  /** 初期資金 */
   initialBalance: number;
+  /** 取引回数 */
   trades: number;
+  /** 純利益（手数料・スリッページ込み） */
   profit: number;
+  /** 利益率（%） */
   profitPercent: number;
+  /** 勝率（%） */
   winRate: number;
+  /** 最終資金 */
   finalBalance: number;
-  markers: ChartMarker[]; // チャート描画用マーカー
+  /** チャート描画用マーカー */
+  markers: ChartMarker[];
+  /** 総手数料 */
+  totalCommission?: number;
 }
 // Earnings Tracker Types
 export interface EarningsEvent {
@@ -116,4 +125,13 @@ export interface EarningsData {
   symbol: string;
   nextEarningsDate: string | null;
   history: EarningsEvent[];
+}
+
+// Insider Sentiment Types
+export interface InsiderSentimentData {
+  symbol: string;
+  year: number;
+  month: number;
+  change: number;      // Net buying/selling share value/volume
+  mspr: number;        // Monthly Share Purchase Ratio
 }

@@ -1,13 +1,13 @@
 'use client';
 import React from 'react';
 import { BacktestReport } from '@/lib/backtest/BacktestArena';
-import { TrendingUp, TrendingDown, Activity, Calendar } from 'lucide-react';
+import { Activity, Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface BacktestPanelProps {
     report: BacktestReport | null; // Allow generic type if mismatch, but let's assume structure matches
     isLoading: boolean;
-    onRunBacktest: (period: string) => void;
+    onRunBacktest: (period: string, config?: { riskPercent: number, maxPosPercent: number, buyThreshold: number }) => void;
 }
 
 export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading, onRunBacktest }) => {
@@ -21,19 +21,53 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
         );
     }
 
+    const [riskPercent, setRiskPercent] = React.useState(2);
+    const [buyThreshold, setBuyThreshold] = React.useState(70);
+
+    const handleRun = (period: string) => {
+        onRunBacktest(period, {
+            riskPercent: riskPercent / 100,
+            maxPosPercent: 0.2, // Fixed for now or add input
+            buyThreshold
+        });
+    };
+
     if (!report) {
         return (
             <div style={{ padding: '1rem', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '8px', textAlign: 'center' }}>
                 <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>Strategy Explorer (Time Machine)</h3>
+
+                {/* Config Inputs */}
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '1rem' }}>
+                    <div style={{ textAlign: 'left' }}>
+                        <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Risk per Trade (%)</label>
+                        <input
+                            type="number"
+                            value={riskPercent}
+                            onChange={(e) => setRiskPercent(Number(e.target.value))}
+                            style={{ background: '#1e293b', border: '1px solid #334155', color: 'white', padding: '4px', borderRadius: '4px', width: '60px' }}
+                        />
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                        <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Confidence Threshold</label>
+                        <input
+                            type="number"
+                            value={buyThreshold}
+                            onChange={(e) => setBuyThreshold(Number(e.target.value))}
+                            style={{ background: '#1e293b', border: '1px solid #334155', color: 'white', padding: '4px', borderRadius: '4px', width: '60px' }}
+                        />
+                    </div>
+                </div>
+
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                     <button
-                        onClick={() => onRunBacktest('1y')}
+                        onClick={() => handleRun('1y')}
                         style={{ padding: '0.5rem 1rem', background: 'var(--accent-purple)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }}
                     >
                         Run 1 Year Test
                     </button>
                     <button
-                        onClick={() => onRunBacktest('2y')}
+                        onClick={() => handleRun('2y')}
                         style={{ padding: '0.5rem 1rem', background: '#334155', border: 'none', borderRadius: '4px', color: '#94a3b8', cursor: 'not-allowed', fontSize: '0.8rem' }}
                         disabled
                     >
@@ -82,18 +116,43 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
                 </div>
             </div>
 
+            {/* Config & Metrics Row 2 */}
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', background: '#1e293b', padding: '0.5rem', borderRadius: '4px', alignItems: 'center' }}>
+                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Profit Factor:</div>
+                <div style={{ fontWeight: 'bold', color: report.profitFactor > 1.5 ? '#10b981' : report.profitFactor > 1.0 ? '#f59e0b' : '#ef4444' }}>
+                    {report.profitFactor}
+                </div>
+                <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 0.5rem' }}></div>
+                {/* Placeholder for Config (Risk%, Threshold) - currently read-only in this Phase to keep UI clean, can be expanded */}
+                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                    Strategy: Knowledge Agent (Risk {riskPercent}%, Threshold {buyThreshold})
+                </div>
+            </div>
+
             {/* Equity Curve */}
+            <h4 style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem' }}>資産推移 (Equity Curve)</h4>
             <div style={{ height: '200px', width: '100%', marginBottom: '1rem' }}>
                 <ResponsiveContainer>
                     <LineChart data={report.equityCurve}>
                         <XAxis dataKey="time" hide />
-                        <YAxis domain={['auto', 'auto']} hide />
-                        <Tooltip
-                            contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '4px' }}
-                            itemStyle={{ color: '#fff' }}
-                            formatter={(val: any) => `¥${Number(val).toLocaleString()}`}
+                        <YAxis
+                            domain={['auto', 'auto']}
+                            hide
                         />
-                        <Line type="monotone" dataKey="value" stroke="var(--accent-cyan)" strokeWidth={2} dot={false} />
+                        <Tooltip
+                            contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                            itemStyle={{ color: '#fff' }}
+                            formatter={(val: any) => typeof val === 'number' ? `¥${val.toLocaleString()}` : ''}
+                            labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
+                        />
+                        <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke="var(--accent-cyan)"
+                            strokeWidth={2}
+                            dot={false}
+                            animationDuration={1500}
+                        />
                     </LineChart>
                 </ResponsiveContainer>
             </div>

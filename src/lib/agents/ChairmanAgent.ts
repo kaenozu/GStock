@@ -1,6 +1,6 @@
 import { Agent, AgentResult } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
-import { SMA, RSI, MACD, ADX, BollingerBands, ATR } from 'technicalindicators';
+import { SMA, RSI } from 'technicalindicators';
 
 export class ChairmanAgent implements Agent {
     id = 'chairman';

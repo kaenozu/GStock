@@ -7,7 +7,7 @@ export class ReversalAgent implements Agent {
     name = 'Contra (Reversal)';
     role: Agent['role'] = 'REVERSAL';
 
-    analyze(data: StockDataPoint[], regime?: MarketRegime): AgentResult {
+    analyze(data: StockDataPoint[], _regime?: MarketRegime): AgentResult {
         if (data.length < 50) return this.neutralResult("Insufficient data");
 
         const closingPrices = data.map((d) => d.close);

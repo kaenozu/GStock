@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import { PortfolioAsset } from '@/types/portfolio';
 import { ASSET_CLASS_COLORS } from '@/lib/portfolio/strategies';
-import { formatCurrency, formatPercent } from '@/lib/portfolio/calculator';
+import { formatCurrency } from '@/lib/portfolio/calculator';
 import styles from './AllocationChart.module.css';
 
 interface AllocationChartProps {
@@ -37,6 +37,52 @@ const ASSET_COLORS: Record<string, string> = {
 const getAssetColor = (symbol: string, assetClass: string): string => {
   return ASSET_COLORS[symbol] || ASSET_CLASS_COLORS[assetClass] || '#6b7280';
 };
+
+// Custom tooltip - defined outside component
+interface TooltipPayloadItem {
+  payload: { name: string; value: number; amount?: number };
+}
+
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: TooltipPayloadItem[] }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className={styles.tooltip}>
+        <div className={styles.tooltipTitle}>{data.name}</div>
+        <div className={styles.tooltipValue}>
+          {data.value.toFixed(1)}%
+          {data.amount !== undefined && (
+            <span className={styles.tooltipAmount}>
+              {formatCurrency(data.amount)}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+// Legend item type
+interface LegendItem {
+  name: string;
+  color: string;
+}
+
+// Simple legend component - defined outside
+const SimpleLegend: React.FC<{ data: LegendItem[] }> = ({ data }) => (
+  <div className={styles.legend}>
+    {data.map((entry, index) => (
+      <div key={`legend-${index}`} className={styles.legendItem}>
+        <div
+          className={styles.legendDot}
+          style={{ backgroundColor: entry.color }}
+        />
+        <span>{entry.name}</span>
+      </div>
+    ))}
+  </div>
+);
 
 export const AllocationChart: React.FC<AllocationChartProps> = ({
   assets,
@@ -66,42 +112,6 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({
         color: getAssetColor(asset.symbol, asset.assetClass),
       }));
   }, [assets]);
-
-  // Custom tooltip component (defined outside render)
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { name: string; value: number; amount?: number } }> }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className={styles.tooltip}>
-          <div className={styles.tooltipTitle}>{data.name}</div>
-          <div className={styles.tooltipValue}>
-            {data.value.toFixed(1)}%
-            {data.amount !== undefined && (
-              <span className={styles.tooltipAmount}>
-                {formatCurrency(data.amount)}
-              </span>
-            )}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Simple legend component (defined outside render)
-  const SimpleLegend = () => (
-    <div className={styles.legend}>
-      {currentData.map((entry, index) => (
-        <div key={`legend-${index}`} className={styles.legendItem}>
-          <div
-            className={styles.legendDot}
-            style={{ backgroundColor: entry.color }}
-          />
-          <span>{entry.name}</span>
-        </div>
-      ))}
-    </div>
-  );
 
   return (
     <div className={styles.container}>
@@ -148,7 +158,7 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({
         </ResponsiveContainer>
         
         {/* Simple Legend */}
-        <SimpleLegend />
+        <SimpleLegend data={currentData} />
         
         {/* Center label */}
         <div className={styles.centerLabel}>

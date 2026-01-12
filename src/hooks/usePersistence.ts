@@ -1,35 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { WatchListItem, TradeHistoryItem } from '@/types/market';
 
 export type ExecutionMode = 'PAPER' | 'LIVE';
 
+// Helper to safely get from localStorage
+const getInitialValue = <T>(key: string, defaultValue: T): T => {
+    if (typeof window === 'undefined') return defaultValue;
+    try {
+        const saved = localStorage.getItem(key);
+        return saved ? JSON.parse(saved) : defaultValue;
+    } catch {
+        return defaultValue;
+    }
+};
+
 export const usePersistence = () => {
-    const [watchlist, setWatchlist] = useState<WatchListItem[]>([]);
-    const [history, setHistory] = useState<TradeHistoryItem[]>([]);
-    const [executionMode, setExecutionMode] = useState<ExecutionMode>('PAPER');
+    // Initialize state with values from localStorage (SSR-safe)
+    const [watchlist, setWatchlist] = useState<WatchListItem[]>(() => 
+        getInitialValue('gstock-watchlist', [])
+    );
+    const [history, setHistory] = useState<TradeHistoryItem[]>(() => 
+        getInitialValue('gstock-history', [])
+    );
+    const [executionMode, setExecutionMode] = useState<ExecutionMode>(() => {
+        const saved = getInitialValue<string>('gstock-mode', 'PAPER');
+        return (saved === 'LIVE' || saved === 'PAPER') ? saved : 'PAPER';
+    });
 
-    useEffect(() => {
-        const initializePersistence = () => {
-            if (typeof window === 'undefined') return;
-
-            const savedWatchlist = localStorage.getItem('gstock-watchlist');
-            if (savedWatchlist) {
-                try { setWatchlist(JSON.parse(savedWatchlist)); } catch { }
-            }
-
-            const savedHistory = localStorage.getItem('gstock-history');
-            if (savedHistory) {
-                try { setHistory(JSON.parse(savedHistory)); } catch { }
-            }
-
-            const savedMode = localStorage.getItem('gstock-mode');
-            if (savedMode === 'LIVE' || savedMode === 'PAPER') {
-                setExecutionMode(savedMode);
-            }
-        };
-        initializePersistence();
-    }, []);
-
+    // Sync to localStorage on changes
     useEffect(() => {
         if (typeof window !== 'undefined') {
             localStorage.setItem('gstock-watchlist', JSON.stringify(watchlist));
@@ -48,9 +46,22 @@ export const usePersistence = () => {
         }
     }, [executionMode]);
 
+    // Wrap setters in useCallback for stability
+    const updateWatchlist = useCallback((updater: WatchListItem[] | ((prev: WatchListItem[]) => WatchListItem[])) => {
+        setWatchlist(updater);
+    }, []);
+
+    const updateHistory = useCallback((updater: TradeHistoryItem[] | ((prev: TradeHistoryItem[]) => TradeHistoryItem[])) => {
+        setHistory(updater);
+    }, []);
+
+    const updateExecutionMode = useCallback((mode: ExecutionMode) => {
+        setExecutionMode(mode);
+    }, []);
+
     return {
-        watchlist, setWatchlist,
-        history, setHistory,
-        executionMode, setExecutionMode
+        watchlist, setWatchlist: updateWatchlist,
+        history, setHistory: updateHistory,
+        executionMode, setExecutionMode: updateExecutionMode
     };
 };

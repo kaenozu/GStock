@@ -1,4 +1,10 @@
-import { Agent, AgentResult } from '../agents/types';
+/**
+ * EnsemblePredictor - アンサンブル予測器
+ * @description 複数のAIエージェントの予測を統合して最終的なシグナルを生成
+ * @module lib/api/EnsemblePredictor
+ */
+
+import { Agent, AgentResult, AgentRole } from '../agents/types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 import { TrendAgent } from '../agents/TrendAgent';
 import { ReversalAgent } from '../agents/ReversalAgent';
@@ -7,6 +13,7 @@ import { NewsSentimentAgent } from '../agents/NewsSentimentAgent';
 import { MacroEconomicAgent } from '../agents/MacroEconomicAgent';
 import { OptionFlowAgent } from '../agents/OptionFlowAgent';
 
+/** アンサンブル結果 */
 export interface EnsembleResult {
     finalSignal: 'BUY' | 'SELL' | 'HOLD';
     confidence: number;
@@ -15,25 +22,48 @@ export interface EnsembleResult {
     weightedScore: number;
 }
 
+/** 重み付け設定 */
 export interface EnsembleWeights {
     trend: number;
     reversal: number;
     volatility: number;
-    volume: number;
     fundamental: number;
     sentiment: number;
     macro: number;
     option: number;
 }
 
+/** マクロデータの型 */
+interface MacroData {
+    interestRate: number;
+    inflationRate: number;
+    gdpGrowth?: number;
+    unemploymentRate?: number;
+}
+
+/** オプションフローデータの型 */
+interface OptionFlowData {
+    symbol: string;
+    date: Date;
+    callVolume: number;
+    putVolume: number;
+    callOI: number;
+    putOI: number;
+    impliedVolatility: number;
+    institutionalActivity: 'HIGH' | 'MEDIUM' | 'LOW';
+    maxPain?: number;
+}
+
+/**
+ * アンサンブル予測器
+ */
 export class EnsemblePredictor {
     private agents: Map<string, Agent> = new Map();
     private weights: EnsembleWeights = {
         trend: 0.25,
         reversal: 0.15,
         volatility: 0.10,
-        volume: 0.05,
-        fundamental: 0.00,
+        fundamental: 0.05,
         sentiment: 0.20,
         macro: 0.10,
         option: 0.15
@@ -53,33 +83,21 @@ export class EnsemblePredictor {
         this.agents.set('macro', new MacroEconomicAgent());
         this.agents.set('option', new OptionFlowAgent());
 
-        this.agents.forEach((agent, id) => {
+        this.agents.forEach((_, id) => {
             this.historicalPerformance.set(id, { correct: 0, total: 0 });
         });
     }
 
+    /**
+     * 予測を実行
+     */
     predict(
         stockData: StockDataPoint[],
         options?: {
             marketRegime?: MarketRegime;
             newsData?: string[];
-            macroData?: {
-                interestRate: number;
-                inflationRate: number;
-                gdpGrowth?: number;
-                unemploymentRate?: number;
-            };
-            optionFlow?: {
-                symbol: string;
-                date: Date;
-                callVolume: number;
-                putVolume: number;
-                callOI: number;
-                putOI: number;
-                impliedVolatility: number;
-                institutionalActivity: 'HIGH' | 'MEDIUM' | 'LOW';
-                maxPain?: number;
-            };
+            macroData?: MacroData;
+            optionFlow?: OptionFlowData;
             customWeights?: Partial<EnsembleWeights>;
         }
     ): EnsembleResult {
@@ -164,14 +182,13 @@ export class EnsemblePredictor {
         };
     }
 
-    private getAgentWeight(role: Agent['role']): number {
-        const roleToWeightKey: Record<Agent['role'], keyof EnsembleWeights> = {
+    private getAgentWeight(role: AgentRole): number {
+        const roleToWeightKey: Record<AgentRole, keyof EnsembleWeights> = {
             'TREND': 'trend',
             'REVERSAL': 'reversal',
             'VOLATILE': 'volatility',
-            'VOLUME': 'volume',
             'FUNDAMENTAL': 'fundamental',
-            'SENTIMENT': 'sentiment',
+            'NEWS': 'sentiment',
             'MACRO': 'macro',
             'OPTION': 'option',
             'CHAIRMAN': 'fundamental'
@@ -223,14 +240,13 @@ export class EnsemblePredictor {
         });
     }
 
-    private getAgentWeightKey(role: Agent['role']): keyof EnsembleWeights {
-        const roleToWeightKey: Record<Agent['role'], keyof EnsembleWeights> = {
+    private getAgentWeightKey(role: AgentRole): keyof EnsembleWeights {
+        const roleToWeightKey: Record<AgentRole, keyof EnsembleWeights> = {
             'TREND': 'trend',
             'REVERSAL': 'reversal',
             'VOLATILE': 'volatility',
-            'VOLUME': 'volume',
             'FUNDAMENTAL': 'fundamental',
-            'SENTIMENT': 'sentiment',
+            'NEWS': 'sentiment',
             'MACRO': 'macro',
             'OPTION': 'option',
             'CHAIRMAN': 'fundamental'

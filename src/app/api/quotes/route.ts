@@ -26,7 +26,7 @@ async function fetchQuote(symbol: string): Promise<number> {
       quoteCache.set(symbol, { price, timestamp: Date.now() });
       return price;
     }
-  } catch (_e) {
+  } catch {
     console.warn(`[Quotes] Finnhub failed for ${symbol}, trying Yahoo`);
   }
 
@@ -35,7 +35,7 @@ async function fetchQuote(symbol: string): Promise<number> {
     const price = await yahoo.fetchQuote(symbol);
     quoteCache.set(symbol, { price, timestamp: Date.now() });
     return price;
-  } catch (_e) {
+  } catch {
     console.error(`[Quotes] Both providers failed for ${symbol}`);
     return 0;
   }

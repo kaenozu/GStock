@@ -1,0 +1,17 @@
+[Unit]
+Description=GStock Trading Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=exedev
+WorkingDirectory=/home/exedev/GStock
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=10
+Environment=NODE_ENV=production
+Environment=SKIP_AUTH=true
+Environment=PORT=8000
+
+[Install]
+WantedBy=multi-user.target

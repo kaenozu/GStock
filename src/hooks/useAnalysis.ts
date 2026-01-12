@@ -22,14 +22,11 @@ export const useAnalysis = () => {
 
     const updateBestTrade = useCallback((analysis: AnalysisResult | null) => {
         if (!analysis) return;
-        setBestTrade((prev) => {
-            if (!prev) return analysis;
-            if (analysis.confidence > prev.confidence) return analysis;
-            return prev;
-        });
+        // Always update with the latest analysis to ensure fresh chart data
+        setBestTrade(analysis);
     }, []);
 
-    const runDeepBacktest = useCallback(async (symbol: string, period: string = '1y') => {
+    const runDeepBacktest = useCallback(async (symbol: string, period: string = '1y', config?: { riskPercent: number, maxPosPercent: number }) => {
         setIsBacktestLoading(true);
         setDeepReport(null);
 
@@ -37,7 +34,7 @@ export const useAnalysis = () => {
             const res = await fetch('/api/backtest-history', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol, period })
+                body: JSON.stringify({ symbol, period, config })
             });
 
             if (!res.ok) throw new Error('Backtest failed');
