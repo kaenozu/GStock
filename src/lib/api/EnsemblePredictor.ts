@@ -31,6 +31,7 @@ export interface EnsembleWeights {
     sentiment: number;
     macro: number;
     option: number;
+    multiTimeframe: number;
 }
 
 /** マクロデータの型 */
@@ -60,13 +61,14 @@ interface OptionFlowData {
 export class EnsemblePredictor {
     private agents: Map<string, Agent> = new Map();
     private weights: EnsembleWeights = {
-        trend: 0.25,
-        reversal: 0.15,
+        trend: 0.22,
+        reversal: 0.13,
         volatility: 0.10,
         fundamental: 0.05,
-        sentiment: 0.20,
+        sentiment: 0.18,
         macro: 0.10,
-        option: 0.15
+        option: 0.12,
+        multiTimeframe: 0.10
     };
 
     private historicalPerformance: Map<string, { correct: number; total: number }> = new Map();
@@ -191,7 +193,8 @@ export class EnsemblePredictor {
             'NEWS': 'sentiment',
             'MACRO': 'macro',
             'OPTION': 'option',
-            'CHAIRMAN': 'fundamental'
+            'CHAIRMAN': 'fundamental',
+            'MULTI_TIMEFRAME': 'multiTimeframe'
         };
 
         return this.weights[roleToWeightKey[role]];
@@ -249,7 +252,8 @@ export class EnsemblePredictor {
             'NEWS': 'sentiment',
             'MACRO': 'macro',
             'OPTION': 'option',
-            'CHAIRMAN': 'fundamental'
+            'CHAIRMAN': 'fundamental',
+            'MULTI_TIMEFRAME': 'multiTimeframe'
         };
 
         return roleToWeightKey[role];
