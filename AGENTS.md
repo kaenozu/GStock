@@ -23,6 +23,11 @@ Use Vitest filter flags:
 - `npm test --run path/to/test.test.ts` - Run specific test file
 - `npm test path/to/test.test.ts -t "specific test"` - Combine file and name filter
 
+#### E2E Testing
+- `npm test:e2e` - Run Playwright E2E tests
+- `npm test:e2e:ui` - Open Playwright UI
+- `npm test:e2e:headed` - Run E2E tests with visible browser
+
 Always run lint after making changes: `npm run lint`
 
 ## Code Style Guidelines
@@ -72,26 +77,13 @@ Always run lint after making changes: `npm run lint`
 - Handle empty/edge cases explicitly
 
 ### React Components
-- Client components: Start with `'use client'` directive
-- Define prop interfaces: `interface ComponentProps { ... }`
-- Use CSS Modules: `import styles from './Component.module.css'`
-- Prefer functional components with hooks
-- Destructure props in function signature
+Start with `'use client'`; define prop interfaces; use CSS Modules; prefer functional components with hooks; destructure props
 
 ### API Routes (App Router)
-- Location: `src/app/api/[route]/route.ts`
-- Export named handlers: `export const GET = ...`, `export const POST = ...`
-- Use middleware: `withAuth`, `withStockCache`, `rateLimit`
-- Validate input early and return 400/429/500 responses
-- Use `NextRequest`, `NextResponse` types from `next/server`
+Location: `src/app/api/[route]/route.ts`; export named handlers: `GET`, `POST`; use middleware; validate input early
 
 ### File Organization
-- `src/types/` - Type definitions
-- `src/lib/` - Core business logic (api, agents, accuracy, trading)
-- `src/components/` - React components organized by feature
-- `src/hooks/` - Custom React hooks
-- `src/app/api/` - Next.js API routes
-- `src/app/` - App Router pages and layouts
+`src/types/` - Type definitions; `src/lib/` - Core logic (api, agents, accuracy, trading); `src/components/` - React components; `src/hooks/` - Custom hooks; `src/app/api/` - API routes; `src/app/` - Pages/layouts
 
 ### Language
 - Code comments and identifiers in English
@@ -105,3 +97,55 @@ Always run lint after making changes: `npm run lint`
 - **Charts**: Lightweight Charts, Recharts
 - **Testing**: Vitest
 - **Technical Analysis**: technicalindicators library
+
+## Agent Implementation Guidelines
+
+### Agent Interface
+All agents must implement the `Agent` interface from `src/lib/agents/types.ts`
+Required: `id`, `name`, `role`, `analyze(data, regime?)` returning `AgentResult`
+
+### Agent Roles
+`CHAIRMAN` - Final decision maker; `TREND` - Follows market trends; `REVERSAL` - Identifies oversold/overbought; `VOLATILE` - Detects volatility; `MULTI_TIMEFRAME` - Cross-timeframe consensus
+
+### Scoring System
+Score-based: positive = bullish, negative = bearish; thresholds: `>=30` = BUY, `<=-30` = SELL
+Provide descriptive reason strings explaining decisions
+
+### Technical Indicators
+Use `technicalindicators` library; custom indicators in `src/lib/api/indicators/`
+Handle insufficient data gracefully; signals return: `'OVERBOUGHT' | 'OVERSOLD' | 'NEUTRAL'`
+
+## Test Data Generation Guidelines
+
+### Market Realism
+Continuous trends cause RSI extremes; include pullbacks (30-70 range)
+Add noise: `price *= 1 + (Math.random() - 0.5) * volatility`
+Example: `price *= 1.002; if (i % 7 === 0) price *= 0.99;`
+
+## Local Storage Usage
+
+Always check for browser context: `if (typeof window === 'undefined') return;`
+Use try-catch for quota exceeded errors
+Project key prefix: `gstock_` (e.g., `gstock_predictions`, `gstock_last_logged`)
+
+## Pull Request Guidelines
+
+### Commits
+Use conventional commits: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`
+Japanese commit messages; reference issues: `Closes #1` or `Refs #123`
+
+### PR Body Template (Japanese)
+```markdown
+## 概要
+簡潔な説明
+
+## 実装内容
+- 項目1
+- 項目2
+
+## 検証
+- ✅ Lint通過、全テストパス (X/X)、TSコンパイル成功
+```
+
+### Before Merging
+`npm test` (all pass), `npm run lint` (0 errors), single file: `npm test path/to/test.test.ts`
