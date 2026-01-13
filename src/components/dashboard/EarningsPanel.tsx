@@ -250,7 +250,7 @@ export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
                             borderRadius: '6px',
                             borderLeft: `2px solid ${analysis.sentiment === 'BULLISH' ? '#10b981' : analysis.sentiment === 'BEARISH' ? '#ef4444' : '#94a3b8'}`
                         }}>
-                            "{analysis.summary}"
+                            &quot;{analysis.summary}&quot;
                         </div>
                     </div>
                 )}
