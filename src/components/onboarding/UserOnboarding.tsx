@@ -64,11 +64,13 @@ export function UserOnboarding() {
 
     const handleSkip = () => {
         localStorage.setItem('hasSeenOnboarding', 'true');
+        localStorage.setItem('lastSeenOnboarding', Date.now().toString());
         setState(prev => ({ ...prev, showOnboarding: false }));
     };
 
     const handleComplete = () => {
         localStorage.setItem('hasSeenOnboarding', 'true');
+        localStorage.setItem('lastSeenOnboarding', Date.now().toString());
         setState(prev => ({ ...prev, showOnboarding: false }));
     };
 
@@ -113,7 +115,7 @@ export function UserOnboarding() {
 
                     <div className="onboarding-steps">
                         {steps.map((step, index) => (
-                            <div 
+                            <div
                                 key={index}
                                 className={`onboarding-step ${index === state.currentStep ? 'active' : ''} ${index < state.currentStep ? 'completed' : ''}`}
                             >
@@ -127,7 +129,7 @@ export function UserOnboarding() {
                         <button className="skip-button" onClick={handleSkip}>
                             スキップ
                         </button>
-                        
+
                         {state.currentStep < steps.length - 1 ? (
                             <button className="next-button" onClick={handleNext}>
                                 {currentStepObj.action}
