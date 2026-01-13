@@ -275,5 +275,68 @@ describe('PredictionLogger', () => {
       const pendingAfter = PredictionLogger.getPending();
       expect(pendingAfter.length).toBe(0);
     });
+
+  describe('Observation Period', () => {
+      beforeEach(() => {
+        localStorageMock.clear();
+      });
+
+      it('should return default observation period (14 days)', () => {
+        const period = PredictionLogger.getObservationPeriod();
+        expect(period).toBe(14);
+      });
+
+      it('should return default observation period (14 days)', () => {
+        const period = PredictionLogger.getObservationPeriod();
+        expect(period).toBe(14);
+      });
+
+      it('should set and get custom observation period', () => {
+        PredictionLogger.setObservationPeriod(21);
+        const period = PredictionLogger.getObservationPeriod();
+        expect(period).toBe(21);
+      });
+
+      it('should get records within observation period', () => {
+        // Create records spanning 20 days
+        const baseDate = new Date();
+        for (let i = 0; i < 20; i++) {
+          const date = new Date(baseDate);
+          date.setDate(date.getDate() - i);
+          PredictionLogger.log({
+            symbol: 'AAPL',
+            predictedDirection: 'BULLISH',
+            confidence: 70,
+            priceAtPrediction: 150 + i,
+          });
+        }
+
+        const records = PredictionLogger.getObservationRecords();
+        expect(records.length).toBeGreaterThan(0);
+      });
+
+      it('should calculate accuracy within observation period', () => {
+        // Clear previous records
+        localStorageMock.clear();
+
+        // Create and evaluate 7 records within observation period
+        for (let i = 0; i < 7; i++) {
+          const record = PredictionLogger.log({
+            symbol: 'TSLA',
+            predictedDirection: i % 2 === 0 ? 'BULLISH' : 'BEARISH',
+            confidence: 70,
+            priceAtPrediction: 200 + i * 10,
+          });
+
+          const actualPrice = i % 2 === 0 ? 210 + i * 10 : 190 + i * 10;
+          PredictionLogger.evaluate(record.id, actualPrice);
+        }
+
+        const accuracy = PredictionLogger.getObservationAccuracy();
+        expect(accuracy.total).toBe(7);
+        expect(accuracy.correct).toBe(7);
+        expect(accuracy.accuracy).toBeGreaterThanOrEqual(90);
+      });
+    });
   });
 });

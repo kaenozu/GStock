@@ -31,6 +31,8 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ConnectionStatusIndicator } from '@/components/common/ConnectionStatus';
 
 
+import { MobileNav, MobileTab } from '@/components/layout/MobileNav';
+
 const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false });
 
 export default function Home() {
@@ -39,6 +41,19 @@ export default function Home() {
   const [earningsMarkers, setEarningsMarkers] = useState<ChartMarker[]>([]);
   const [nextEarningsDate, setNextEarningsDate] = useState<string | null>(null);
   const [earningsTooltip, setEarningsTooltip] = useState<string>('');
+
+  // Mobile Tab State
+  const [mobileTab, setMobileTab] = useState<MobileTab>('signal');
+  // Right Panel Tab State (Controlled)
+  const [rightPanelTab, setRightPanelTab] = useState<string>('market');
+
+  // Handle Mobile Tab Changes
+  const handleMobileTabChange = (tab: MobileTab) => {
+    setMobileTab(tab);
+    // Sync Right Panel Tab if Market or Trade is selected
+    if (tab === 'market') setRightPanelTab('market');
+    if (tab === 'trade') setRightPanelTab('trade');
+  };
 
   const {
     watchlist, setWatchlist,
@@ -260,7 +275,10 @@ export default function Home() {
           {/* Main Content */}
           <div className={styles.content}>
             {/* Left Panel */}
-            <div className={styles.leftPanel}>
+            <div
+              className={styles.leftPanel}
+              data-mobile-active={mobileTab === 'signal'}
+            >
               <NeuralMonitor
                 analysis={currentAnalysis}
                 isPaused={isPaused}
@@ -315,7 +333,10 @@ export default function Home() {
             </div>
 
             {/* Center Panel */}
-            <div className={styles.centerPanel}>
+            <div
+              className={styles.centerPanel}
+              data-mobile-active={mobileTab === 'chart'}
+            >
               {currentAnalysis?.history && (
                 <StockChart
                   data={currentAnalysis.history}
@@ -329,14 +350,18 @@ export default function Home() {
             </div>
 
             {/* Right Panel - Tabbed */}
-            <div className={styles.rightPanel}>
+            <div
+              className={styles.rightPanel}
+              data-mobile-active={mobileTab === 'market' || mobileTab === 'trade'}
+            >
               <TabPanel
                 tabs={[
                   { id: 'market', label: 'Market', icon: <BarChart3 size={16} /> },
                   { id: 'trade', label: 'Trade', icon: <TrendingUp size={16} /> },
                   { id: 'settings', label: 'Config', icon: <Settings size={16} /> },
                 ]}
-                defaultTab="market"
+                activeTab={rightPanelTab}
+                onTabChange={setRightPanelTab}
               >
                 {/* Market Tab */}
                 <>
@@ -381,6 +406,8 @@ export default function Home() {
               </TabPanel>
             </div>
           </div>
+
+          <MobileNav activeTab={mobileTab} onTabChange={handleMobileTabChange} />
         </div>
       </main>
     </ErrorBoundary>

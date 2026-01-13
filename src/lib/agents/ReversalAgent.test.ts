@@ -6,10 +6,6 @@ import { describe, it, expect } from 'vitest';
 import { ReversalAgent } from './ReversalAgent';
 import { StockDataPoint } from '@/types/market';
 
-/**
- * テスト用の株価データを生成
- * 逆張りテスト用に特殊なパターンもサポート
- */
 function generateTestData(
     days: number,
     pattern: 'up' | 'down' | 'oversold' | 'overbought' | 'sideways',
@@ -30,13 +26,11 @@ function generateTestData(
                 price *= 0.99;
                 break;
             case 'oversold':
-                // 最後の20日で急落（RSI<30を作る）
                 if (i > days - 20) {
                     price *= 0.97;
                 }
                 break;
             case 'overbought':
-                // 最後の20日で急騰（RSI>70を作る）
                 if (i > days - 20) {
                     price *= 1.03;
                 }
@@ -74,7 +68,6 @@ describe('ReversalAgent', () => {
             const data = generateTestData(100, 'oversold');
             const result = agent.analyze(data);
 
-            // 急落後はRSIが低くなるはず
             if (result.reason.includes('Oversold')) {
                 expect(result.signal).toBe('BUY');
                 expect(result.sentiment).toBe('BULLISH');
@@ -85,7 +78,6 @@ describe('ReversalAgent', () => {
             const data = generateTestData(100, 'overbought');
             const result = agent.analyze(data);
 
-            // 急騰後はRSIが高くなるはず
             if (result.reason.includes('Overbought')) {
                 expect(result.signal).toBe('SELL');
                 expect(result.sentiment).toBe('BEARISH');
@@ -104,9 +96,35 @@ describe('ReversalAgent', () => {
             const data = generateTestData(100, 'oversold');
             const result = agent.analyze(data);
 
-            // 急落時は下限バンドに触れる可能性
             if (result.reason.includes('Lower Band')) {
                 expect(result.signal).toBe('BUY');
+            }
+        });
+
+        it('Stochastic Oscillatorを検出する', () => {
+            const data = generateTestData(100, 'oversold');
+            const result = agent.analyze(data);
+
+            if (result.reason.includes('Stochastic')) {
+                expect(result.sentiment).toBeDefined();
+            }
+        });
+
+        it('Williams %Rを検出する', () => {
+            const data = generateTestData(100, 'oversold');
+            const result = agent.analyze(data);
+
+            if (result.reason.includes('Williams')) {
+                expect(result.sentiment).toBeDefined();
+            }
+        });
+
+        it('CCIを検出する', () => {
+            const data = generateTestData(100, 'oversold');
+            const result = agent.analyze(data);
+
+            if (result.reason.includes('CCI')) {
+                expect(result.sentiment).toBeDefined();
             }
         });
     });

@@ -239,6 +239,8 @@
         gap: 12px;
         padding: 12px;
         overflow-y: auto;
+        padding-bottom: 80px;
+        /* Space for MobileNav */
     }
 
     .leftPanel,
@@ -247,12 +249,20 @@
         width: 100%;
         max-height: none;
         overflow-y: visible;
+        display: block;
+        /* Default display */
+    }
+
+    /* Hide panels that are not active on mobile */
+    .leftPanel[data-mobile-active="false"],
+    .centerPanel[data-mobile-active="false"],
+    .rightPanel[data-mobile-active="false"] {
+        display: none;
     }
 
     .rightPanel {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
+        /* Reset grid display from tablet query if needed */
+        grid-template-columns: 1fr;
     }
 
     .container {
