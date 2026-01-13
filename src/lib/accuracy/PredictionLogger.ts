@@ -160,7 +160,6 @@ export class PredictionLogger {
       data[symbol] = today;
       localStorage.setItem(LAST_LOGGED_KEY, JSON.stringify(data));
     } catch {
-      // ignore
     }
   }
 
@@ -179,6 +178,7 @@ export class PredictionLogger {
       return false;
     }
 
+    // Only log non-neutral predictions with decent confidence
     if (params.predictedDirection === 'NEUTRAL' || params.confidence < 40) {
       return false;
     }
@@ -233,7 +233,6 @@ export class PredictionLogger {
     correct: number;
     accuracy: number;
     byDirection: { BULLISH: number; BEARISH: number; NEUTRAL: number };
-    byRegime?: Record<string, { total: number; correct: number }>;
   } {
     const records = this.getObservationRecords();
     const evaluated = records.filter(r => r.evaluatedAt);
@@ -249,7 +248,7 @@ export class PredictionLogger {
     };
 
     evaluated.forEach(r => {
-      const direction = r.predictedDirection as keyof typeof byDirection;
+      const direction = r.predictedDirection as 'BULLISH' | 'BEARISH' | 'NEUTRAL';
       if (byDirection[direction]) {
         byDirection[direction].total++;
         if (r.isCorrect) byDirection[direction].correct++;

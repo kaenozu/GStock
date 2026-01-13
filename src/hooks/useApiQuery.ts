@@ -1,3 +1,4 @@
+'use client';
 
 import useSWR, { SWRConfiguration } from 'swr';
 
@@ -7,7 +8,7 @@ export interface ApiQueryOptions<T> extends SWRConfiguration {
 }
 
 export function useApiQuery<T>(
-    key: any[],
+    key: (string | number)[],
     fetcher: () => Promise<T>,
     options: ApiQueryOptions<T> = {}
 ) {
@@ -28,9 +29,11 @@ export function useApiQuery<T>(
     const { data, error, isLoading, mutate } = useSWR<T>(swrKey, fetcher, finalOptions);
 
     return {
-        data,
-        error,
+        data: data ?? null,
+        error: error ? (error instanceof Error ? error.message : 'Unknown error') : null,
         isLoading,
+        isError: !!error,
+        isSuccess: data !== undefined && !error,
         refetch: mutate,
     };
 }
