@@ -1,118 +1,105 @@
-/**
- * useRealtimePrice Hook
- * @description WebSocketを使用したリアルタイム価格取得
- * @module hooks/useRealtimePrice
- */
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FinnhubWebSocket, NormalizedPrice, ConnectionStatus } from '@/lib/websocket';
+import { io, Socket } from 'socket.io-client';
+import { NormalizedPrice, ConnectionStatus } from '@/lib/websocket';
 
-/** フックの戻り値 */
 interface UseRealtimePriceReturn {
-    /** 現在価格（シンボルごと） */
     prices: Record<string, NormalizedPrice>;
-    /** 接続ステータス */
     status: ConnectionStatus;
-    /** エラーメッセージ */
     error: string | null;
-    /** シンボルを購読 */
     subscribe: (symbol: string) => void;
-    /** シンボルの購読を解除 */
     unsubscribe: (symbol: string) => void;
-    /** 接続を開始 */
     connect: () => void;
-    /** 接続を切断 */
     disconnect: () => void;
-    /** WebSocketが有効か */
     isEnabled: boolean;
 }
 
-/** APIキーを取得 */
-const getApiKey = (): string => {
-    if (typeof window === 'undefined') return '';
-    // クライアント側では環境変数を使用できないため、
-    // デモ用にハードコードするか、APIエンドポイント経由で取得する
-    return process.env.NEXT_PUBLIC_FINNHUB_KEY || '';
-};
-
-/**
- * リアルタイム価格フック
- * @param initialSymbols - 初期購読シンボル
- * @returns 価格データと操作関数
- */
 export function useRealtimePrice(initialSymbols: string[] = []): UseRealtimePriceReturn {
     const [prices, setPrices] = useState<Record<string, NormalizedPrice>>({});
     const [status, setStatus] = useState<ConnectionStatus>('disconnected');
     const [error, setError] = useState<string | null>(null);
-    const wsRef = useRef<FinnhubWebSocket | null>(null);
-    const apiKey = getApiKey();
-    const isEnabled = !!apiKey;
+    const socketRef = useRef<Socket | null>(null);
 
-    // WebSocketインスタンスの初期化
+    // Initialize Socket.io
     useEffect(() => {
-        if (!isEnabled) {
-            console.log('[useRealtimePrice] WebSocket disabled: No API key');
-            return;
-        }
+        // Trigger the socket initialization endpoint (only needed for serverless, but kept for robust path)
+        fetch('/api/socket/io').finally(() => {
+            const socket = io({
+                path: '/api/socket/io',
+                addTrailingSlash: false,
+                reconnectionAttempts: 5,
+            });
+            socketRef.current = socket;
 
-        const ws = new FinnhubWebSocket(apiKey);
-        wsRef.current = ws;
-
-        // イベントハンドラを登録
-        const unsubPrice = ws.onPrice((price) => {
-            setPrices((prev) => ({
-                ...prev,
-                [price.symbol]: price,
-            }));
-        });
-
-        const unsubStatus = ws.onStatus((newStatus) => {
-            setStatus(newStatus);
-            if (newStatus === 'connected') {
+            socket.on('connect', () => {
+                setStatus('connected');
                 setError(null);
-            }
+                console.log('[useRealtimePrice] Socket connected');
+                // Resubscribe if needed, or handle initial subscriptions
+                initialSymbols.forEach(sym => socket.emit('subscribe', sym));
+            });
+
+            socket.on('disconnect', () => {
+                setStatus('disconnected');
+                console.log('[useRealtimePrice] Socket disconnected');
+            });
+
+            socket.on('connect_error', (err) => {
+                setStatus('error');
+                setError(err.message);
+                console.error('[useRealtimePrice] Connection error:', err);
+            });
+
+            socket.on('price_update', (data: any) => {
+                // Map the incoming data to NormalizedPrice
+                // Our socket-server emits { symbol, price, changePercent, timestamp }
+                // We need to verify if this matches `NormalizedPrice`. 
+                // Currently `socket-server.ts` emits partial data. Let's assume we map it here.
+                const priceData: NormalizedPrice = {
+                    symbol: data.symbol,
+                    price: data.price,
+                    volume: 0, // Mock server doesn't send volume yet
+                    timestamp: new Date(data.timestamp).getTime()
+                };
+
+                setPrices(prev => ({
+                    ...prev,
+                    [data.symbol]: priceData
+                }));
+            });
         });
 
-        const unsubError = ws.onError((err) => {
-            setError(err);
-        });
-
-        // 接続開始
-        ws.connect();
-
-        // 初期シンボルを購読
-        for (const symbol of initialSymbols) {
-            ws.subscribe(symbol);
-        }
-
-        // クリーンアップ
         return () => {
-            unsubPrice();
-            unsubStatus();
-            unsubError();
-            ws.disconnect();
-            wsRef.current = null;
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
         };
-    // initialSymbolsは初回のみ使用
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [apiKey, isEnabled]);
+    }, []);
 
     const subscribe = useCallback((symbol: string) => {
-        wsRef.current?.subscribe(symbol);
+        if (socketRef.current?.connected) {
+            socketRef.current.emit('subscribe', symbol);
+        }
     }, []);
 
     const unsubscribe = useCallback((symbol: string) => {
-        wsRef.current?.unsubscribe(symbol);
+        if (socketRef.current?.connected) {
+            socketRef.current.emit('unsubscribe', symbol);
+        }
     }, []);
 
     const connect = useCallback(() => {
-        wsRef.current?.connect();
+        if (!socketRef.current?.connected) {
+            socketRef.current?.connect();
+        }
     }, []);
 
     const disconnect = useCallback(() => {
-        wsRef.current?.disconnect();
+        if (socketRef.current?.connected) {
+            socketRef.current.disconnect();
+        }
     }, []);
 
     return {
@@ -123,6 +110,6 @@ export function useRealtimePrice(initialSymbols: string[] = []): UseRealtimePric
         unsubscribe,
         connect,
         disconnect,
-        isEnabled,
+        isEnabled: true // Always enabled for our custom server
     };
 }
