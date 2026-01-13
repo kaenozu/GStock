@@ -11,6 +11,16 @@ interface BacktestPanelProps {
 }
 
 export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading, onRunBacktest }) => {
+    const [riskPercent, setRiskPercent] = React.useState(2);
+    const [buyThreshold, setBuyThreshold] = React.useState(70);
+
+    const handleRun = (period: string) => {
+        onRunBacktest(period, {
+            riskPercent: riskPercent / 100,
+            maxPosPercent: 0.2,
+            buyThreshold
+        });
+    };
 
     if (isLoading) {
         return (
@@ -20,17 +30,6 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
             </div>
         );
     }
-
-    const [riskPercent, setRiskPercent] = React.useState(2);
-    const [buyThreshold, setBuyThreshold] = React.useState(70);
-
-    const handleRun = (period: string) => {
-        onRunBacktest(period, {
-            riskPercent: riskPercent / 100,
-            maxPosPercent: 0.2, // Fixed for now or add input
-            buyThreshold
-        });
-    };
 
     if (!report) {
         return (

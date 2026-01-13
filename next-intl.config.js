@@ -1,5 +1,5 @@
-{
-    "locales": ["ja", "en"],
-    "defaultLocale": "ja",
-    "localeDetection": true
-}
+export default {
+    locales: ["ja", "en"],
+    defaultLocale: "ja",
+    localeDetection: true
+};
