@@ -57,7 +57,10 @@ export default function Home() {
     deepReport,
     isBacktestLoading,
     runDeepBacktest,
-    setDeepReport
+    setDeepReport,
+    runOptimization,
+    isOptimizing,
+    optimizationResults
   } = useAnalysis();
 
   // Handler for Auto-Trading Execution
@@ -302,6 +305,10 @@ export default function Home() {
                       if (!period) setDeepReport(null);
                       else runDeepBacktest(bestTrade?.symbol || scanningSymbol || '', period, config);
                     }}
+                    onRunOptimization={runOptimization}
+                    isOptimizing={isOptimizing}
+                    optimizationResults={optimizationResults}
+                    scanningSymbol={bestTrade?.symbol || scanningSymbol || ''}
                   />
                 )}
               </SignalCard>
