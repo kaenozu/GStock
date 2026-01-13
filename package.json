@@ -17,6 +17,7 @@
     "test:performance": "vitest --config vitest.config.load.ts --reporter=verbose"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.13.2",
     "better-sqlite3": "^12.6.0",
     "lightweight-charts": "^5.1.0",
