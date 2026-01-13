@@ -27,7 +27,6 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({
 }) => {
     const [riskPercent, setRiskPercent] = React.useState(2);
     const [buyThreshold, setBuyThreshold] = React.useState(70);
-
     const handleRun = (period: string) => {
         onRunBacktest(period, {
             riskPercent: riskPercent / 100,
