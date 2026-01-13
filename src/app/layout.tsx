@@ -8,8 +8,22 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GStock | 次世代株価予測ダッシュボード",
-  description: "AIとテクニカル分析を融合した、投資家のための高度な株価予測プラットフォーム",
+  title: "GStock Prime",
+  description: "AI-Powered Real-time Trading Terminal",
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'GStock Prime',
+  },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Prevent zoom on mobile for app-like feel
+  themeColor: '#05070a',
 };
 
 export default function RootLayout({

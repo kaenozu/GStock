@@ -14,6 +14,8 @@ interface TabPanelProps {
   children: React.ReactNode[];
   defaultTab?: string;
   className?: string;
+  activeTab?: string; // Controlled
+  onTabChange?: (tabId: string) => void; // Controlled
 }
 
 export const TabPanel: React.FC<TabPanelProps> = ({
@@ -21,8 +23,22 @@ export const TabPanel: React.FC<TabPanelProps> = ({
   children,
   defaultTab,
   className = '',
+  activeTab: controlledActiveTab,
+  onTabChange
 }) => {
-  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
+  const [internalActiveTab, setInternalActiveTab] = useState(defaultTab || tabs[0]?.id);
+
+  const isControlled = controlledActiveTab !== undefined;
+  const activeTab = isControlled ? controlledActiveTab : internalActiveTab;
+
+  const handleTabChange = (tabId: string) => {
+    if (!isControlled) {
+      setInternalActiveTab(tabId);
+    }
+    if (onTabChange) {
+      onTabChange(tabId);
+    }
+  };
 
   const activeIndex = tabs.findIndex(t => t.id === activeTab);
 
@@ -33,7 +49,7 @@ export const TabPanel: React.FC<TabPanelProps> = ({
           <button
             key={tab.id}
             className={`${styles.tabButton} ${activeTab === tab.id ? styles.active : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             aria-selected={activeTab === tab.id}
             role="tab"
           >
