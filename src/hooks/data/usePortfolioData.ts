@@ -1,5 +1,5 @@
 import { useApiQuery } from '@/hooks/useApiQuery';
-import { PortfolioPosition } from '@/types/portfolio';
+import { PortfolioPosition } from '@/lib/trading/types';
 
 export function usePortfolioData() {
     return useApiQuery<PortfolioPosition[]>(
