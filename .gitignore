@@ -55,3 +55,8 @@ prs.txt
 lint_report.json
 screenshot_*.png
 snapshot_*.json
+
+# Service and PR templates
+*.service
+pr_body.md
+pr_description.md
