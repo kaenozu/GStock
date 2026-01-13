@@ -30,15 +30,29 @@ describe('MultiTimeframeAgent', () => {
   beforeEach(() => {
   });
 
-  describe('analyze', () => {
-    it('should return HOLD when no data provided', () => {
-      const result = agent.analyze({});
+  describe('analyze (standard Agent interface)', () => {
+    it('should return HOLD when data is insufficient', () => {
+      const result = agent.analyze(generateTestData(10));
       expect(result.signal).toBe('HOLD');
       expect(result.confidence).toBe(0);
     });
 
-    it('should return HOLD when data is insufficient', () => {
-      const result = agent.analyze({
+    it('should analyze with sufficient data', () => {
+      const result = agent.analyze(generateTestData(60, 100));
+      expect(result.signal).toBeDefined();
+      expect(result.reason).toContain('Timeframe consensus');
+    });
+  });
+
+  describe('analyzeMultiTimeframe', () => {
+    it('should return HOLD when no data provided', () => {
+      const result = agent.analyzeMultiTimeframe({});
+      expect(result.signal).toBe('HOLD');
+      expect(result.confidence).toBe(0);
+    });
+
+    it('should return HOLD when data is insufficient for all timeframes', () => {
+      const result = agent.analyzeMultiTimeframe({
         daily: generateTestData(10),
       });
 
@@ -53,7 +67,7 @@ describe('MultiTimeframeAgent', () => {
         '1h': generateTestData(30, 110),
       };
 
-      const result = agent.analyze(data);
+      const result = agent.analyzeMultiTimeframe(data);
       expect(result.signal).toBe('BUY');
       expect(result.sentiment).toBe('BULLISH');
     });
@@ -65,7 +79,7 @@ describe('MultiTimeframeAgent', () => {
         '1h': generateTestData(30, 85),
       };
 
-      const result = agent.analyze(data);
+      const result = agent.analyzeMultiTimeframe(data);
       expect(result.sentiment).toBeDefined();
     });
 
@@ -76,7 +90,7 @@ describe('MultiTimeframeAgent', () => {
         '1h': generateTestData(30, 100),
       };
 
-      const result = agent.analyze(data);
+      const result = agent.analyzeMultiTimeframe(data);
       expect(result.reason).toContain('Timeframe consensus');
     });
   });
