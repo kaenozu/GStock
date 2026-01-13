@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { PredictionLogger } from '@/lib/accuracy/PredictionLogger';
 
 // Mock localStorage and window
 const localStorageMock = (() => {
@@ -22,9 +23,6 @@ Object.defineProperty(global, 'window', {
   writable: true,
 });
 Object.defineProperty(global, 'localStorage', { value: localStorageMock });
-
-// Import after mock
-import { PredictionLogger } from '@/lib/accuracy/PredictionLogger';
 
 describe('PredictionLogger', () => {
   beforeEach(() => {
