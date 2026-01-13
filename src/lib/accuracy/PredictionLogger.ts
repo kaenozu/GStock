@@ -10,8 +10,10 @@ import { PredictionRecord } from '@/types/accuracy';
 import { MarketRegime } from '@/types/market';
 
 const STORAGE_KEY = 'gstock_predictions';
-const MAX_RECORDS = 500; // Keep last 500 predictions
-const LAST_LOGGED_KEY = 'gstock_last_logged'; // Track last logged to prevent duplicates
+const MAX_RECORDS = 500;
+const LAST_LOGGED_KEY = 'gstock_last_logged';
+const OBSERVATION_PERIOD_KEY = 'gstock_observation_period';
+const DEFAULT_OBSERVATION_PERIOD = 14; // 2 weeks (14 days)
 
 export class PredictionLogger {
   /**
@@ -176,7 +178,6 @@ export class PredictionLogger {
       return false;
     }
     
-    // Only log non-neutral predictions with decent confidence
     if (params.predictedDirection === 'NEUTRAL' || params.confidence < 40) {
       return false;
     }
@@ -184,6 +185,86 @@ export class PredictionLogger {
     this.log(params);
     this.markLoggedToday(params.symbol);
     return true;
+  }
+  
+  /**
+   * Get observation period in days
+   */
+  static getObservationPeriod(): number {
+    if (typeof window === 'undefined') return DEFAULT_OBSERVATION_PERIOD;
+    try {
+      const period = localStorage.getItem(OBSERVATION_PERIOD_KEY);
+      return period ? parseInt(period, 10) : DEFAULT_OBSERVATION_PERIOD;
+    } catch {
+      return DEFAULT_OBSERVATION_PERIOD;
+    }
+  }
+  
+  /**
+   * Set observation period in days
+   */
+  static setObservationPeriod(days: number): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(OBSERVATION_PERIOD_KEY, String(days));
+  }
+  
+  /**
+   * Get records within observation period
+   */
+  static getObservationRecords(): PredictionRecord[] {
+    const periodDays = this.getObservationPeriod();
+    const now = new Date();
+    const cutoffDate = new Date(now);
+    cutoffDate.setDate(cutoffDate.getDate() - periodDays);
+    cutoffDate.setHours(0, 0, 0, 0);
+    
+    return this.getAll().filter(r => {
+      const recordDate = new Date(r.timestamp);
+      return recordDate >= cutoffDate && recordDate <= now;
+    });
+  }
+  
+  /**
+   * Calculate accuracy within observation period
+   */
+  static getObservationAccuracy(): {
+    total: number;
+    correct: number;
+    accuracy: number;
+    byDirection: { BULLISH: number; BEARISH: number; NEUTRAL: number };
+    byRegime?: Record<string, { total: number; correct: number }>;
+  } {
+    const records = this.getObservationRecords();
+    const evaluated = records.filter(r => r.evaluatedAt);
+    
+    const total = evaluated.length;
+    const correct = evaluated.filter(r => r.isCorrect).length;
+    const accuracy = total > 0 ? (correct / total) * 100 : 0;
+    
+    const byDirection = {
+      BULLISH: { total: 0, correct: 0 },
+      BEARISH: { total: 0, correct: 0 },
+      NEUTRAL: { total: 0, correct: 0 }
+    };
+    
+    evaluated.forEach(r => {
+      const direction = r.predictedDirection as keyof typeof byDirection;
+      if (byDirection[direction]) {
+        byDirection[direction].total++;
+        if (r.isCorrect) byDirection[direction].correct++;
+      }
+    });
+    
+    return {
+      total,
+      correct,
+      accuracy: Math.round(accuracy),
+      byDirection: {
+        BULLISH: byDirection.BULLISH.correct,
+        BEARISH: byDirection.BEARISH.correct,
+        NEUTRAL: byDirection.NEUTRAL.correct
+      }
+    };
   }
   
   /**
