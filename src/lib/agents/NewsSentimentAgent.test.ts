@@ -35,16 +35,17 @@ describe('NewsSentimentAgent', () => {
       }));
 
       const newsData = [
-        "Company reports strong earnings growth, beating expectations", // 3 positives
-        "Tech sector sees significant growth in Q4", // 1 positive
-        "Analysts upgrade stock rating to buy", // 1 positive
-        "Positive regulatory environment supports business expansion" // 1 positive
+        "Company reports strong earnings growth, beating expectations",
+        "Tech sector sees significant growth in Q4",
+        "Analysts upgrade stock rating to buy",
+        "Positive regulatory environment supports business expansion"
       ];
 
       const result = agent.analyze(data, undefined, newsData);
-      expect(['BUY', 'HOLD']).toContain(result.signal);
-      expect(result.confidence).toBeGreaterThanOrEqual(0);
-      expect(['BULLISH', 'NEUTRAL']).toContain(result.sentiment);
+      expect(result.signal).toBe('BUY');
+      expect(result.confidence).toBeGreaterThan(50);
+      expect(result.reason).toContain('positive');
+      expect(result.sentiment).toBe('BULLISH');
     });
 
     it('should analyze negative news sentiment negatively', () => {
@@ -57,17 +58,18 @@ describe('NewsSentimentAgent', () => {
       }));
 
       const newsData = [
-        "Company misses earnings expectations", // 1 negative
-        "Regulatory investigation launched", // 1 negative
-        "Major product recall announced", // 1 negative
-        "Analysts downgrade stock to sell", // 1 negative
-        "Economic recession fears" // 1 negative
+        "Company misses earnings expectations by wide margin",
+        "Regulatory investigation launched into company practices",
+        "Major product recall announced",
+        "Analysts downgrade stock to sell rating",
+        "Economic recession fears impact industry outlook"
       ];
 
       const result = agent.analyze(data, undefined, newsData);
-      expect(['SELL', 'HOLD']).toContain(result.signal);
-      expect(result.confidence).toBeGreaterThanOrEqual(0);
-      expect(['BEARISH', 'NEUTRAL']).toContain(result.sentiment);
+      expect(result.signal).toBe('SELL');
+      expect(result.confidence).toBeGreaterThan(50);
+      expect(result.reason).toContain('negative');
+      expect(result.sentiment).toBe('BEARISH');
     });
 
     it('should handle mixed news sentiment appropriately', () => {
@@ -102,18 +104,18 @@ describe('NewsSentimentAgent', () => {
       }));
 
       const newsData = [
-        "Strong positive growth and beating all expectations", // 2 positive
-        "Innovation breakthrough expected", // 2 positive  
-        "Market expansion plans", // 1 positive
-        "Slight competition concerns", // 1 negative
-        "Regulatory filing required", // 1 negative
-        "Economic uncertainty" // 1 negative
+        "Strong positive growth and beating all expectations", // +3 positive
+        "Innovation breakthrough expected", // +2 positive  
+        "Market expansion plans", // +1 positive
+        "Slight competition concerns", // -1 negative
+        "Regulatory filing required", // -1 negative
+        "Economic uncertainty" // -1 negative
       ];
 
       const result = agent.analyze(data, undefined, newsData);
-      // Net sentiment: 2+2+1-1-1-1 = +2 (positive)
-      expect(result.confidence).toBeGreaterThanOrEqual(0);
-      expect(result.reason).toBeDefined();
+      // Net sentiment: +3+2+1-1-1-1 = +3 (positive but mixed)
+      expect(result.confidence).toBeGreaterThan(20);
+      expect(result.reason).toContain('positive');
     });
   });
 
@@ -142,9 +144,9 @@ describe('NewsSentimentAgent', () => {
       expect(result1.confidence).toBe(0);
 
       // Single news item
-      const result2 = agent.analyze(data, undefined, ["Company reports strong growth and beating expectations"]);
+      const result2 = agent.analyze(data, undefined, ["Single positive news"]);
       expect(result2.signal).toBe('BUY');
-      expect(result2.confidence).toBeGreaterThan(5);
+      expect(result2.confidence).toBeGreaterThan(10);
 
       // Large number of news items
       const largeNewsData = Array.from({ length: 100 }, (_, i) => 
