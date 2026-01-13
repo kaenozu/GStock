@@ -1,29 +1,37 @@
 :root {
   /* Font Size (adjustable) */
   --base-font-size: 14px;
-  
+  --font-size-xs: 0.75rem;
+  /* 12px - minimum for labels */
+  --font-size-sm: 0.875rem;
+  /* 14px - minimum for body text */
+  --font-size-md: 1rem;
+  /* 16px - standard */
+  --font-size-lg: 1.125rem;
+  /* 18px */
+
   /* Colors - Cyber Premium Palette */
   --bg-primary: #05070a;
   --bg-secondary: #0c121d;
   --bg-tertiary: #161e2b;
-  
+
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
-  
+
   --accent-blue: #3b82f6;
   --accent-cyan: #06b6d4;
   --accent-purple: #8b5cf6;
-  
+
   --status-up: #10b981;
   --status-down: #ef4444;
   --status-warning: #f59e0b;
-  
+
   /* Glassmorphism */
   --glass-bg: rgba(15, 23, 42, 0.6);
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-  
+
   /* Shadows & Glows */
   --glow-blue: 0 0 15px rgba(59, 130, 246, 0.5);
   --glow-cyan: 0 0 15px rgba(6, 182, 212, 0.5);
@@ -55,6 +63,8 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  overscroll-behavior-y: none;
+  /* Prevent pull-to-refresh */
 }
 
 /* Base Utility Classes */

@@ -123,3 +123,107 @@
     font-size: 0.75rem;
     color: var(--text-muted);
 }
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: fixed;
+        left: 0;
+        top: 0;
+        background: rgba(10, 15, 25, 0.95);
+        backdrop-filter: blur(20px);
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+        display: flex;
+        flex-direction: column;
+        padding: var(--spacing-md);
+        z-index: 1000;
+    }
+
+    .logoContainer {
+        margin-bottom: var(--spacing-md);
+        padding: 0;
+    }
+
+    .logoText {
+        font-size: 1.25rem;
+    }
+
+    .logoIcon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .sectionLabel {
+        font-size: 0.7rem;
+        margin-bottom: var(--spacing-sm);
+        margin-top: var(--spacing-md);
+        padding-left: var(--spacing-xs);
+    }
+
+    .nav {
+        flex: 0 0 auto;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--spacing-sm);
+    }
+
+    .navItem {
+        flex-direction: column;
+        padding: var(--spacing-sm);
+        border-radius: 8px;
+        font-size: 0.75rem;
+        text-align: center;
+    }
+
+    .navItem:hover {
+        transform: none;
+    }
+
+    .navItem span {
+        display: none;
+    }
+
+    .bottomNav {
+        margin-top: var(--spacing-md);
+        padding-top: var(--spacing-md);
+        display: none;
+    }
+
+    .userProfile {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar {
+        padding: var(--spacing-sm);
+    }
+
+    .logoText {
+        font-size: 1.125rem;
+    }
+
+    .logoIcon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .nav {
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--spacing-xs);
+    }
+
+    .navItem {
+        padding: var(--spacing-xs);
+        border-radius: 6px;
+        font-size: 0.7rem;
+    }
+
+    .navItem svg {
+        width: 18px;
+        height: 18px;
+    }
+}
