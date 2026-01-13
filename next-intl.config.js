@@ -1,5 +1,4 @@
-/** @type {import('next-intl').IntlConfig} */
-module.exports = {
+export default {
     locales: ["ja", "en"],
     defaultLocale: "ja",
     localeDetection: true
