@@ -6,7 +6,7 @@
 import { StockDataPoint, MarketRegime } from '@/types/market';
 
 /** エージェントの役割 */
-export type AgentRole = 'CHAIRMAN' | 'TREND' | 'REVERSAL' | 'VOLATILE' | 'FUNDAMENTAL' | 'MACRO' | 'NEWS' | 'OPTION';
+export type AgentRole = 'CHAIRMAN' | 'TREND' | 'REVERSAL' | 'VOLATILE' | 'FUNDAMENTAL' | 'MACRO' | 'NEWS' | 'OPTION' | 'MULTI_TIMEFRAME';
 
 /** エージェントの分析結果 */
 export interface AgentResult {
@@ -57,4 +57,5 @@ export const DEFAULT_AGENT_WEIGHTS: AgentWeights = {
     MACRO: 0.8,
     NEWS: 0.5,
     OPTION: 0.7,
+    MULTI_TIMEFRAME: 1.2,
 };
