@@ -40,6 +40,22 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
   const displayPrice = realtimePrice?.price ?? currentAnalysis?.stats?.price ?? 0;
   const isRealtimeActive = !!realtimePrice;
 
+  // Flash Effect State
+  const [flashColor, setFlashColor] = React.useState<'green' | 'red' | null>(null);
+  const prevPriceRef = React.useRef(displayPrice);
+
+  React.useEffect(() => {
+    if (displayPrice > prevPriceRef.current) {
+      setFlashColor('green');
+    } else if (displayPrice < prevPriceRef.current) {
+      setFlashColor('red');
+    }
+    prevPriceRef.current = displayPrice;
+
+    const timer = setTimeout(() => setFlashColor(null), 300);
+    return () => clearTimeout(timer);
+  }, [displayPrice]);
+
   const getSignalIcon = () => {
     switch (displaySignal.type) {
       case 'BUY': return <TrendingUp className="mb-4 opacity-90 w-16 h-16" />;
@@ -80,6 +96,13 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
     );
   }
 
+  // Determine Price Color based on flash
+  const getPriceColor = () => {
+    if (flashColor === 'green') return 'text-emerald-400';
+    if (flashColor === 'red') return 'text-red-400';
+    return 'text-slate-200';
+  };
+
   return (
     <div className={getContainerStyles()}>
       {/* Live Analysis Strip */}
@@ -92,7 +115,7 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
         </div>
         {currentAnalysis && (
           <div className="flex gap-3">
-            <span className="bg-white/5 py-0.5 px-2 rounded flex items-center gap-1">
+            <span className={`bg-white/5 py-0.5 px-2 rounded flex items-center gap-1 transition-colors duration-300 ${getPriceColor()}`}>
               {isRealtimeActive && (
                 <Zap size={12} className="text-emerald-500 animate-pulse" />
               )}
