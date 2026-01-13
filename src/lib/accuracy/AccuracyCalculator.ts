@@ -53,7 +53,7 @@ export class AccuracyCalculator {
     const regimes = ['BULL_TREND', 'BEAR_TREND', 'SIDEWAYS', 'VOLATILE', 'SQUEEZE'];
     
     for (const regime of regimes) {
-      const regimeRecords = evaluated.filter(r => (r as any).regime === regime);
+      const regimeRecords = evaluated.filter(r => r.regime === regime);
       const regimeCorrect = regimeRecords.filter(r => r.isCorrect);
       byRegime[regime] = {
         total: regimeRecords.length,

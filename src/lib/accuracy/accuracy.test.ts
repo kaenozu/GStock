@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { AccuracyMetrics, PredictionRecord } from '@/types/accuracy';
+import { describe, it, expect } from 'vitest';
+import { PredictionRecord } from '@/types/accuracy';
 import { AccuracyCalculator } from './AccuracyCalculator';
 
 describe('AccuracyCalculator', () => {

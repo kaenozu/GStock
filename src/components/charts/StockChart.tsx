@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, ColorType, IChartApi, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { StockDataPoint, PredictionPoint, ChartIndicators, ChartMarker, ChartSettings } from '@/types/market';
+import { EarningsOverlay, EarningsMarker } from './EarningsOverlay';
 
 interface ChartProps {
     data: StockDataPoint[];
@@ -10,17 +11,47 @@ interface ChartProps {
     indicators?: ChartIndicators;
     markers?: ChartMarker[];
     settings?: ChartSettings;
+    earningsDate?: string | null;  // YYYY-MM-DD format
+    earningsTooltip?: string;
 }
 
-const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, indicators, markers, settings }) => {
+const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, indicators, markers, settings, earningsDate, earningsTooltip }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
+    const [earningsMarkers, setEarningsMarkers] = useState<EarningsMarker[]>([]);
+
+    // Calculate marker positions when chart updates
+    const updateMarkerPositions = useCallback(() => {
+        if (!chartRef.current || !earningsDate) {
+            setEarningsMarkers([]);
+            return;
+        }
+
+        try {
+            const timeScale = chartRef.current.timeScale();
+            const x = timeScale.timeToCoordinate(earningsDate as any);
+
+            if (x !== null && x >= 0) {
+                setEarningsMarkers([{
+                    date: earningsDate,
+                    x: x,
+                    label: 'E',
+                    tooltip: earningsTooltip || `Earnings: ${earningsDate}`,
+                }]);
+            } else {
+                setEarningsMarkers([]);
+            }
+        } catch {
+            setEarningsMarkers([]);
+        }
+    }, [earningsDate, earningsTooltip]);
 
     useEffect(() => {
         if (!chartContainerRef.current) return;
 
         const handleResize = () => {
             chartRef.current?.applyOptions({ width: chartContainerRef.current!.clientWidth });
+            updateMarkerPositions();
         };
 
         let chart: IChartApi;
@@ -38,6 +69,9 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                 height: 400,
             });
             chartRef.current = chart;
+
+            // Subscribe to visible range changes to update marker positions
+            chart.timeScale().subscribeVisibleLogicalRangeChange(updateMarkerPositions);
         } catch (e) {
             console.error('Failed to create chart instance:', e);
             return;
@@ -47,7 +81,6 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
             if (!chart) return;
 
             try {
-                // v5 API: addSeriesを使用
                 const candlestickSeries = chart.addSeries(CandlestickSeries, {
                     upColor: '#10b981',
                     downColor: '#ef4444',
@@ -56,38 +89,31 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                     wickDownColor: '#ef4444',
                 });
 
+                console.log('[StockChart] Data received:', data?.length, 'points');
                 if (data && data.length > 0) {
                     candlestickSeries.setData(data);
+                    console.log('[StockChart] Chart data set successfully');
 
-                    // Note: markers are disabled in lightweight-charts v5 (API changed)
-                    // Earnings dates are shown in EarningsPanel instead
-
-                    // ユーザー要望: 予測線（未来14日分）が見えるところまで表示範囲を調整
-                    // 過去15日 + 未来15日（予測期間＋余白）を表示
                     chart.timeScale().setVisibleLogicalRange({
                         from: data.length - 20,
                         to: data.length + 15,
                     });
                 }
 
-                // デフォルト設定（settingsが未指定の場合）
                 const showSMA20 = settings ? settings.showSMA20 : true;
                 const showSMA50 = settings ? settings.showSMA50 : true;
                 const showBB = settings ? settings.showBollingerBands : true;
                 const showPred = settings ? settings.showPredictions : true;
 
                 if (indicators) {
-                    // SMA20
                     if (showSMA20 && indicators.sma20.length > 0) {
                         const sma20Series = chart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 1 });
                         sma20Series.setData(indicators.sma20);
                     }
-                    // SMA50
                     if (showSMA50 && indicators.sma50.length > 0) {
                         const sma50Series = chart.addSeries(LineSeries, { color: '#6366f1', lineWidth: 1 });
                         sma50Series.setData(indicators.sma50);
                     }
-                    // Bollinger Bands
                     if (showBB) {
                         if (indicators.upperBand.length > 0) {
                             const upperSeries = chart.addSeries(LineSeries, { color: 'rgba(139, 92, 246, 0.5)', lineWidth: 1, lineStyle: 2 });
@@ -104,10 +130,13 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                     const predictionSeries = chart.addSeries(LineSeries, {
                         color: '#06b6d4',
                         lineWidth: 2,
-                        lineStyle: 2, // Dotted
+                        lineStyle: 2,
                     });
                     predictionSeries.setData(predictionData);
                 }
+
+                // Update marker positions after data is loaded
+                setTimeout(updateMarkerPositions, 100);
             } catch (e) {
                 console.error('Error adding series to chart:', e);
             }
@@ -127,9 +156,14 @@ const StockChart: React.FC<ChartProps> = React.memo(({ data, predictionData, ind
                 }
             }
         };
-    }, [data, predictionData, indicators, markers, settings]);
+    }, [data, predictionData, indicators, markers, settings, updateMarkerPositions]);
 
-    return <div ref={chartContainerRef} style={{ width: '100%', height: '400px' }} />;
+    return (
+        <div style={{ position: 'relative', width: '100%', height: '400px' }}>
+            <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />
+            <EarningsOverlay markers={earningsMarkers} chartHeight={400} />
+        </div>
+    );
 });
 
 export default StockChart;

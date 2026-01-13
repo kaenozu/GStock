@@ -8,13 +8,15 @@ const checkRateLimit = rateLimit(20, 60000); // 20 requests per minute for backt
 async function postHandler(request: Request) {
     try {
         const body = await request.json();
-        const { symbol, period } = body;
+        const { symbol, period, config } = body;
 
         if (!symbol) {
             return NextResponse.json({ error: 'Symbol is required' }, { status: 400 });
         }
 
         const validPeriod: HistoricalPeriod = (period === '1y' || period === '2y' || period === '5y') ? period : '1y';
+        // Default config if not provided, though Arena has defaults too
+        const validConfig = config || { riskPercent: 0.02, maxPosPercent: 0.2, buyThreshold: 50 };
 
         const historian = new Historian();
         const history = await historian.getHistory(symbol, validPeriod);
@@ -24,7 +26,7 @@ async function postHandler(request: Request) {
         }
 
         const arena = new BacktestArena();
-        const report = arena.run(symbol, history);
+        const report = arena.run(symbol, history, 1000000, validConfig);
 
         return NextResponse.json(report);
 

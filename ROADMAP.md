@@ -85,7 +85,55 @@
 - [x] **AccuracyCalculator**: Compute metrics (hit rate, calibration, regime breakdown).
 - [x] **Confidence Calibration**: Compare predicted confidence vs actual accuracy.
 - [x] **Regime Analysis**: Track accuracy by market regime (BULL, BEAR, VOLATILE, etc.).
-- [ ] **Insider Sentiment**: Track CEO/CFO buying activity. (Future Phase 19)
+
+## ✅ Phase 19: The Nervous System (Automation & Alerts)
+**Status: Complete**
+- [x] **Prediction Auto-Recording**: Automatic logging on signal generation.
+- [x] **Auto-Evaluation**: Evaluate pending predictions on page load.
+- [x] **Browser Notifications**: Alert on BUY/SELL signal changes.
+- [x] **Alert Settings Panel**: Configure notifications (on/off, sound, min confidence).
+- [x] **Duplicate Prevention**: Skip same symbol/day recordings.
+
+## ✅ Phase 20A: Stabilization Sprint
+**Status: Complete**
+- [x] **UI/UX Tabbed Layout**: Right panel reorganized into Market/Trade/Config tabs.
+- [x] **Mobile Responsive**: Tab icons on mobile, improved layout.
+- [x] **Security Audit**: API keys confirmed in environment variables.
+- [x] **Skeleton Loaders**: Loading states for SignalCard, TradingPanel, FinancialsPanel.
+- [x] **Toast Notifications**: Error/success feedback using Sonner library.
+- [x] **Japanese Stock Fix**: `validateSymbol()` updated for numeric prefixes (7203.T, 9984.T).
+- [ ] **Accuracy Data Collection**: 2-week observation period.
+- [x] **Error Logging Enhancement**: Centralized error collection and ErrorBoundary.
+- [x] **SignalCard Refactoring**: Migrated to Tailwind CSS.
+
+## ✅ Phase 20B: Intelligence Expansion
+**Status: Complete**
+- [x] **Insider Sentiment**: Track CEO/CFO buying activity (Finnhub Data).
+- [ ] **WebSocket Support**: Real-time data streaming (Postponed).
+- [ ] **Model Tuning**: Based on accuracy analysis (Postponed).
+
+## ✅ Phase 21: Auto-Trading Optimization
+**Status: Complete**
+- [x] **Dynamic Position Sizing**: Kelly Criterion / Risk % based sizing.
+- [x] **Limit Order Logic**: Smart pricing relative to market spread.
+- [x] **Auto-Execution**: Fully integrated w/ `useScanning` loop.
+
+## ✅ Phase 22: UI/UX Sensory Upgrade
+**Status: Complete**
+- [x] **Neural Visualizer**: Dynamic wave animation reflecting AI confidence.
+- [x] **Alive Interface**: "Breathing" UI animations during active monitoring.
+- [x] **Smart Controls**: Quick quantity buttons (25%, 50%, Max).
+
+## ✅ Phase 23: Immersive Feedback
+**Status: Complete**
+- [x] **Sonic Feedback**: Audio cues for signals, execution, and errors.
+- [x] **Sound Manager**: System-wide audio control.
+
+## ✅ Phase 24: Strategic Simulation (The Arena)
+**Status: Complete**
+- [x] **Arena Logic Upgrade**: Integration of `KnowledgeAgent` into backtests.
+- [x] **Visual Backtest**: Equity Curve charts (Recharts).
+- [x] **Strategy Config**: UI for adjusting Risk% and Thresholds.
 
 ## 🌌 Phase 16: G-DAO (Infinite Scale)
 **Timeline: 2028+**

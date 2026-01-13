@@ -1,6 +1,6 @@
 import { Agent, AgentResult } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
-import { ATR, BollingerBands } from 'technicalindicators';
+import { ATR } from 'technicalindicators';
 
 export class VolatilityAgent implements Agent {
     id = 'volatility_agent';
@@ -16,10 +16,10 @@ export class VolatilityAgent implements Agent {
         const lastPrice = closingPrices[closingPrices.length - 1];
 
         const atr = ATR.calculate({ high: highPrices, low: lowPrices, close: closingPrices, period: 14 });
-        const bb = BollingerBands.calculate({ period: 20, values: closingPrices, stdDev: 2 });
+        // Note: Bollinger Bands calculation available for squeeze detection if needed
+        // const bb = BollingerBands.calculate({ period: 20, values: closingPrices, stdDev: 2 });
 
         const lastATR = atr[atr.length - 1];
-        const lastBB = bb[bb.length - 1];
 
         let score = 0;
         const reasons: string[] = [];
@@ -27,8 +27,8 @@ export class VolatilityAgent implements Agent {
         // Logic: Breakout Hunter
 
         // 1. Squeeze detection
-        const bandWidth = (lastBB.upper - lastBB.lower) / lastPrice; // relative bandwidth
-        // Note: 'regime' might already tell us if it's SQUEEZE, but let's calc internally too for independence
+        // Note: bandWidth could be used for detailed analysis but regime detection is sufficient
+        // const bandWidth = (lastBB.upper - lastBB.lower) / lastPrice;
 
         if (regime === 'SQUEEZE') {
             // In squeeze, we HOLD and wait.

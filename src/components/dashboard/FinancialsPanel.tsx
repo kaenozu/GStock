@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, BarChart2, AlertCircle } from 'lucide-react';
 import styles from '@/app/page.module.css';
 import { Skeleton } from '@/components/common/Skeleton';
+import { InsiderSentimentData } from '@/types/market';
 
 interface FinancialData {
     pe: number | null;
@@ -22,6 +23,7 @@ interface FinancialsPanelProps {
 
 export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
     const [data, setData] = useState<FinancialData | null>(null);
+    const [insiderData, setInsiderData] = useState<InsiderSentimentData[] | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -32,10 +34,21 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
             setLoading(true);
             setError(null);
             try {
-                const res = await fetch(`/api/financials?symbol=${symbol}`);
-                if (!res.ok) throw new Error('Failed to fetch');
-                const json = await res.json();
-                setData(json);
+                const [finRes, insRes] = await Promise.all([
+                    fetch(`/api/financials?symbol=${symbol}`),
+                    fetch(`/api/insider?symbol=${symbol}`)
+                ]);
+
+                if (!finRes.ok) throw new Error('Failed to fetch financials');
+                const finJson = await finRes.json();
+                setData(finJson);
+
+                if (insRes.ok) {
+                    const insJson = await insRes.json();
+                    if (Array.isArray(insJson)) {
+                        setInsiderData(insJson);
+                    }
+                }
             } catch (e: unknown) {
                 setError(e instanceof Error ? e.message : 'An unknown error occurred');
             } finally {
@@ -134,6 +147,32 @@ export const FinancialsPanel: React.FC<FinancialsPanelProps> = ({ symbol }) => {
                     <div style={{ fontWeight: 'bold', color: '#ef4444' }}>${formatNum(data._52wLow)}</div>
                 </div>
             </div>
+
+            {insiderData && insiderData.length > 0 && (
+                <div style={{ marginTop: '16px', borderTop: '1px solid #334155', paddingTop: '12px' }}>
+                    <h5 style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#cbd5e1' }}>Insider Confidence (MSPR)</h5>
+                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                        {insiderData.slice(0, 3).map((item, idx) => (
+                            <div key={`${item.year}-${item.month}`} style={{
+                                background: 'rgba(255,255,255,0.03)',
+                                padding: '6px',
+                                borderRadius: '4px',
+                                flex: 1,
+                                textAlign: 'center'
+                            }}>
+                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{item.year}-{String(item.month).padStart(2, '0')}</div>
+                                <div style={{
+                                    fontWeight: 'bold',
+                                    color: item.mspr > 20 ? '#10b981' : item.mspr < -20 ? '#ef4444' : '#f59e0b'
+                                }}>
+                                    {item.mspr.toFixed(1)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
+
     );
 };

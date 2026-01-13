@@ -5,5 +5,9 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
     environment: 'node',
+    exclude: [
+      '**/node_modules/**',
+      '**/e2e/**',  // Playwrightテストを除外
+    ],
   },
 });

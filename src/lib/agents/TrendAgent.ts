@@ -7,7 +7,7 @@ export class TrendAgent implements Agent {
     name = 'Trend Follower';
     role: Agent['role'] = 'TREND';
 
-    analyze(data: StockDataPoint[], regime?: MarketRegime): AgentResult {
+    analyze(data: StockDataPoint[], _regime?: MarketRegime): AgentResult {
         if (data.length < 50) return this.neutralResult("Insufficient data");
 
         const closingPrices = data.map((d) => d.close);
