@@ -5,10 +5,12 @@
  */
 
 import React from 'react';
-import { Target, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
+import { Target, TrendingUp, TrendingDown, Minus, Zap, BrainCircuit } from 'lucide-react';
+import { generateReasoning } from '@/lib/utils/reasoningGenerator';
 import { AnalysisResult, DisplaySignal } from '@/types/market';
 import { Skeleton, SkeletonCard } from '@/components/common/Skeleton';
 import { NormalizedPrice } from '@/lib/websocket';
+import { HelpTooltip } from '@/components/common/HelpTooltip';
 
 interface SignalCardProps {
   scanningSymbol: string | null;
@@ -103,6 +105,8 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
     return 'text-slate-200';
   };
 
+  const reasoning = currentAnalysis ? generateReasoning(currentAnalysis) : '';
+
   return (
     <div className={getContainerStyles()}>
       {/* Live Analysis Strip */}
@@ -121,7 +125,9 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
               )}
               💰 ${displayPrice.toFixed(2)}
             </span>
-            <span className="bg-white/5 py-0.5 px-2 rounded">🎯 {currentAnalysis.confidence}%</span>
+            <HelpTooltip termKey="Confidence">
+              <span className="bg-white/5 py-0.5 px-2 rounded cursor-help">🎯 {currentAnalysis.confidence}%</span>
+            </HelpTooltip>
           </div>
         )}
       </div>
@@ -130,7 +136,9 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
       <div className={`flex-1 flex flex-col items-center justify-center py-4 ${getSignalColor()}`}>
         <div className="flex items-center gap-2 text-cyan-400 text-sm font-semibold mb-2 self-start w-full justify-center">
           <Target size={16} />
-          <span>AIシグナル</span>
+          <HelpTooltip termKey="Signal">
+            <span>AIシグナル</span>
+          </HelpTooltip>
         </div>
 
         {getSignalIcon()}
@@ -142,6 +150,19 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({
       <p className="text-center mt-auto text-sm text-slate-400 mb-4">
         {displaySignal.action}
       </p>
+
+      {/* AI Reasoning Section */}
+      {currentAnalysis && (
+        <div className="bg-black/40 rounded-lg p-3 mb-3 border border-white/10 text-xs text-slate-300">
+          <div className="flex items-center gap-2 mb-1 text-cyan-400 font-semibold">
+            <BrainCircuit size={14} />
+            <span>AI判断根拠</span>
+          </div>
+          <div className="whitespace-pre-wrap leading-relaxed">
+            {reasoning}
+          </div>
+        </div>
+      )}
 
       {bestTrade && bestTrade.optimalParams && (
         <div className="text-xs text-gray-400 mt-2 text-center">

@@ -138,6 +138,21 @@ export class FinnhubProvider implements StockProvider {
             return [];
         }
     }
+    async fetchCompanyNews(symbol: string): Promise<any[]> {
+        const to = new Date().toISOString().split('T')[0];
+        const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Last 7 days
+        const url = `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${this.apiKey}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Finnhub News Error: ${response.status}`);
+            const data = await response.json();
+            return Array.isArray(data) ? data : [];
+        } catch (error) {
+            console.error(`[Finnhub] News error for ${symbol}:`, error);
+            return [];
+        }
+    }
 }
 
 // Types for Earnings
