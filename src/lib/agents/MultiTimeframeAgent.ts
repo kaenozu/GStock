@@ -1,4 +1,4 @@
-import { Agent, AgentResult, AgentRole } from './types';
+import { Agent, AgentResult } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 import { SMA, RSI } from 'technicalindicators';
 
@@ -12,7 +12,6 @@ export interface MultiTimeframeAnalysis {
 export class MultiTimeframeAgent implements Agent {
   id = 'multi_timeframe_agent';
   name = 'Multi-Timeframe Analyzer';
-<<<<<<< HEAD
   role = 'MULTI_TIMEFRAME' as const;
 
   /**
@@ -38,22 +37,8 @@ export class MultiTimeframeAgent implements Agent {
    * Multi-timeframe analysis with custom timeframe data
    */
   analyzeMultiTimeframe(timeframeData: Record<string, StockDataPoint[]>): AgentResult {
-=======
-  role: AgentRole = 'MULTI_TIMEFRAME';
-
-  analyze(inputData: any, _regime?: MarketRegime): AgentResult {
-    let timeframeData: Record<string, StockDataPoint[]>;
-
-    if (Array.isArray(inputData)) {
-      // If single array is passed, treat as Daily
-      timeframeData = { 'daily': inputData };
-    } else {
-      timeframeData = inputData;
-    }
-
->>>>>>> origin/main
     const timeframes = Object.keys(timeframeData);
-
+    
     if (timeframes.length === 0) {
       return this.neutralResult("No timeframe data provided");
     }

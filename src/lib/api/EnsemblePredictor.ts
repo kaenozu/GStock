@@ -194,11 +194,10 @@ export class EnsemblePredictor {
             'MACRO': 'macro',
             'OPTION': 'option',
             'CHAIRMAN': 'fundamental',
-<<<<<<< HEAD
+
             'MULTI_TIMEFRAME': 'multiTimeframe'
-=======
-            'MULTI_TIMEFRAME': 'trend'
->>>>>>> origin/main
+
+
         };
 
         return this.weights[roleToWeightKey[role]];
@@ -257,11 +256,10 @@ export class EnsemblePredictor {
             'MACRO': 'macro',
             'OPTION': 'option',
             'CHAIRMAN': 'fundamental',
-<<<<<<< HEAD
+
             'MULTI_TIMEFRAME': 'multiTimeframe'
-=======
-            'MULTI_TIMEFRAME': 'trend'
->>>>>>> origin/main
+
+
         };
 
         return roleToWeightKey[role];
