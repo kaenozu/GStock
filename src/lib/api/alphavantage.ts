@@ -109,7 +109,7 @@ const saveToCache = (symbol: string, data: StockDataPoint[]): void => {
  * @returns 株価データの配列
  * @throws APIエラー時
  */
-export const fetchStockData = async (symbol: string): Promise<StockDataPoint[]> => {
+export const fetchStockData = async (symbol: string, outputsize: 'compact' | 'full' = 'full'): Promise<StockDataPoint[]> => {
     // 1. キャッシュ確認
     const cachedData = getFromCache(symbol);
     if (cachedData) {
