@@ -11,9 +11,9 @@ export const GET = async (request: NextRequest) => {
   }
 
   try {
-    const dailyData = await fetchStockData(symbol, 'daily', { outputsize: 'compact' });
-    const hourly4hData = await fetchStockData(symbol, '4h', { outputsize: 'compact' });
-    const hourly1hData = await fetchStockData(symbol, '1h', { outputsize: 'compact' });
+    const dailyData = await fetchStockData(symbol, 'compact');
+    const hourly4hData = await fetchStockData(symbol, 'compact');
+    const hourly1hData = await fetchStockData(symbol, 'compact');
 
     return NextResponse.json({
       symbol,
