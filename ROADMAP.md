@@ -135,6 +135,13 @@
 - [x] **Visual Backtest**: Equity Curve charts (Recharts).
 - [x] **Strategy Config**: UI for adjusting Risk% and Thresholds.
 
+## ✅ Phase 25: User-Centric Evolution (Simulation Feedback)
+**Status: Complete**
+- [x] **User Persona Simulation**: 1000 users simulated to gather requirements.
+- [x] **AI Rationale "Verbalization"**: Natural language explanation of AI signals in `SignalCard`.
+- [x] **Contextual Help / Tooltips**: Glossary system for technical terms.
+- [ ] **Tutorial / Onboarding**: (Planned based on feedback)
+
 ## 🌌 Phase 16: G-DAO (Infinite Scale)
 **Timeline: 2028+**
 - [ ] **Strategy Staking**: Tokenized strategy bets.

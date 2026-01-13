@@ -191,7 +191,8 @@ export class EnsemblePredictor {
             'NEWS': 'sentiment',
             'MACRO': 'macro',
             'OPTION': 'option',
-            'CHAIRMAN': 'fundamental'
+            'CHAIRMAN': 'fundamental',
+            'MULTI_TIMEFRAME': 'trend'
         };
 
         return this.weights[roleToWeightKey[role]];
@@ -249,7 +250,8 @@ export class EnsemblePredictor {
             'NEWS': 'sentiment',
             'MACRO': 'macro',
             'OPTION': 'option',
-            'CHAIRMAN': 'fundamental'
+            'CHAIRMAN': 'fundamental',
+            'MULTI_TIMEFRAME': 'trend'
         };
 
         return roleToWeightKey[role];
