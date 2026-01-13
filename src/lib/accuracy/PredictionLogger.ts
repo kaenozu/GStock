@@ -1,3 +1,11 @@
+/**
+ * PredictionLogger - Stores predictions for later accuracy evaluation
+ * Phase 18: The Mirror
+ * 
+ * Uses localStorage for persistence (client-side)
+ * In production, this would be a database
+ */
+
 import { PredictionRecord } from '@/types/accuracy';
 import { MarketRegime } from '@/types/market';
 
@@ -5,9 +13,12 @@ const STORAGE_KEY = 'gstock_predictions';
 const MAX_RECORDS = 500;
 const LAST_LOGGED_KEY = 'gstock_last_logged';
 const OBSERVATION_PERIOD_KEY = 'gstock_observation_period';
-const DEFAULT_OBSERVATION_PERIOD = 14;
+const DEFAULT_OBSERVATION_PERIOD = 14; // 2 weeks (14 days)
 
 export class PredictionLogger {
+  /**
+   * Log a new prediction
+   */
   static log(params: {
     symbol: string;
     predictedDirection: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
@@ -28,6 +39,7 @@ export class PredictionLogger {
       targetDate: targetDate.toISOString().split('T')[0],
     };
     
+    // Add regime as metadata if available
     if (params.regime) {
       record.regime = params.regime;
     }
@@ -35,6 +47,7 @@ export class PredictionLogger {
     const records = this.getAll();
     records.push(record);
     
+    // Keep only last MAX_RECORDS
     const trimmed = records.slice(-MAX_RECORDS);
     this.saveAll(trimmed);
     
@@ -125,6 +138,10 @@ export class PredictionLogger {
     }
   }
   
+  /**
+   * Auto-log prediction if not already logged today
+   * Returns true if logged, false if skipped
+   */
   static autoLog(params: {
     symbol: string;
     predictedDirection: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
@@ -136,6 +153,7 @@ export class PredictionLogger {
       return false;
     }
     
+    // Only log non-neutral predictions with decent confidence
     if (params.predictedDirection === 'NEUTRAL' || params.confidence < 40) {
       return false;
     }
@@ -212,10 +230,14 @@ export class PredictionLogger {
     };
   }
   
+  /**
+   * Get next trading day (skip weekends)
+   */
   private static getNextTradingDay(from: Date): Date {
     const next = new Date(from);
     next.setDate(next.getDate() + 1);
     
+    // Skip Saturday (6) and Sunday (0)
     while (next.getDay() === 0 || next.getDay() === 6) {
       next.setDate(next.getDate() + 1);
     }
