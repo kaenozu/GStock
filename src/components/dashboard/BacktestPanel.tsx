@@ -1,36 +1,106 @@
 'use client';
 import React from 'react';
 import { BacktestReport } from '@/lib/backtest/BacktestArena';
-import { Activity, Calendar } from 'lucide-react';
+import { OptimizationResult } from '@/lib/optimization/Optimizer';
+import { Activity, Calendar, Search, Sparkles, AlertCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface BacktestPanelProps {
-    report: BacktestReport | null; // Allow generic type if mismatch, but let's assume structure matches
+    report: BacktestReport | null;
     isLoading: boolean;
     onRunBacktest: (period: string, config?: { riskPercent: number, maxPosPercent: number, buyThreshold: number }) => void;
+    // Optimization Props
+    onRunOptimization?: (symbol: string, period: string) => void;
+    isOptimizing?: boolean;
+    optimizationResults?: OptimizationResult[] | null;
+    scanningSymbol?: string;
 }
 
-export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading, onRunBacktest }) => {
-
-    if (isLoading) {
-        return (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
-                <Activity className="animate-spin" size={24} style={{ marginBottom: '1rem' }} />
-                <div>Accessing Archives... Simulating History...</div>
-            </div>
-        );
-    }
-
+export const BacktestPanel: React.FC<BacktestPanelProps> = ({
+    report,
+    isLoading,
+    onRunBacktest,
+    onRunOptimization,
+    isOptimizing,
+    optimizationResults,
+    scanningSymbol
+}) => {
     const [riskPercent, setRiskPercent] = React.useState(2);
     const [buyThreshold, setBuyThreshold] = React.useState(70);
 
     const handleRun = (period: string) => {
         onRunBacktest(period, {
             riskPercent: riskPercent / 100,
-            maxPosPercent: 0.2, // Fixed for now or add input
+            maxPosPercent: 0.2,
             buyThreshold
         });
     };
+
+    const handleOptimize = () => {
+        if (onRunOptimization && scanningSymbol) {
+            onRunOptimization(scanningSymbol, '1y');
+        }
+    };
+
+    const applyConfig = (config: { riskPercent: number, buyThreshold: number }) => {
+        setRiskPercent(config.riskPercent * 100);
+        setBuyThreshold(config.buyThreshold);
+    };
+
+    if (isLoading || isOptimizing) {
+        return (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                <Activity className="animate-spin" size={24} style={{ marginBottom: '1rem', color: isOptimizing ? 'var(--accent-purple)' : undefined }} />
+                <div>{isOptimizing ? 'AI is exploring optimal strategies...' : 'Accessing Archives... Simulating History...'}</div>
+            </div>
+        );
+    }
+
+    // Optimization Results View
+    if (optimizationResults && !report) {
+        return (
+            <div style={{ padding: '1rem', border: '1px solid var(--accent-purple)', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ fontSize: '0.9rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Sparkles size={16} />
+                        Optimization Results
+                    </h3>
+                    <button onClick={() => handleRun('1y')} style={{ fontSize: '0.7rem', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', textDecoration: 'underline' }}>
+                        Cancel
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {optimizationResults.map((res, i) => (
+                        <div key={i} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '8px', background: i === 0 ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.03)',
+                            borderRadius: '4px', border: i === 0 ? '1px solid var(--accent-purple)' : 'none'
+                        }}>
+                            <div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff' }}>
+                                    Score: {res.score.toFixed(2)}
+                                    {i === 0 && <span style={{ marginLeft: '8px', fontSize: '0.6rem', background: 'var(--accent-purple)', padding: '2px 4px', borderRadius: '2px' }}>BEST</span>}
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                                    Risk: {(res.config.riskPercent * 100).toFixed(0)}% | Thresh: {res.config.buyThreshold} | PF: {res.report.profitFactor} | WR: {res.report.winRate.toFixed(0)}% | DD: {(res.report.maxDrawdown * 100).toFixed(1)}%
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => applyConfig(res.config)}
+                                style={{
+                                    background: 'var(--accent-purple)', color: 'white', border: 'none',
+                                    padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer'
+                                }}
+                            >
+                                Apply
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     if (!report) {
         return (
@@ -62,17 +132,19 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                     <button
                         onClick={() => handleRun('1y')}
-                        style={{ padding: '0.5rem 1rem', background: 'var(--accent-purple)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }}
+                        style={{ padding: '0.5rem 1rem', background: 'var(--accent-cyan)', border: 'none', borderRadius: '4px', color: 'black', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
                     >
                         Run 1 Year Test
                     </button>
-                    <button
-                        onClick={() => handleRun('2y')}
-                        style={{ padding: '0.5rem 1rem', background: '#334155', border: 'none', borderRadius: '4px', color: '#94a3b8', cursor: 'not-allowed', fontSize: '0.8rem' }}
-                        disabled
-                    >
-                        2 Years (Locked)
-                    </button>
+                    {onRunOptimization && (
+                        <button
+                            onClick={handleOptimize}
+                            style={{ padding: '0.5rem 1rem', background: 'var(--accent-purple)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                            <Search size={14} />
+                            Optimize
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -123,7 +195,6 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ report, isLoading,
                     {report.profitFactor}
                 </div>
                 <div style={{ width: '1px', height: '16px', background: '#334155', margin: '0 0.5rem' }}></div>
-                {/* Placeholder for Config (Risk%, Threshold) - currently read-only in this Phase to keep UI clean, can be expanded */}
                 <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
                     Strategy: Knowledge Agent (Risk {riskPercent}%, Threshold {buyThreshold})
                 </div>
