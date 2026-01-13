@@ -11,16 +11,17 @@ export const GET = async (request: NextRequest) => {
   }
 
   try {
-    const dailyData = await fetchStockData(symbol, 'daily', { outputsize: 'compact' });
-    const hourly4hData = await fetchStockData(symbol, '4h', { outputsize: 'compact' });
-    const hourly1hData = await fetchStockData(symbol, '1h', { outputsize: 'compact' });
+    // Currently only daily is supported by the client helper
+    const dailyData = await fetchStockData(symbol, 'compact');
+    // const hourly4hData = await fetchStockData(symbol, '4h', { outputsize: 'compact' });
+    // const hourly1hData = await fetchStockData(symbol, '1h', { outputsize: 'compact' });
 
     return NextResponse.json({
       symbol,
       timeframes: {
         daily: dailyData,
-        '4h': hourly4hData,
-        '1h': hourly1hData,
+        '4h': [], // Placeholder
+        '1h': [], // Placeholder
       },
     });
   } catch (error) {
