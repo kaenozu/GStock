@@ -4,7 +4,7 @@ import { StockDataPoint, MarketRegime } from '@/types/market';
 export class NewsSentimentAgent implements Agent {
     id = 'news_sentiment_agent';
     name = 'News Sentiment Analyzer';
-    role: Agent['role'] = 'SENTIMENT';
+    role: Agent['role'] = 'NEWS';
 
     private positiveKeywords = [
         'beat', 'exceeds', 'strong', 'growth', 'rise', 'increase', 'surge',

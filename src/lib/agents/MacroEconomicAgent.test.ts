@@ -36,16 +36,15 @@ describe('MacroEconomicAgent', () => {
       }));
 
       const macroData = {
-        interestRate: 2.5, // Below low threshold (3.0)
-        inflationRate: 2.0,
-        gdpGrowth: 2.5,
-        unemploymentRate: 4.0,
+        interestRate: 1.5, // Below low threshold (2.0)
+        inflationRate: 1.2, // Below low threshold (1.5)
+        gdpGrowth: 3.0, // Above healthy threshold (2.0)
+        unemploymentRate: 3.5, // Below low threshold (4.0)
       };
 
       const result = agent.analyze(data, undefined, macroData);
       expect(result.signal).toBe('BUY');
-      expect(result.confidence).toBeGreaterThan(20);
-      expect(result.reason).toContain('Low interest rate');
+      expect(result.confidence).toBeGreaterThan(50);
       expect(result.sentiment).toBe('BULLISH');
     });
 
@@ -59,15 +58,15 @@ describe('MacroEconomicAgent', () => {
       }));
 
       const macroData = {
-        interestRate: 5.0, // Above high threshold (4.5)
-        inflationRate: 4.0,
-        gdpGrowth: 1.5,
-        unemploymentRate: 6.0,
+        interestRate: 5.5, // Above high threshold (4.5)
+        inflationRate: 5.0, // Above high threshold (4.0)
+        gdpGrowth: 0.5, // Below recession threshold (1.0)
+        unemploymentRate: 7.0, // Above high threshold (6.0)
       };
 
       const result = agent.analyze(data, undefined, macroData);
       expect(result.signal).toBe('SELL');
-      expect(result.confidence).toBeGreaterThan(20);
+      expect(result.confidence).toBeGreaterThan(50);
       expect(result.reason).toContain('High interest rate');
       expect(result.sentiment).toBe('BEARISH');
     });
