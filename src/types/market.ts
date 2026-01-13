@@ -34,6 +34,9 @@ export interface MarketStats {
   trend: StockTrend;
   adx: number;
   price: number;
+  stochastic?: { k: number; d: number };
+  williamsR?: number;
+  cci?: number;
 }
 
 export interface AnalysisResult {
@@ -44,7 +47,7 @@ export interface AnalysisResult {
   signals: string[];
   stats: MarketStats;
   price?: number;
-  history?: StockDataPoint[]; // チャート表示用
+  history?: StockDataPoint[];
   isRealtime?: boolean;
   chartIndicators?: ChartIndicators;
 }
@@ -85,5 +88,5 @@ export interface BacktestResult {
     profitPercent: number;
     winRate: number;
     finalBalance: number;
-    markers: ChartMarker[]; // チャート描画用マーカー
+    markers: ChartMarker[];
 }

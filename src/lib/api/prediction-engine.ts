@@ -1,10 +1,14 @@
 import { SMA, RSI, MACD, ADX, BollingerBands, ATR } from 'technicalindicators';
 import { StockDataPoint, AnalysisResult, TradeSentiment, ChartIndicators } from '@/types/market';
+import { calculateStochastic, getStochasticSignal } from './indicators/stochastic';
+import { calculateWilliamsR, getWilliamsRSignal } from './indicators/williams-r';
+import { calculateCCI, getCCISignal } from './indicators/cci';
 
 /**
- * G-Engine Prime: アンサンブルテクニカル分析による高精度予測
+ * G-Engine Prime v2: アンサンブルテクニカル分析による高精度予測
  * 
  * 複数のテクニカル指標を動的な重み付けで統合し、市場環境（トレンド/レンジ）に適応した予測を行う。
+ * 追加指標: Stochastic, Williams %R, CCI
  */
 export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisResult => {
     // データ不足時の早期リターン
@@ -59,7 +63,10 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
         period: 14
     });
 
-    // 最新データの抽出
+    const stochastic = calculateStochastic(data, 14, 3);
+    const williamsR = calculateWilliamsR(data, 14);
+    const cci = calculateCCI(data, 20);
+
     const lastPrice = closingPrices[closingPrices.length - 1];
     const lastRSI = rsi[rsi.length - 1];
     const lastMACD = macd[macd.length - 1];
@@ -68,8 +75,11 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     const lastSMA50 = sma50[sma50.length - 1];
     const lastBB = bb[bb.length - 1];
     const lastATR = atr[atr.length - 1];
+    const lastStoch = stochastic[stochastic.length - 1];
+    const lastWilliamsR = williamsR[williamsR.length - 1];
+    const lastCCI = cci[cci.length - 1];
     
-    const prevMACD = macd[macd.length - 2]; 
+    const prevMACD = macd[macd.length - 2];
 
     // --- 2. スコアリングロジック ---
 
@@ -173,6 +183,50 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
         }
     }
 
+    // E. Stochastic Oscillator分析
+    if (lastStoch) {
+        const stochSignal = getStochasticSignal(lastStoch);
+        if (stochSignal === 'OVERBOUGHT') {
+            bearScore += 15 * oscillatorStrength;
+            signals.push(`Stochastic(%K:${Math.round(lastStoch.k)}, %D:${Math.round(lastStoch.d)})が買われすぎ`);
+        } else if (stochSignal === 'OVERSOLD') {
+            bullScore += 15 * oscillatorStrength;
+            signals.push(`Stochastic(%K:${Math.round(lastStoch.k)}, %D:${Math.round(lastStoch.d)})が売られすぎ`);
+        }
+
+        if (lastStoch.k > lastStoch.d && lastStoch.k < 30) {
+            bullScore += 10 * oscillatorStrength;
+            signals.push("Stochasticゴールデンクロス（買いシグナル）");
+        } else if (lastStoch.k < lastStoch.d && lastStoch.k > 70) {
+            bearScore += 10 * oscillatorStrength;
+            signals.push("Stochasticデッドクロス（売りシグナル）");
+        }
+    }
+
+    // F. Williams %R分析
+    if (lastWilliamsR !== undefined) {
+        const williamsSignal = getWilliamsRSignal(lastWilliamsR);
+        if (williamsSignal === 'OVERBOUGHT') {
+            bearScore += 15 * oscillatorStrength;
+            signals.push(`Williams %R(${Math.round(lastWilliamsR)})が買われすぎ`);
+        } else if (williamsSignal === 'OVERSOLD') {
+            bullScore += 15 * oscillatorStrength;
+            signals.push(`Williams %R(${Math.round(lastWilliamsR)})が売られすぎ`);
+        }
+    }
+
+    // G. CCI分析
+    if (lastCCI !== undefined) {
+        const cciSignal = getCCISignal(lastCCI);
+        if (cciSignal === 'OVERBOUGHT') {
+            bearScore += 15 * oscillatorStrength;
+            signals.push(`CCI(${Math.round(lastCCI)})が買われすぎ`);
+        } else if (cciSignal === 'OVERSOLD') {
+            bullScore += 15 * oscillatorStrength;
+            signals.push(`CCI(${Math.round(lastCCI)})が売られすぎ`);
+        }
+    }
+
     // --- 3. 総合判定と予測生成 ---
 
     const finalScore = bullScore - bearScore;
@@ -237,7 +291,10 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
             rsi: Math.round(lastRSI),
             trend: lastSMA20 > lastSMA50 ? 'UP' : 'DOWN',
             adx: Math.round(lastADX.adx),
-            price: lastPrice
+            price: lastPrice,
+            stochastic: lastStoch ? { k: Math.round(lastStoch.k), d: Math.round(lastStoch.d) } : undefined,
+            williamsR: lastWilliamsR !== undefined ? Math.round(lastWilliamsR) : undefined,
+            cci: lastCCI !== undefined ? Math.round(lastCCI) : undefined
         },
         chartIndicators
     };
