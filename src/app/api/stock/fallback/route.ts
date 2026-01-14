@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchStockData } from '@/lib/api/stock';
+import { fetchStockData } from '@/lib/api/alphavantage';
 
 interface PollingState {
     [symbol: string]: {
@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
                 ? ((latest.close - data[data.length - 2].close) / data[data.length - 2].close) * 100
                 : 0,
             timestamp: latest.time,
-            volume: latest.volume,
             isFallback: true
         });
     } catch (error) {

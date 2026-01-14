@@ -509,29 +509,18 @@ function calculateRiskMetrics(
 function identifyPerformanceEvents(
   timeSeries: StockDataPoint[],
   rebalanceHistory: RebalanceHistoryEntry[]
-): PerformanceReport['events'] {
-  
-  const events: PerformanceEvent[] = [];
-  
-  // リバランスイベント
-  rebalanceHistory.forEach(rebalance => {
-    events.push({
-      date: new Date(rebalance.timestamp),
-      type: 'REBALANCE',
-      description: `リバランス実行: ${rebalance.totalTrades}件の取引`,
-      impact: 0,
-      value: 0,
-    });
-  });
-  
+): { rebalances: RebalanceHistoryEntry[]; significantEvents: PerformanceEvent[] } {
+
+  const significantEvents: PerformanceEvent[] = [];
+
   // 高値・安値イベント
   if (timeSeries.length > 20) {
     const recent = timeSeries.slice(-20);
     const maxIdx = recent.findIndex(p => p.high === Math.max(...recent.map(r => r.high)));
     const minIdx = recent.findIndex(p => p.low === Math.min(...recent.map(r => r.low)));
-    
+
     if (maxIdx >= 0) {
-      events.push({
+      significantEvents.push({
         date: new Date(recent[maxIdx].time),
         type: 'HIGH',
         description: '過去20日間の高値',
@@ -539,9 +528,9 @@ function identifyPerformanceEvents(
         value: recent[maxIdx].high,
       });
     }
-    
+
     if (minIdx >= 0) {
-      events.push({
+      significantEvents.push({
         date: new Date(recent[minIdx].time),
         type: 'LOW',
         description: '過去20日間の安値',
@@ -550,8 +539,11 @@ function identifyPerformanceEvents(
       });
     }
   }
-  
-  return events.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  return {
+    rebalances: rebalanceHistory,
+    significantEvents,
+  };
 }
 
 // エクスポート関数
