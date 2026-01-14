@@ -1,17 +1,20 @@
-import { Agent, AgentResult } from './types';
+import { BaseAgent } from './BaseAgent';
+import { AgentResult, AgentRole } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 import { RSI, BollingerBands } from 'technicalindicators';
 import { calculateStochastic, getStochasticSignal } from '@/lib/api/indicators/stochastic';
 import { calculateWilliamsR, getWilliamsRSignal } from '@/lib/api/indicators/williams-r';
 import { calculateCCI, getCCISignal } from '@/lib/api/indicators/cci';
 
-export class ReversalAgent implements Agent {
+export class ReversalAgent extends BaseAgent {
     id = 'reversal_agent';
     name = 'Contra (Reversal)';
-    role: Agent['role'] = 'REVERSAL';
+    role: AgentRole = 'REVERSAL';
 
     analyze(data: StockDataPoint[], _regime?: MarketRegime): AgentResult {
-        if (data.length < 50) return this.neutralResult("Insufficient data");
+        if (this.hasInsufficientData(data, 50)) {
+            return this.neutralResult("Insufficient data");
+        }
 
         const closingPrices = data.map((d) => d.close);
         const lastPrice = closingPrices[closingPrices.length - 1];
@@ -99,24 +102,12 @@ export class ReversalAgent implements Agent {
         if (score >= 40) signal = 'BUY';
         else if (score <= -40) signal = 'SELL';
 
-        return {
-            name: this.name,
-            role: this.role,
+        return this.createResult(
             signal,
-            confidence: Math.min(Math.abs(score), 100),
-            reason: reasons.join(", ") || "No extremes detected",
-            sentiment: score >= 0 ? 'BULLISH' : 'BEARISH'
-        };
-    }
-
-    private neutralResult(reason: string): AgentResult {
-        return {
-            name: this.name,
-            role: this.role,
-            signal: 'HOLD',
-            confidence: 0,
-            reason,
-            sentiment: 'NEUTRAL'
-        };
+            Math.min(Math.abs(score), 100),
+            reasons.join(", ") || "No extremes detected",
+            score >= 0 ? 'BULLISH' : 'BEARISH'
+        );
     }
 }
+

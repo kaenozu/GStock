@@ -43,7 +43,7 @@ describe('NewsSentimentAgent', () => {
 
       const result = agent.analyze(data, undefined, newsData);
       expect(result.signal).toBe('BUY');
-      expect(result.confidence).toBeGreaterThan(15);
+      expect(result.confidence).toBeGreaterThanOrEqual(20);
       expect(result.reason).toContain('positive');
       expect(result.sentiment).toBe('BULLISH');
     });
@@ -58,17 +58,16 @@ describe('NewsSentimentAgent', () => {
       }));
 
       const newsData = [
-        "Company misses earnings expectations by wide margin and weak performance", // 3 negative
-        "Regulatory investigation launched into company practices", // 2 negative
-        "Major product recall announced affecting sales", // 2 negative
-        "Analysts downgrade stock to sell rating", // 1 negative
-        "Economic recession fears impact industry outlook", // 1 negative
+        "Company misses earnings expectations with weak performance", // 2 negative
+        "Analysts downgrade stock to sell, concerns about loss", // 3 negative
+        "Economic recession fears and decline expected" // 3 negative
       ];
 
       const result = agent.analyze(data, undefined, newsData);
-      // Score: -(3+2+2+1) = -8, avgScore = -8/5 = -1.6, confidence = 16
+      expect(result.signal).toBe('SELL');
       expect(result.confidence).toBeGreaterThan(10);
       expect(result.reason).toContain('negative');
+      expect(result.sentiment).toBe('BEARISH');
     });
 
     it('should handle mixed news sentiment appropriately', () => {
@@ -103,16 +102,13 @@ describe('NewsSentimentAgent', () => {
       }));
 
       const newsData = [
-        "Company reports strong growth and beating all expectations", // 3 positive
-        "Innovation breakthrough expected", // 2 positive  
-        "Market expansion plans approved", // 2 positive
-        "Strong profit and earnings", // 2 positive
-        "Analysts upgrade stock rating to buy", // 1 positive
-        "Significant growth and outperformance expected", // 3 positive
+        "Strong positive growth and beating all expectations surge rally", // 5 positive
+        "Innovation breakthrough expected gain profit" // 4 positive  
       ];
 
       const result = agent.analyze(data, undefined, newsData);
-      expect(['BUY', 'SELL', 'HOLD']).toContain(result.signal);
+      // Many positive keywords, avg should be > 1.5
+      expect(result.signal).toBe('BUY');
       expect(result.confidence).toBeGreaterThan(10);
       expect(result.reason).toContain('positive');
     });

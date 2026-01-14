@@ -1,14 +1,17 @@
-import { Agent, AgentResult } from './types';
+import { BaseAgent } from './BaseAgent';
+import { AgentResult, AgentRole } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 import { SMA, MACD } from 'technicalindicators';
 
-export class TrendAgent implements Agent {
+export class TrendAgent extends BaseAgent {
     id = 'trend_agent';
     name = 'Trend Follower';
-    role: Agent['role'] = 'TREND';
+    role: AgentRole = 'TREND';
 
     analyze(data: StockDataPoint[], _regime?: MarketRegime): AgentResult {
-        if (data.length < 50) return this.neutralResult("Insufficient data");
+        if (this.hasInsufficientData(data, 50)) {
+            return this.neutralResult("Insufficient data");
+        }
 
         const closingPrices = data.map((d) => d.close);
         const lastPrice = closingPrices[closingPrices.length - 1];
@@ -58,24 +61,12 @@ export class TrendAgent implements Agent {
         if (score >= 30) signal = 'BUY';
         else if (score <= -30) signal = 'SELL';
 
-        return {
-            name: this.name,
-            role: this.role,
+        return this.createResult(
             signal,
             confidence,
-            reason: reasons.join(", ") || "No strong trend",
-            sentiment: score >= 0 ? 'BULLISH' : 'BEARISH'
-        };
-    }
-
-    private neutralResult(reason: string): AgentResult {
-        return {
-            name: this.name,
-            role: this.role,
-            signal: 'HOLD',
-            confidence: 0,
-            reason,
-            sentiment: 'NEUTRAL'
-        };
+            reasons.join(", ") || "No strong trend",
+            score >= 0 ? 'BULLISH' : 'BEARISH'
+        );
     }
 }
+
