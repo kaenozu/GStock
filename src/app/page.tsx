@@ -29,6 +29,7 @@ import { SettingsPanel } from '@/components/common/SettingsPanel';
 import { TabPanel } from '@/components/common/TabPanel';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ConnectionStatusIndicator } from '@/components/common/ConnectionStatus';
+import { Onboarding } from '@/components/common/Onboarding';
 
 
 import { MobileNav, MobileTab } from '@/components/layout/MobileNav';
@@ -202,6 +203,7 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
+      <Onboarding />
       <main className={`${styles.main} ${isLive ? styles.liveModeActive : ''} ${isAutoTrading ? styles.autoModeActive : ''}`}>
         <div className={styles.container}>
           {/* Header */}
