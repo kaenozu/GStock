@@ -1,10 +1,11 @@
-import { Agent, AgentResult } from './types';
+import { BaseAgent } from './BaseAgent';
+import { AgentResult, AgentRole } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 
-export class NewsSentimentAgent implements Agent {
+export class NewsSentimentAgent extends BaseAgent {
     id = 'news_sentiment_agent';
     name = 'News Sentiment Analyzer';
-    role: Agent['role'] = 'NEWS';
+    role: AgentRole = 'NEWS';
 
     private positiveKeywords = [
         'beat', 'exceeds', 'strong', 'growth', 'rise', 'increase', 'surge',
@@ -76,26 +77,14 @@ export class NewsSentimentAgent implements Agent {
             sentiment = 'BEARISH';
         }
 
-        return {
-            name: this.name,
-            role: this.role,
+        return this.createResult(
             signal,
             confidence,
-            reason: reasons.join('; ') || "Mixed sentiment in news",
+            reasons.join('; ') || "Mixed sentiment in news",
             sentiment
-        };
+        );
     }
 
-    private neutralResult(reason: string): AgentResult {
-        return {
-            name: this.name,
-            role: this.role,
-            signal: 'HOLD',
-            confidence: 0,
-            reason,
-            sentiment: 'NEUTRAL'
-        };
-    }
 
     getPositiveKeywords(): string[] {
         return [...this.positiveKeywords];
