@@ -103,17 +103,18 @@ describe('MacroEconomicAgent', () => {
       }));
 
       const macroData = {
-        interestRate: 1.9, // Very favorable (< 2.0)
-        inflationRate: 1.4, // Low inflation (< 1.5)
-        gdpGrowth: 3.0, // Strong growth
-        unemploymentRate: 3.5, // Low unemployment
+        interestRate: 1.5, // Very favorable (< 2.0 threshold)
+        inflationRate: 1.0, // Low inflation (< 1.5 threshold)
+        gdpGrowth: 3.0, // Strong growth (> 2.0 threshold)
+        unemploymentRate: 3.5, // Low unemployment (< 4.0 threshold)
       };
 
       const result = agent.analyze(data, undefined, macroData);
-      expect(['BUY', 'HOLD']).toContain(result.signal);
-      expect(result.confidence).toBeGreaterThanOrEqual(0);
-      expect(result.reason).toBeDefined();
-      expect(['BULLISH', 'NEUTRAL']).toContain(result.sentiment);
+      // Score: 25 + 10 + 20 + 15 = 70 >= 40, so BUY
+      expect(result.signal).toBe('BUY');
+      expect(result.confidence).toBeGreaterThan(40);
+      expect(result.reason).toContain('supports economic growth');
+      expect(result.sentiment).toBe('BULLISH');
     });
 
     it('should handle recessionary macro indicators', () => {
