@@ -1,55 +1,50 @@
-import { Agent, AgentResult } from '@/lib/agents/types';
+import { Agent, AgentResult } from './types';
+import { MarketRegime } from '@/types/market';
 
-export interface AgentPerformance {
+interface AgentPerformance {
     agentId: string;
+    agentRole: string;
     totalPredictions: number;
     correctPredictions: number;
     accuracy: number;
     recentAccuracy: number;
     volatility: number;
+    consistency: number;
+    profitability: number;
     lastUpdated: number;
-}
-
-export interface WeightedConsensusConfig {
-    minConfidenceThreshold: number;
-    accuracyWeight: number;
-    consistencyWeight: number;
-    recencyWeight: number;
-    baseWeights: Record<string, number>;
+    totalProfit?: number;
+    recentPredictions?: PredictionRecord[];
 }
 
 interface PredictionRecord {
     correct: boolean;
     accuracyAtTime: number;
     timestamp: number;
+    confidence: number;
+    profit?: number;
+}
+
+interface MarketRegimeData {
+    currentRegime: MarketRegime;
+    regimeHistory: Array<{
+        regime: MarketRegime;
+        timestamp: number;
+        confidence: number;
+    }>;
 }
 
 export class DynamicWeightingEngine {
-    private performance: Map<string, AgentPerformance>;
-    private predictionHistory: Map<string, PredictionRecord[]>;
-    private accuracyHistory: Map<string, number[]>;
-    private config: WeightedConsensusConfig;
-    private readonly maxHistorySize = 100;
+    private agentPerformance: Map<string, AgentPerformance> = new Map();
+    private marketRegime: MarketRegimeData;
+    private readonly WEIGHT_BASE = 1.0;
+    private readonly ACCURACY_WEIGHT = 0.4;
+    private readonly CONSISTENCY_WEIGHT = 0.3;
+    private readonly PROFITABILITY_WEIGHT = 0.3;
 
-    constructor(config: Partial<WeightedConsensusConfig> = {}) {
-        this.performance = new Map();
-        this.predictionHistory = new Map();
-        this.accuracyHistory = new Map();
-        this.config = {
-            minConfidenceThreshold: config.minConfidenceThreshold ?? 0.5,
-            accuracyWeight: config.accuracyWeight ?? 0.5,
-            consistencyWeight: config.consistencyWeight ?? 0.3,
-            recencyWeight: config.recencyWeight ?? 0.2,
-            baseWeights: config.baseWeights ?? {
-                CHAIRMAN: 2.0,
-                VOLATILE: 1.5,
-                TREND: 1.0,
-                REVERSAL: 1.0,
-                FUNDAMENTAL: 1.0,
-                SENTIMENT: 0.8,
-                MACRO: 0.5,
-                OPTION: 0.7
-            }
+    constructor() {
+        this.marketRegime = {
+            currentRegime: 'SIDEWAYS',
+            regimeHistory: []
         };
     }
 
@@ -57,7 +52,8 @@ export class DynamicWeightingEngine {
         agentId: string,
         agentRole: string,
         prediction: AgentResult,
-        actualDirection: 'UP' | 'DOWN' | 'NEUTRAL'
+        actualDirection: 'UP' | 'DOWN' | 'NEUTRAL',
+        realizedProfit?: number
     ): void {
         const perf = this.getOrCreatePerformance(agentId, agentRole);
 
@@ -71,201 +67,276 @@ export class DynamicWeightingEngine {
         perf.accuracy = perf.correctPredictions / perf.totalPredictions;
         perf.lastUpdated = Date.now();
 
-        this.performance.set(agentId, perf);
+        // Record profit for monetization
+        if (realizedProfit !== undefined) {
+            perf.totalProfit = (perf.totalProfit || 0) + realizedProfit;
+            perf.profitability = this.calculateProfitabilityScore(perf);
+        }
 
         const record: PredictionRecord = {
             correct: isCorrect,
             accuracyAtTime: perf.accuracy,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            confidence: prediction.confidence,
+            profit: realizedProfit
         };
 
-        this.addToPredictionHistory(agentId, record);
-        this.addToAccuracyHistory(agentId, perf.accuracy);
+        if (!perf.recentPredictions) {
+            perf.recentPredictions = [];
+        }
+        perf.recentPredictions.push(record);
+
+        // Keep only last 100 predictions
+        if (perf.recentPredictions.length > 100) {
+            perf.recentPredictions = perf.recentPredictions.slice(-100);
+        }
+
+        // Update derived metrics
+        this.updateDerivedMetrics(agentId);
     }
 
-    calculateWeights(agents: Agent[]): Record<string, number> {
+    calculateDynamicWeights(agents: Agent[]): Record<string, number> {
         const weights: Record<string, number> = {};
-        
+
         for (const agent of agents) {
-            const perf = this.performance.get(agent.id);
-            const baseWeight = this.config.baseWeights[agent.role] || 1.0;
+            const performance = this.agentPerformance.get(agent.id);
             
-            if (!perf || perf.totalPredictions < 10) {
-                weights[agent.id] = baseWeight;
+            if (!performance || performance.totalPredictions < 5) {
+                // New agent gets neutral weight
+                weights[agent.id] = this.WEIGHT_BASE;
                 continue;
             }
 
-            const accuracyScore = perf.accuracy;
-            const consistencyScore = 1 - (perf.volatility || 0);
-            const recencyScore = perf.recentAccuracy || accuracyScore;
+            // Calculate weight components
+            const accuracyScore = performance.accuracy;
+            const consistencyScore = this.calculateConsistency(performance);
+            const profitabilityScore = this.calculateProfitabilityScore(performance);
 
-            const dynamicWeight = baseWeight * (
-                accuracyScore * this.config.accuracyWeight +
-                consistencyScore * this.config.consistencyWeight +
-                recencyScore * this.config.recencyWeight
+            // Combined weight calculation
+            const combinedWeight = 
+                (accuracyScore * this.ACCURACY_WEIGHT) +
+                (consistencyScore * this.CONSISTENCY_WEIGHT) +
+                (profitabilityScore * this.PROFITABILITY_WEIGHT);
+
+            // Apply market regime adjustment
+            const regimeAdjustedWeight = this.applyRegimeAdjustment(
+                combinedWeight, 
+                agent.role,
+                this.marketRegime.currentRegime
             );
 
-            weights[agent.id] = Math.max(0.1, dynamicWeight);
+            weights[agent.id] = Math.max(0.1, Math.min(3.0, regimeAdjustedWeight));
         }
 
-        return weights;
-    }
-
-    calculateConsensus(results: AgentResult[], agents: Agent[]): {
-        consensusScore: number;
-        consensusSignal: 'BUY' | 'SELL' | 'HOLD';
-        confidence: number;
-        usedWeights: Record<string, number>;
-    } {
-        const weights = this.calculateWeights(agents);
-        
-        let totalScore = 0;
-        let totalWeight = 0;
-        
-        results.forEach((result, index) => {
-            const agent = agents[index];
-            const weight = weights[agent.id] || 1.0;
-            
-            let direction = 0;
-            if (result.signal === 'BUY') direction = 1;
-            else if (result.signal === 'SELL') direction = -1;
-            
-            const score = direction * result.confidence;
-            totalScore += score * weight;
-            totalWeight += weight;
-        });
-
-        const consensusScore = totalWeight > 0 ? totalScore / totalWeight : 0;
-        
-        let consensusSignal: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
-        if (consensusScore >= this.config.minConfidenceThreshold * 100) {
-            consensusSignal = 'BUY';
-        } else if (consensusScore <= -this.config.minConfidenceThreshold * 100) {
-            consensusSignal = 'SELL';
-        }
-
-        const confidence = Math.min(Math.abs(consensusScore), 100);
-
-        return {
-            consensusScore,
-            consensusSignal,
-            confidence,
-            usedWeights: weights
-        };
-    }
-
-    updateConsistencyMetrics(): void {
-        const now = Date.now();
-        
-        for (const [agentId, perf] of this.performance.entries()) {
-            if (perf.totalPredictions < 20) continue;
-            
-            const recentPredictions = this.getRecentPredictions(agentId, 20);
-            if (recentPredictions.length < 10) continue;
-            
-            const correctCount = recentPredictions.filter(p => p).length;
-            perf.recentAccuracy = correctCount / recentPredictions.length;
-            
-            const recentAccuracyHistory = this.getAccuracyHistory(agentId, 10);
-            if (recentAccuracyHistory.length >= 2) {
-                const variance = this.calculateVariance(recentAccuracyHistory);
-                perf.volatility = Math.min(variance, 1);
-            }
-        }
-    }
-
-    getPerformance(agentId: string): AgentPerformance | undefined {
-        return this.performance.get(agentId);
-    }
-
-    getAllPerformance(): Map<string, AgentPerformance> {
-        return new Map(this.performance);
-    }
-
-    resetAgent(agentId: string): void {
-        this.performance.delete(agentId);
-    }
-
-    resetAll(): void {
-        this.performance.clear();
-        this.predictionHistory.clear();
-        this.accuracyHistory.clear();
+        return this.normalizeWeights(weights);
     }
 
     private getOrCreatePerformance(agentId: string, agentRole: string): AgentPerformance {
-        let perf = this.performance.get(agentId);
+        let perf = this.agentPerformance.get(agentId);
         
         if (!perf) {
             perf = {
                 agentId,
+                agentRole,
                 totalPredictions: 0,
                 correctPredictions: 0,
                 accuracy: 0,
                 recentAccuracy: 0,
                 volatility: 0,
-                lastUpdated: Date.now()
+                consistency: 0.5,
+                profitability: 0.5,
+                lastUpdated: Date.now(),
+                totalProfit: 0,
+                recentPredictions: []
             };
-            this.performance.set(agentId, perf);
+            this.agentPerformance.set(agentId, perf);
         }
         
         return perf;
     }
 
     private isPredictionCorrect(prediction: AgentResult, actual: 'UP' | 'DOWN' | 'NEUTRAL'): boolean {
-        if (prediction.signal === 'HOLD') {
-            return actual === 'NEUTRAL';
+        const predictedSignal = prediction.signal;
+        const predictedSentiment = prediction.sentiment;
+
+        if (actual === 'UP') {
+            return predictedSignal === 'BUY' || predictedSentiment === 'BULLISH';
+        } else if (actual === 'DOWN') {
+            return predictedSignal === 'SELL' || predictedSentiment === 'BEARISH';
+        } else {
+            return predictedSignal === 'HOLD' || predictedSentiment === 'NEUTRAL';
         }
+    }
+
+    private calculateConsistency(performance: AgentPerformance): number {
+        if (!performance.recentPredictions || performance.recentPredictions.length < 10) {
+            return 0.5;
+        }
+
+        const recent = performance.recentPredictions.slice(-20);
+        const correctCount = recent.filter(p => p.correct).length;
+        return correctCount / recent.length;
+    }
+
+    private calculateProfitabilityScore(performance: AgentPerformance): number {
+        if (!performance.totalProfit || performance.totalPredictions < 10) {
+            return 0.5;
+        }
+
+        // Normalize profit by prediction count
+        const avgProfitPerPrediction = performance.totalProfit / performance.totalPredictions;
         
-        if (prediction.signal === 'BUY') {
-            return actual === 'UP';
-        }
+        // Score based on average profit (positive profit = higher score)
+        return Math.max(0, Math.min(2.0, 0.5 + avgProfitPerPrediction * 10));
+    }
+
+    private applyRegimeAdjustment(
+        baseWeight: number, 
+        agentRole: string, 
+        regime: MarketRegime
+    ): number {
+        const adjustments: Record<string, Record<string, number>> = {
+            'BULL_TREND': {
+                'CHAIRMAN': 1.2,
+                'TREND': 1.5,
+                'REVERSAL': 0.8,
+                'VOLATILE': 1.0,
+                'MULTI_TIMEFRAME': 1.1
+            },
+            'BEAR_TREND': {
+                'CHAIRMAN': 1.2,
+                'TREND': 1.3,
+                'REVERSAL': 1.4,
+                'VOLATILE': 1.2,
+                'MULTI_TIMEFRAME': 1.1
+            },
+            'SIDEWAYS': {
+                'CHAIRMAN': 1.0,
+                'TREND': 0.8,
+                'REVERSAL': 1.2,
+                'VOLATILE': 0.7,
+                'MULTI_TIMEFRAME': 1.3
+            },
+            'VOLATILE': {
+                'CHAIRMAN': 1.1,
+                'TREND': 0.7,
+                'REVERSAL': 0.8,
+                'VOLATILE': 1.5,
+                'MULTI_TIMEFRAME': 1.0
+            },
+            'SQUEEZE': {
+                'CHAIRMAN': 1.3,
+                'TREND': 0.9,
+                'REVERSAL': 1.1,
+                'VOLATILE': 0.6,
+                'MULTI_TIMEFRAME': 1.2
+            }
+        };
+
+        const regimeAdjustments = adjustments[regime] || adjustments['SIDEWAYS'];
+        const adjustment = regimeAdjustments[agentRole] || 1.0;
+
+        return baseWeight * adjustment;
+    }
+
+    private normalizeWeights(weights: Record<string, number>): Record<string, number> {
+        const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
         
-        if (prediction.signal === 'SELL') {
-            return actual === 'DOWN';
-        }
-        
-        return false;
-    }
-
-    private getRecentPredictions(agentId: string, count: number): boolean[] {
-        const history = this.predictionHistory.get(agentId) || [];
-        return history.slice(-count).map(r => r.correct);
-    }
-
-    private getAccuracyHistory(agentId: string, count: number): number[] {
-        const history = this.accuracyHistory.get(agentId) || [];
-        return history.slice(-count);
-    }
-
-    private addToPredictionHistory(agentId: string, record: PredictionRecord): void {
-        let history = this.predictionHistory.get(agentId) || [];
-        history.push(record);
-
-        if (history.length > this.maxHistorySize) {
-            history = history.slice(-this.maxHistorySize);
+        if (totalWeight === 0) {
+            return weights;
         }
 
-        this.predictionHistory.set(agentId, history);
-    }
-
-    private addToAccuracyHistory(agentId: string, accuracy: number): void {
-        let history = this.accuracyHistory.get(agentId) || [];
-        history.push(accuracy);
-
-        if (history.length > this.maxHistorySize) {
-            history = history.slice(-this.maxHistorySize);
+        const normalized: Record<string, number> = {};
+        for (const [agentId, weight] of Object.entries(weights)) {
+            normalized[agentId] = weight / totalWeight;
         }
 
-        this.accuracyHistory.set(agentId, history);
+        return normalized;
     }
 
-    private calculateVariance(values: number[]): number {
-        if (values.length === 0) return 0;
-        
-        const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-        const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
-        return squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;
+    private updateDerivedMetrics(agentId: string): void {
+        const perf = this.agentPerformance.get(agentId);
+        if (!perf) return;
+
+        // Update recent accuracy (last 20 predictions)
+        if (perf.recentPredictions && perf.recentPredictions.length >= 10) {
+            const recent = perf.recentPredictions.slice(-20);
+            const correctCount = recent.filter(p => p.correct).length;
+            perf.recentAccuracy = correctCount / recent.length;
+        }
+
+        // Update volatility (standard deviation of recent accuracy)
+        if (perf.recentPredictions && perf.recentPredictions.length >= 20) {
+        const accuracies = perf.recentPredictions.map(p => p.correct ? 1 : 0);
+        const mean = accuracies.reduce((a: number, b: number) => a + b, 0) / accuracies.length;
+        const variance = accuracies.reduce((sum: number, acc: number) => sum + Math.pow(acc - mean, 2), 0) / accuracies.length;
+            perf.volatility = Math.sqrt(variance);
+        }
+
+        // Update consistency (inverse of volatility)
+        perf.consistency = Math.max(0, 1 - perf.volatility);
+    }
+
+    updateMarketRegime(regime: MarketRegime, confidence: number = 1.0): void {
+        this.marketRegime.currentRegime = regime;
+        this.marketRegime.regimeHistory.push({
+            regime,
+            timestamp: Date.now(),
+            confidence
+        });
+
+        // Keep only last 50 regime changes
+        if (this.marketRegime.regimeHistory.length > 50) {
+            this.marketRegime.regimeHistory = this.marketRegime.regimeHistory.slice(-50);
+        }
+    }
+
+    getAgentPerformance(agentId: string): AgentPerformance | undefined {
+        return this.agentPerformance.get(agentId);
+    }
+
+    getAllPerformance(): Map<string, AgentPerformance> {
+        return new Map(this.agentPerformance);
+    }
+
+    getCurrentRegime(): MarketRegime {
+        return this.marketRegime.currentRegime;
+    }
+
+    resetPerformance(agentId?: string): void {
+        if (agentId) {
+            this.agentPerformance.delete(agentId);
+        } else {
+            this.agentPerformance.clear();
+        }
+    }
+
+    // ML Integration hooks for future enhancement
+    getTrainingData(): Array<{
+        agentId: string;
+        features: number[];
+        target: number;
+    }> {
+        const trainingData: Array<{ agentId: string; features: number[]; target: number }> = [];
+
+        for (const [agentId, performance] of this.agentPerformance.entries()) {
+            if (performance.totalPredictions >= 20) {
+                const features = [
+                    performance.accuracy,
+                    performance.recentAccuracy,
+                    performance.volatility,
+                    performance.consistency,
+                    performance.profitability,
+                    performance.totalPredictions,
+                    performance.totalProfit || 0
+                ];
+
+                const target = performance.accuracy; // Target is accuracy for ML model
+
+                trainingData.push({ agentId, features, target });
+            }
+        }
+
+        return trainingData;
     }
 }
-
-export const defaultWeightingEngine = new DynamicWeightingEngine();
