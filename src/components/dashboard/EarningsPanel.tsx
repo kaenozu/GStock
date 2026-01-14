@@ -18,13 +18,25 @@ interface EarningsPanelProps {
     symbol: string;
 }
 
+// ... types
+interface AIAnalysis {
+    sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    score: number;
+    summary: string;
+}
+
 export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
     const [earnings, setEarnings] = useState<EarningsEvent[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // AI State
+    const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
+    const [analyzing, setAnalyzing] = useState(false);
+
     useEffect(() => {
         if (!symbol) return;
+        setAnalysis(null); // Reset when symbol changes
 
         const fetchEarnings = async () => {
             setLoading(true);
@@ -43,6 +55,24 @@ export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
 
         fetchEarnings();
     }, [symbol]);
+
+    const runAIAnalysis = async () => {
+        setAnalyzing(true);
+        try {
+            const res = await fetch('/api/analyze-news', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol })
+            });
+            if (!res.ok) throw new Error('AI Analysis failed');
+            const data = await res.json();
+            setAnalysis(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setAnalyzing(false);
+        }
+    };
 
     if (!symbol) return null;
 
@@ -90,8 +120,10 @@ export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
 
     return (
         <div className={styles.panel} style={{ padding: '1rem' }}>
-            <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Calendar size={16} style={{ color: '#f59e0b' }} /> Earnings Calendar
+            <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Calendar size={16} style={{ color: '#f59e0b' }} /> Earnings & AI
+                </div>
             </h3>
 
             {nextEarnings ? (
@@ -100,6 +132,7 @@ export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
                     border: '1px solid rgba(245, 158, 11, 0.3)',
                     borderRadius: '8px',
                     padding: '1rem',
+                    marginBottom: '1rem'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                         <span style={{ fontWeight: 'bold', color: '#f59e0b' }}>
@@ -142,16 +175,86 @@ export const EarningsPanel: React.FC<EarningsPanelProps> = ({ symbol }) => {
                     </div>
                 </div>
             ) : (
-                <div style={{ color: '#64748b', fontSize: '0.8rem', textAlign: 'center', padding: '1rem' }}>
+                <div style={{ color: '#64748b', fontSize: '0.8rem', textAlign: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', marginBottom: '1rem' }}>
                     No upcoming earnings scheduled
                 </div>
             )}
 
-            {earnings.length > 1 && (
-                <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
-                    +{earnings.length - 1} more upcoming
-                </div>
-            )}
+            {/* AI Analysis Section */}
+            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+                {!analysis ? (
+                    <button
+                        onClick={runAIAnalysis}
+                        disabled={analyzing}
+                        style={{
+                            width: '100%',
+                            background: analyzing ? 'transparent' : 'linear-gradient(135deg, var(--accent-purple), var(--accent-blue))',
+                            border: analyzing ? '1px solid var(--accent-purple)' : 'none',
+                            color: analyzing ? 'var(--accent-purple)' : 'white',
+                            padding: '10px',
+                            borderRadius: '8px',
+                            fontSize: '0.85rem',
+                            fontWeight: 'bold',
+                            cursor: analyzing ? 'wait' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            transition: 'all 0.3s ease'
+                        }}
+                    >
+                        {analyzing ? (
+                            <>
+                                <span className={styles.spinner} style={{ width: 14, height: 14 }}></span>
+                                Reading News...
+                            </>
+                        ) : (
+                            <>
+                                <span style={{ fontSize: '1rem' }}>🔮</span> Analyze News Sentiment
+                            </>
+                        )}
+                    </button>
+                ) : (
+                    <div className="animate-in fade-in slide-in-from-bottom-2">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>AI Sentiment</span>
+                            <span style={{
+                                fontWeight: 'bold',
+                                color: analysis.sentiment === 'BULLISH' ? '#10b981' : analysis.sentiment === 'BEARISH' ? '#ef4444' : '#94a3b8',
+                                background: analysis.sentiment === 'BULLISH' ? 'rgba(16, 185, 129, 0.1)' : analysis.sentiment === 'BEARISH' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(148, 163, 184, 0.1)',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem'
+                            }}>
+                                {analysis.sentiment} ({analysis.score})
+                            </span>
+                        </div>
+
+                        {/* Sentiment Meter */}
+                        <div style={{ height: '4px', background: '#334155', borderRadius: '2px', marginBottom: '0.75rem', position: 'relative' }}>
+                            <div style={{
+                                width: `${analysis.score}%`,
+                                height: '100%',
+                                background: analysis.score > 50 ? '#10b981' : '#ef4444',
+                                borderRadius: '2px',
+                                transition: 'width 1s ease-out'
+                            }} />
+                        </div>
+
+                        <div style={{
+                            fontSize: '0.8rem',
+                            lineHeight: '1.4',
+                            color: '#e2e8f0',
+                            background: 'rgba(255,255,255,0.03)',
+                            padding: '10px',
+                            borderRadius: '6px',
+                            borderLeft: `2px solid ${analysis.sentiment === 'BULLISH' ? '#10b981' : analysis.sentiment === 'BEARISH' ? '#ef4444' : '#94a3b8'}`
+                        }}>
+                            &quot;{analysis.summary}&quot;
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

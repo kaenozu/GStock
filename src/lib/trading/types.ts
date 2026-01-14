@@ -22,6 +22,9 @@ export interface Position {
     unrealizedPnLPercent?: number;
 }
 
+/** @deprecated Use Position instead */
+export type PortfolioPosition = Position;
+
 /** 取引記録 */
 export interface Trade {
     /** 一意のID（crypto.randomUUIDで生成） */

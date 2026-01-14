@@ -17,6 +17,7 @@
     "test:performance": "vitest --config vitest.config.load.ts --reporter=verbose"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.13.2",
     "better-sqlite3": "^12.6.0",
     "lightweight-charts": "^5.1.0",
@@ -42,6 +43,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.0.16",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",

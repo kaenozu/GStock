@@ -25,8 +25,18 @@ export class OptionFlowAgent implements Agent {
         marketRegime?: MarketRegime,
         optionFlow?: OptionFlowData
     ): AgentResult {
-        if (!optionFlow) {
+        if (!optionFlow || !optionFlow.callVolume || !optionFlow.putVolume) {
             return this.neutralResult("No option flow data available");
+        }
+
+        if (optionFlow.callVolume === 0 && optionFlow.putVolume === 0) {
+            return this.neutralResult("No option activity");
+        }
+
+        // Handle invalid data cases
+        if (isNaN(optionFlow.callVolume) || isNaN(optionFlow.putVolume) || 
+            optionFlow.callVolume < 0 || optionFlow.putVolume < 0) {
+            return this.neutralResult("Invalid option flow data");
         }
 
         let score = 0;
@@ -38,49 +48,61 @@ export class OptionFlowAgent implements Agent {
         const putCallRatio = callVolume > 0 ? putVolume / callVolume : 0;
         const oiRatio = callOI > 0 ? putOI / callOI : 0;
 
+        // Enhanced put/call ratio analysis
         if (putCallRatio < 0.6) {
-            score += 30;
+            score += 35;
             reasons.push(`Bullish Put/Call ratio (${putCallRatio.toFixed(2)})`);
         } else if (putCallRatio > 1.4) {
-            score -= 30;
+            score -= 35;
             reasons.push(`Bearish Put/Call ratio (${putCallRatio.toFixed(2)})`);
         } else {
             reasons.push(`Neutral Put/Call ratio (${putCallRatio.toFixed(2)})`);
         }
 
+        // Enhanced OI ratio analysis
         if (oiRatio < 0.7) {
-            score += 20;
+            score += 25;
             reasons.push(`Bullish OI ratio (${oiRatio.toFixed(2)})`);
         } else if (oiRatio > 1.3) {
-            score -= 20;
+            score -= 25;
             reasons.push(`Bearish OI ratio (${oiRatio.toFixed(2)})`);
         }
 
-        if (impliedVolatility > 30) {
-            score -= 15;
-            reasons.push(`High implied volatility (${impliedVolatility.toFixed(1)}%) suggests fear`);
+        // Enhanced implied volatility analysis
+        if (impliedVolatility > 35) {
+            score -= 20;
+            reasons.push(`High implied volatility (${impliedVolatility.toFixed(1)}%) suggests fear - high volatility`);
         } else if (impliedVolatility < 20) {
-            score += 10;
+            score += 15;
             reasons.push(`Low implied volatility (${impliedVolatility.toFixed(1)}%) suggests confidence`);
         }
 
+        // Enhanced institutional activity analysis
         if (institutionalActivity === 'HIGH') {
-            score += 15;
+            score += 20;
             reasons.push(`High institutional activity indicates strong interest`);
         } else if (institutionalActivity === 'LOW') {
-            score -= 10;
+            score -= 15;
             reasons.push(`Low institutional activity`);
         }
 
-        if (maxPain && currentPrice > 0) {
+        // Enhanced max pain analysis
+        if (maxPain && currentPrice > 0 && maxPain > 0) {
             const priceVsMaxPain = ((currentPrice - maxPain) / maxPain) * 100;
             if (priceVsMaxPain > 5) {
-                score += 10;
+                score += 15;
                 reasons.push(`Price above max pain (${maxPain.toFixed(2)})`);
             } else if (priceVsMaxPain < -5) {
-                score -= 10;
+                score -= 15;
                 reasons.push(`Price below max pain (${maxPain.toFixed(2)})`);
             }
+        }
+
+        // Handle extreme values
+        const totalVolume = callVolume + putVolume;
+        if (totalVolume > 1000000) {
+            score *= 0.8; // Reduce confidence for extreme volumes
+            reasons.push(`Extreme volume detected`);
         }
 
         const confidence = Math.min(Math.abs(score), 100);
@@ -88,12 +110,17 @@ export class OptionFlowAgent implements Agent {
         let signal: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
         let sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' = 'NEUTRAL';
 
-        if (score >= 50) {
+        if (score >= 30) {
             signal = 'BUY';
             sentiment = 'BULLISH';
-        } else if (score <= -50) {
+        } else if (score <= -30) {
             signal = 'SELL';
             sentiment = 'BEARISH';
+        }
+
+        // Special cases for balanced flow
+        if (Math.abs(score) < 10 && putCallRatio > 0.8 && putCallRatio < 1.2) {
+            reasons.push(`Balanced option flow`);
         }
 
         return {

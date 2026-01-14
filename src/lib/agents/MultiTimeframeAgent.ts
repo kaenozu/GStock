@@ -12,9 +12,31 @@ export interface MultiTimeframeAnalysis {
 export class MultiTimeframeAgent implements Agent {
   id = 'multi_timeframe_agent';
   name = 'Multi-Timeframe Analyzer';
-  role: 'MULTI_TIMEFRAME';
+  role = 'MULTI_TIMEFRAME' as const;
 
-  analyze(timeframeData: Record<string, StockDataPoint[]>, _regime?: MarketRegime): AgentResult {
+  /**
+   * Standard Agent interface implementation
+   * Uses single timeframe data and simulates multi-timeframe by analyzing different windows
+   */
+  analyze(data: StockDataPoint[], _regime?: MarketRegime): AgentResult {
+    if (data.length < 50) {
+      return this.neutralResult("Insufficient data for multi-timeframe analysis");
+    }
+
+    // Simulate different timeframes using different data windows
+    const timeframeData: Record<string, StockDataPoint[]> = {
+      'short': data.slice(-20),   // Short-term (like 1h)
+      'medium': data.slice(-50),  // Medium-term (like 4h)
+      'long': data,               // Long-term (like daily)
+    };
+
+    return this.analyzeMultiTimeframe(timeframeData);
+  }
+
+  /**
+   * Multi-timeframe analysis with custom timeframe data
+   */
+  analyzeMultiTimeframe(timeframeData: Record<string, StockDataPoint[]>): AgentResult {
     const timeframes = Object.keys(timeframeData);
     
     if (timeframes.length === 0) {

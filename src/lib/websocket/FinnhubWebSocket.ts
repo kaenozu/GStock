@@ -2,6 +2,11 @@
  * Finnhub WebSocket Client
  * @description FinnhubのWebSocket APIを使用したリアルタイム価格データ取得
  * @module lib/websocket/FinnhubWebSocket
+ * 
+ * @deprecated このクラスはクライアント側で直接使用しないでください。
+ *             APIキー漏洩のリスクがあります。
+ *             代わりに socket-server.ts のプロキシ経由で接続してください。
+ *             クライアントは useRealtimePrice フックを使用してください。
  */
 
 import {

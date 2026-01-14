@@ -17,8 +17,8 @@ function generateMockData(days: number, trend: 'up' | 'down' | 'sideways' = 'sid
         date.setDate(date.getDate() - (days - i));
 
         let change = (Math.random() - 0.5) * 4;
-        if (trend === 'up') change += 0.5;
-        if (trend === 'down') change -= 0.5;
+        if (trend === 'up') change += 2.0; // Increased bias from 0.5 to 2.0
+        if (trend === 'down') change -= 2.0;
 
         price = Math.max(10, price + change);
         const high = price + Math.random() * 2;

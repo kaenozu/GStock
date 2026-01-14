@@ -48,6 +48,162 @@
 **Status: Complete**
 - [x] **Historic Data Loader**: Fetch & Cache 1-5 years of data.
 - [x] **Agent Arena**: Pit agents against each other.
+
+---
+
+## ✅ Phase 11: AI Agent Expansion
+**Status: Complete**
+- [x] **Macro Economic Agent**: GDP, Inflation, Interest Rates integration
+- [x] **Option Flow Agent**: Put/Call ratio, Gamma exposure analysis
+- [x] **Multi-Timeframe Agent**: Cross-timeframe consensus building
+- [x] **Prediction Logger**: Track and analyze agent accuracy
+
+---
+
+## ✅ Phase 12: Advanced Analytics
+**Status: Complete**
+- [x] **Profit Factor Analysis**: Win/Loss ratio metrics
+- [x] **Win Rate Tracking**: Historical performance trends
+- [x] **Max Drawdown Monitoring**: Peak-to-trough analysis
+
+---
+
+## ✅ Phase 13: Tax Optimization
+**Status: Complete**
+- [x] **Tax-Loss Harvesting UI**: Loss opportunity detection
+- [x] **Wash Sale Prevention**: 30-day hold period tracking
+- [x] **Estimated Tax Savings**: Real-time tax benefit calculation
+
+---
+
+## ✅ Phase 14: Performance Reporting
+**Status: Complete**
+- [x] **Comprehensive Reports**: VaR, Sharpe Ratio, Alpha, Beta
+- [x] **Export Options**: PDF, Excel, CSV, JSON
+- [x] **Benchmark Comparison**: SPY, BND tracking
+
+---
+
+## ✅ Phase 15: WebSocket Integration
+**Status: Complete**
+- [x] **Finnhub WebSocket Proxy**: Server-side Finnhub → Socket.io bridge
+- [x] **Fallback Mechanism**: REST API polling on WebSocket failure
+- [x] **Connection Status Monitoring**: Real-time connectivity tracking
+- [x] **API Key Validation**: Secure key verification endpoint
+
+---
+
+## ✅ Phase 16: Model Tuning System
+**Status: Complete**
+- [x] **Dynamic Weighting Engine**: Agent performance tracking
+- [x] **Optimization API**: Historical parameter optimization
+- [x] **Tuning UI**: Visual parameter adjustment interface
+- [x] **Auto-Optimization Schedule**: Daily/weekly/monthly tuning
+
+---
+
+## ✅ Phase 17: Onboarding & Glossary
+**Status: Complete**
+- [x] **Onboarding Integration**: First-time user guide
+- [x] **Expanded Glossary**: 28 terms across 5 categories
+- [x] **Term Categorization**: Technical, Fundamental, Risk, Portfolio, Trading
+- [x] **Interactive Tutorials**: Walkthrough targeting system
+
+---
+
+## ✅ Phase 18: Advanced Backtesting Features
+**Status: Complete**
+- [x] **Multi-Strategy Comparison**: Side-by-side strategy analysis
+- [x] **Period Analysis**: 3M, 6M, 1Y, 2Y performance comparison
+- [x] **Export Functionality**: CSV export of backtest results
+- [x] **Strategy Ranking**: Automatic winner identification
+
+---
+
+## ✅ Phase 19: Enhanced Risk Management
+**Status: Complete**
+- [x] **Real-Time Risk Monitoring**: Portfolio health tracking
+- [x] **Position Risk Analysis**: Beta, allocation, exposure tracking
+- [x] **Risk Alert System**: Multi-level notification system
+- [x] **Auto-Adjustment**: Automatic position rebalancing
+- [x] **Advanced Risk Dashboard**: Comprehensive risk controls
+
+---
+
+## ✅ Phase 20: AI-Powered Analytics Dashboard
+**Status: Complete**
+- [x] **Portfolio Performance Metrics**: Real-time KPIs
+- [x] **AI Insights Generation**: Opportunity and risk detection
+- [x] **Interactive Charts**: Performance trends visualization
+- [x] **Risk-Return Analysis**: Portfolio efficiency metrics
+
+---
+
+## ✅ Phase 21: Custom Strategy Builder
+**Status: Complete**
+- [x] **Visual Strategy Builder**: Drag-and-drop condition builder
+- [x] **Condition Library**: Indicator, price, time, volatility conditions
+- [x] **Action Configuration**: Buy, sell, close actions
+- [x] **Risk Management Integration**: Stop loss, take profit, position sizing
+- [x] **Backtest Integration**: Strategy testing with detailed results
+
+---
+
+## ✅ Phase 22: Deployment Configuration
+**Status: Complete**
+- [x] **Vercel Configuration**: Deployment-ready vercel.json
+- [x] **Environment Variables**: Complete .env.example template
+- [x] **Documentation Update**: Comprehensive README with features
+- [x] **ROADMAP Update**: Current status tracking
+
+---
+
+## 🔄 Phase 23: Retirement Planning
+**Status: Planned**
+- [ ] **Goal Setting**: Target amount, date, risk tolerance
+- [ ] **Monte Carlo Simulation**: Probability-based projections
+- [ ] **Scenario Analysis**: Conservative, moderate, aggressive scenarios
+- [ ] **Withdrawal Planning**: Safe withdrawal rate calculation
+- [ ] **Success Probability**: Goal achievement likelihood
+
+---
+
+## 🔄 Phase 24: Advanced Notifications
+**Status: Planned**
+- [ ] **Push Notifications**: Price alerts via Vercel Push
+- [ ] **Email Notifications**: Weekly portfolio summaries
+- [ ] **In-App Notifications**: Real-time alerts system
+- [ ] **Notification Preferences**: User-customizable alert settings
+- [ ] **Smart Alert Triggers**: AI-based alert optimization
+
+---
+
+## 🔄 Phase 25: Mobile App Development
+**Status: Planned**
+- [ ] **React Native App**: iOS and Android support
+- [ ] **Push Notifications**: Cross-platform notifications
+- [ ] **Offline Mode**: Local data caching
+- [ ] **Biometric Authentication**: Secure login
+- [ ] **App Store Deployment**: iOS App Store, Google Play
+
+---
+
+## 🔄 Phase 26: API & Integration
+**Status: Planned**
+- [ ] **Broker API Integration**: Alpaca, Interactive Brokers
+- [ ] **Data Provider Integration**: Multiple data sources
+- [ ] **Webhook Support**: External event notifications
+- [ ] **API Documentation**: OpenAPI specification
+- [ ] **Rate Limiting**: Enhanced API security
+
+---
+
+## 🎯 Future Enhancements
+- [ ] **Machine Learning Models**: Advanced prediction algorithms
+- [ ] **Sentiment Analysis**: News and social media integration
+- [ ] **Social Trading**: Copy trading functionality
+- [ ] **Multi-Currency Support**: JPY, USD, EUR, etc.
+- [ ] **Tax Optimization**: Multi-jurisdiction tax handling
 - [x] **Deep Analysis**: Drawdown, Sharpe Ratio, Profit Factor.
 
 ## 💤 Phase 11: Omni-Channel Notifications
@@ -134,6 +290,13 @@
 - [x] **Arena Logic Upgrade**: Integration of `KnowledgeAgent` into backtests.
 - [x] **Visual Backtest**: Equity Curve charts (Recharts).
 - [x] **Strategy Config**: UI for adjusting Risk% and Thresholds.
+
+## ✅ Phase 25: User-Centric Evolution (Simulation Feedback)
+**Status: Complete**
+- [x] **User Persona Simulation**: 1000 users simulated to gather requirements.
+- [x] **AI Rationale "Verbalization"**: Natural language explanation of AI signals in `SignalCard`.
+- [x] **Contextual Help / Tooltips**: Glossary system for technical terms.
+- [ ] **Tutorial / Onboarding**: (Planned based on feedback)
 
 ## 🌌 Phase 16: G-DAO (Infinite Scale)
 **Timeline: 2028+**

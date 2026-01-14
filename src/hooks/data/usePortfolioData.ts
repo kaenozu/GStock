@@ -1,8 +1,8 @@
 import { useApiQuery } from '@/hooks/useApiQuery';
-import { PortfolioPosition } from '@/types/portfolio';
+import { PortfolioAsset } from '@/types/portfolio';
 
 export function usePortfolioData() {
-    return useApiQuery<PortfolioPosition[]>(
+    return useApiQuery<PortfolioAsset[]>(
         ['portfolio'],
         () => fetch('/api/portfolio').then(res => res.json()),
         {
@@ -12,7 +12,7 @@ export function usePortfolioData() {
 }
 
 export function usePortfolioDataLazy() {
-    return useApiQuery<PortfolioPosition[]>(
+    return useApiQuery<PortfolioAsset[]>(
         ['portfolio'],
         () => fetch('/api/portfolio').then(res => res.json()),
         {

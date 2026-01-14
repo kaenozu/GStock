@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GStock - AI-Powered Trading Platform
+
+GStock is an advanced stock trading platform powered by multiple AI agents, real-time data analysis, and intelligent portfolio management.
+
+## Features
+
+### Core Trading Features
+- **Multi-Agent AI Analysis**: 10+ specialized AI agents analyzing market data
+- **Real-Time Price Updates**: WebSocket integration with Finnhub API
+- **Technical Indicators**: RSI, MACD, Bollinger Bands, ADX, Stochastic, CCI
+- **Market Regime Detection**: Automatic bull/bear/sideways market identification
+- **Backtesting**: Historical strategy testing with detailed metrics
+- **Auto-Trade**: Paper trading and live trading execution
+
+### Portfolio Management
+- **Advanced Analytics**: VaR, Sharpe Ratio, Sortino Ratio, Calmar Ratio
+- **Automated Rebalancing**: Smart portfolio rebalancing with tax optimization
+- **Tax-Loss Harvesting**: Automated tax-efficient loss harvesting
+- **Exposure Analysis**: Sector and geographic exposure tracking
+- **Performance Reporting**: Comprehensive performance reports with export options
+- **Custom Strategy Builder**: Build and backtest custom trading strategies
+
+### Risk Management
+- **Real-Time Risk Monitoring**: Portfolio health tracking with alerts
+- **Position Sizing**: Risk-adjusted position sizing
+- **Stop Loss/Take Profit**: Automated risk management
+- **Concentration Alerts**: Multi-level warning system
+- **Enhanced Risk Dashboard**: Advanced risk metrics and controls
+
+### User Experience
+- **Comprehensive Glossary**: 28+ financial terms with categorization
+- **Onboarding System**: Interactive first-time user guide
+- **Responsive Design**: Mobile-optimized interface
+- **Dark Mode**: Theme customization
+- **Multi-Language Support**: Japanese UI with English codebase
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+
+- npm, yarn, or pnpm
+
+### Installation
 
 ```bash
+# Install dependencies
+npm install
+
+# Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env.local` file with the following variables:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Vercel Web Push (optional)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=your_public_key
+VAPID_PRIVATE_KEY=your_private_key
+
+# Firebase (optional)
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=gstock.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=gstock
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=gstock.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=1234567890
+NEXT_PUBLIC_FIREBASE_APP_ID=1:1234567890:web:abcdef1234567890
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
+
+# Finnhub API (required for real-time data)
+FINNHUB_API_KEY=your_finnhub_api_key
+```
+
+### Deployment
+
+#### Vercel Deployment
+1. Connect your GitHub repository to Vercel
+2. Configure environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+#### Custom Server Deployment
+For WebSocket support (real-time data):
+1. Deploy to Railway/Fly.io/Heroku
+2. Set `FINNHUB_API_KEY` in environment variables
+3. Configure custom domain (optional)
+
+## Documentation
+
+- [ROADMAP.md](ROADMAP.md) - Development roadmap and feature planning
+- [AGENTS.md](AGENTS.md) - AI agent implementation guidelines
+- [PORTFOLIO_SYSTEM.md](PORTFOLIO_SYSTEM.md) - Portfolio management documentation
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Contributing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Contributions are welcome! Please follow the guidelines in [AGENTS.md](AGENTS.md).
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT License - see LICENSE file for details.
