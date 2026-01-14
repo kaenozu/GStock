@@ -51,21 +51,11 @@ export function useRealtimePrice(initialSymbols: string[] = []): UseRealtimePric
                 console.error('[useRealtimePrice] Connection error:', err);
             });
 
-            socket.on('price_update', (data: any) => {
-                // Map the incoming data to NormalizedPrice
-                // Our socket-server emits { symbol, price, changePercent, timestamp }
-                // We need to verify if this matches `NormalizedPrice`. 
-                // Currently `socket-server.ts` emits partial data. Let's assume we map it here.
-                const priceData: NormalizedPrice = {
-                    symbol: data.symbol,
-                    price: data.price,
-                    volume: 0, // Mock server doesn't send volume yet
-                    timestamp: new Date(data.timestamp).getTime()
-                };
-
+            socket.on('price_update', (data: NormalizedPrice) => {
+                // Server now sends NormalizedPrice directly from Finnhub proxy
                 setPrices(prev => ({
                     ...prev,
-                    [data.symbol]: priceData
+                    [data.symbol]: data
                 }));
             });
         });
