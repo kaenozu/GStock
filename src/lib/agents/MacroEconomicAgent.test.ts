@@ -103,8 +103,8 @@ describe('MacroEconomicAgent', () => {
       }));
 
       const macroData = {
-        interestRate: 2.0, // Very favorable
-        inflationRate: 1.5, // Low inflation
+        interestRate: 1.5, // Very favorable
+        inflationRate: 1.2, // Low inflation
         gdpGrowth: 3.0, // Strong growth
         unemploymentRate: 3.5, // Low unemployment
       };

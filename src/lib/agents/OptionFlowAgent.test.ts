@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { OptionFlowAgent } from './OptionFlowAgent';
+import { OptionFlowAgent, OptionFlowData } from './OptionFlowAgent';
 
 describe('OptionFlowAgent', () => {
   const agent = new OptionFlowAgent();
@@ -187,7 +187,6 @@ describe('OptionFlowAgent', () => {
       const result = agent.analyze(data, undefined, optionFlow);
       expect(result.signal).toBe('SELL');
       expect(result.confidence).toBeGreaterThan(50);
-      consider max pain in analysis
       expect(result.reason).toContain('max pain');
       expect(result.sentiment).toBe('BEARISH');
     });
