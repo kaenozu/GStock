@@ -8,6 +8,7 @@ interface UseRealtimePriceReturn {
     prices: Record<string, NormalizedPrice>;
     status: ConnectionStatus;
     error: string | null;
+    usingFallback: boolean;
     subscribe: (symbol: string) => void;
     unsubscribe: (symbol: string) => void;
     connect: () => void;
@@ -19,11 +20,69 @@ export function useRealtimePrice(initialSymbols: string[] = []): UseRealtimePric
     const [prices, setPrices] = useState<Record<string, NormalizedPrice>>({});
     const [status, setStatus] = useState<ConnectionStatus>('disconnected');
     const [error, setError] = useState<string | null>(null);
+    const [usingFallback, setUsingFallback] = useState(false);
     const socketRef = useRef<Socket | null>(null);
+    const fallbackIntervalRef = useRef<Record<string, NodeJS.Timeout>>({});
 
-    // Initialize Socket.io
+    const fetchFallbackPrice = useCallback(async (symbol: string) => {
+        try {
+            const response = await fetch(`/api/stock/fallback?symbol=${symbol}`);
+            if (response.ok) {
+                const data = await response.json();
+                const priceData: NormalizedPrice = {
+                    symbol: data.symbol,
+                    price: data.price,
+                    volume: data.volume || 0,
+                    timestamp: new Date(data.timestamp).getTime()
+                };
+                setPrices(prev => ({
+                    ...prev,
+                    [symbol]: priceData
+                }));
+            }
+        } catch (err) {
+            console.error('[useRealtimePrice] Fallback fetch error:', err);
+        }
+    }, []);
+
+    const stopFallbackPolling = useCallback((symbol: string) => {
+        if (fallbackIntervalRef.current[symbol]) {
+            clearInterval(fallbackIntervalRef.current[symbol]);
+            delete fallbackIntervalRef.current[symbol];
+        }
+    }, []);
+
+    const startFallbackPolling = useCallback((symbol: string) => {
+        stopFallbackPolling(symbol);
+        fetchFallbackPrice(symbol);
+        fallbackIntervalRef.current[symbol] = setInterval(() => {
+            fetchFallbackPrice(symbol);
+        }, 5000);
+    }, [fetchFallbackPrice, stopFallbackPolling]);
+
+    const subscribe = useCallback((symbol: string) => {
+        const upperSymbol = symbol.toUpperCase();
+
+        if (socketRef.current?.connected) {
+            socketRef.current.emit('subscribe', upperSymbol);
+        }
+
+        if (usingFallback) {
+            startFallbackPolling(upperSymbol);
+        }
+    }, [usingFallback, startFallbackPolling]);
+
+    const unsubscribe = useCallback((symbol: string) => {
+        const upperSymbol = symbol.toUpperCase();
+
+        if (socketRef.current?.connected) {
+            socketRef.current.emit('unsubscribe', upperSymbol);
+        }
+
+        stopFallbackPolling(upperSymbol);
+    }, [stopFallbackPolling]);
+
     useEffect(() => {
-        // Trigger the socket initialization endpoint (only needed for serverless, but kept for robust path)
         fetch('/api/socket/io').finally(() => {
             const socket = io({
                 path: '/api/socket/io',
@@ -36,8 +95,7 @@ export function useRealtimePrice(initialSymbols: string[] = []): UseRealtimePric
                 setStatus('connected');
                 setError(null);
                 console.log('[useRealtimePrice] Socket connected');
-                // Resubscribe if needed, or handle initial subscriptions
-                initialSymbols.forEach(sym => socket.emit('subscribe', sym));
+                initialSymbols.forEach(sym => socket.emit('subscribe', sym.toUpperCase()));
             });
 
             socket.on('disconnect', () => {
@@ -45,21 +103,36 @@ export function useRealtimePrice(initialSymbols: string[] = []): UseRealtimePric
                 console.log('[useRealtimePrice] Socket disconnected');
             });
 
-            socket.on('connect_error', (err) => {
+            socket.on('connect_error', (err: any) => {
                 setStatus('error');
                 setError(err.message);
                 console.error('[useRealtimePrice] Connection error:', err);
+                setUsingFallback(true);
             });
 
-            socket.on('price_update', (data: any) => {
-                // Map the incoming data to NormalizedPrice
-                // Our socket-server emits { symbol, price, changePercent, timestamp }
-                // We need to verify if this matches `NormalizedPrice`. 
-                // Currently `socket-server.ts` emits partial data. Let's assume we map it here.
+            socket.on('connection_status', (data) => {
+                setUsingFallback(data.usingMockData);
+            });
+
+            socket.on('price', (data: any) => {
                 const priceData: NormalizedPrice = {
                     symbol: data.symbol,
                     price: data.price,
-                    volume: 0, // Mock server doesn't send volume yet
+                    volume: data.volume || 0,
+                    timestamp: new Date(data.timestamp).getTime()
+                };
+
+                setPrices(prev => ({
+                    ...prev,
+                    [data.symbol]: priceData
+                }));
+            });
+
+            socket.on('price_update', (data: any) => {
+                const priceData: NormalizedPrice = {
+                    symbol: data.symbol,
+                    price: data.price,
+                    volume: 0,
                     timestamp: new Date(data.timestamp).getTime()
                 };
 
@@ -75,20 +148,9 @@ export function useRealtimePrice(initialSymbols: string[] = []): UseRealtimePric
                 socketRef.current.disconnect();
                 socketRef.current = null;
             }
+            Object.values(fallbackIntervalRef.current).forEach(interval => clearInterval(interval));
         };
-    }, []);
-
-    const subscribe = useCallback((symbol: string) => {
-        if (socketRef.current?.connected) {
-            socketRef.current.emit('subscribe', symbol);
-        }
-    }, []);
-
-    const unsubscribe = useCallback((symbol: string) => {
-        if (socketRef.current?.connected) {
-            socketRef.current.emit('unsubscribe', symbol);
-        }
-    }, []);
+    }, [initialSymbols]);
 
     const connect = useCallback(() => {
         if (!socketRef.current?.connected) {
@@ -98,7 +160,7 @@ export function useRealtimePrice(initialSymbols: string[] = []): UseRealtimePric
 
     const disconnect = useCallback(() => {
         if (socketRef.current?.connected) {
-            socketRef.current.disconnect();
+            socketRef.current?.disconnect();
         }
     }, []);
 
@@ -106,10 +168,11 @@ export function useRealtimePrice(initialSymbols: string[] = []): UseRealtimePric
         prices,
         status,
         error,
+        usingFallback,
         subscribe,
         unsubscribe,
         connect,
         disconnect,
-        isEnabled: true // Always enabled for our custom server
+        isEnabled: true
     };
 }

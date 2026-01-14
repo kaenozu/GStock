@@ -50,8 +50,8 @@ export interface PerformanceReport {
     calmarRatio: number;
   };
   events: {
-    rebalances: rebalanceHistory,
-    significantEvents: events,
+    rebalances: RebalanceHistoryEntry[];
+    significantEvents: PerformanceEvent[];
   };
 }
 
