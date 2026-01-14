@@ -267,9 +267,9 @@ export class DynamicWeightingEngine {
 
         // Update volatility (standard deviation of recent accuracy)
         if (perf.recentPredictions && perf.recentPredictions.length >= 20) {
-        const accuracies = perf.recentPredictions.map(p => p.correct ? 1 : 0);
-        const mean = accuracies.reduce((a: number, b: number) => a + b, 0) / accuracies.length;
-        const variance = accuracies.reduce((sum: number, acc: number) => sum + Math.pow(acc - mean, 2), 0) / accuracies.length;
+            const accuracies = perf.recentPredictions.map(p => p.correct ? 1 : 0);
+            const mean = accuracies.reduce((a: number, b: number) => a + b, 0) / accuracies.length;
+            const variance = accuracies.reduce((sum: number, acc: number) => sum + Math.pow(acc - mean, 2), 0) / accuracies.length;
             perf.volatility = Math.sqrt(variance);
         }
 
