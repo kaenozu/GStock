@@ -5,8 +5,8 @@ export interface AgentPerformance {
     totalPredictions: number;
     correctPredictions: number;
     accuracy: number;
-    recentAccuracy: number; // Last N predictions
-    volatility: number; // Consistency measure
+    recentAccuracy: number;
+    volatility: number;
     lastUpdated: number;
 }
 
@@ -18,13 +18,23 @@ export interface WeightedConsensusConfig {
     baseWeights: Record<string, number>;
 }
 
+interface PredictionRecord {
+    correct: boolean;
+    accuracyAtTime: number;
+    timestamp: number;
+}
+
 export class DynamicWeightingEngine {
     private performance: Map<string, AgentPerformance>;
+    private predictionHistory: Map<string, PredictionRecord[]>;
+    private accuracyHistory: Map<string, number[]>;
     private config: WeightedConsensusConfig;
     private readonly maxHistorySize = 100;
 
     constructor(config: Partial<WeightedConsensusConfig> = {}) {
         this.performance = new Map();
+        this.predictionHistory = new Map();
+        this.accuracyHistory = new Map();
         this.config = {
             minConfidenceThreshold: config.minConfidenceThreshold ?? 0.5,
             accuracyWeight: config.accuracyWeight ?? 0.5,
@@ -50,18 +60,27 @@ export class DynamicWeightingEngine {
         actualDirection: 'UP' | 'DOWN' | 'NEUTRAL'
     ): void {
         const perf = this.getOrCreatePerformance(agentId, agentRole);
-        
+
         const isCorrect = this.isPredictionCorrect(prediction, actualDirection);
-        
+
         perf.totalPredictions++;
         if (isCorrect) {
             perf.correctPredictions++;
         }
-        
+
         perf.accuracy = perf.correctPredictions / perf.totalPredictions;
         perf.lastUpdated = Date.now();
-        
+
         this.performance.set(agentId, perf);
+
+        const record: PredictionRecord = {
+            correct: isCorrect,
+            accuracyAtTime: perf.accuracy,
+            timestamp: Date.now()
+        };
+
+        this.addToPredictionHistory(agentId, record);
+        this.addToAccuracyHistory(agentId, perf.accuracy);
     }
 
     calculateWeights(agents: Agent[]): Record<string, number> {
@@ -169,6 +188,8 @@ export class DynamicWeightingEngine {
 
     resetAll(): void {
         this.performance.clear();
+        this.predictionHistory.clear();
+        this.accuracyHistory.clear();
     }
 
     private getOrCreatePerformance(agentId: string, agentRole: string): AgentPerformance {
@@ -207,11 +228,35 @@ export class DynamicWeightingEngine {
     }
 
     private getRecentPredictions(agentId: string, count: number): boolean[] {
-        return [];
+        const history = this.predictionHistory.get(agentId) || [];
+        return history.slice(-count).map(r => r.correct);
     }
 
     private getAccuracyHistory(agentId: string, count: number): number[] {
-        return [];
+        const history = this.accuracyHistory.get(agentId) || [];
+        return history.slice(-count);
+    }
+
+    private addToPredictionHistory(agentId: string, record: PredictionRecord): void {
+        let history = this.predictionHistory.get(agentId) || [];
+        history.push(record);
+
+        if (history.length > this.maxHistorySize) {
+            history = history.slice(-this.maxHistorySize);
+        }
+
+        this.predictionHistory.set(agentId, history);
+    }
+
+    private addToAccuracyHistory(agentId: string, accuracy: number): void {
+        let history = this.accuracyHistory.get(agentId) || [];
+        history.push(accuracy);
+
+        if (history.length > this.maxHistorySize) {
+            history = history.slice(-this.maxHistorySize);
+        }
+
+        this.accuracyHistory.set(agentId, history);
     }
 
     private calculateVariance(values: number[]): number {
