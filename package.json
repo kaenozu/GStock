@@ -14,7 +14,8 @@
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "test:load": "vitest --config vitest.config.load.ts",
-    "test:performance": "vitest --config vitest.config.load.ts --reporter=verbose"
+    "test:performance": "vitest --config vitest.config.load.ts --reporter=verbose",
+    "deploy": "vercel --prod"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
