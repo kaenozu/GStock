@@ -1,14 +1,17 @@
-import { Agent, AgentResult } from './types';
+import { BaseAgent } from './BaseAgent';
+import { AgentResult, AgentRole } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 import { ATR } from 'technicalindicators';
 
-export class VolatilityAgent implements Agent {
+export class VolatilityAgent extends BaseAgent {
     id = 'volatility_agent';
     name = 'Hunter (Volatility)';
-    role: Agent['role'] = 'VOLATILE';
+    role: AgentRole = 'VOLATILE';
 
     analyze(data: StockDataPoint[], regime?: MarketRegime): AgentResult {
-        if (data.length < 50) return this.neutralResult("Insufficient data");
+        if (this.hasInsufficientData(data, 50)) {
+            return this.neutralResult("Insufficient data");
+        }
 
         const closingPrices = data.map((d) => d.close);
         const highPrices = data.map(d => d.high);
@@ -16,8 +19,6 @@ export class VolatilityAgent implements Agent {
         const lastPrice = closingPrices[closingPrices.length - 1];
 
         const atr = ATR.calculate({ high: highPrices, low: lowPrices, close: closingPrices, period: 14 });
-        // Note: Bollinger Bands calculation available for squeeze detection if needed
-        // const bb = BollingerBands.calculate({ period: 20, values: closingPrices, stdDev: 2 });
 
         const lastATR = atr[atr.length - 1];
 
@@ -27,19 +28,14 @@ export class VolatilityAgent implements Agent {
         // Logic: Breakout Hunter
 
         // 1. Squeeze detection
-        // Note: bandWidth could be used for detailed analysis but regime detection is sufficient
-        // const bandWidth = (lastBB.upper - lastBB.lower) / lastPrice;
-
         if (regime === 'SQUEEZE') {
             // In squeeze, we HOLD and wait.
-            return {
-                name: this.name,
-                role: this.role,
-                signal: 'HOLD',
-                confidence: 50,
-                reason: "Squeeze Active - Waiting for breakout",
-                sentiment: 'NEUTRAL'
-            };
+            return this.createResult(
+                'HOLD',
+                50,
+                "Squeeze Active - Waiting for breakout",
+                'NEUTRAL'
+            );
         }
 
         // 2. High Volatility (Breakout?)
@@ -58,27 +54,17 @@ export class VolatilityAgent implements Agent {
         }
 
         let signal: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
+        const confidence = Math.min(Math.abs(score), 100);
+
         if (score >= 40) signal = 'BUY';
         else if (score <= -40) signal = 'SELL';
 
-        return {
-            name: this.name,
-            role: this.role,
+        return this.createResult(
             signal,
-            confidence: Math.min(Math.abs(score), 100),
-            reason: reasons.join(", ") || "Market Dormant",
-            sentiment: score >= 0 ? 'BULLISH' : 'BEARISH'
-        };
-    }
-
-    private neutralResult(reason: string): AgentResult {
-        return {
-            name: this.name,
-            role: this.role,
-            signal: 'HOLD',
-            confidence: 0,
-            reason,
-            sentiment: 'NEUTRAL'
-        };
+            confidence,
+            reasons.join(", ") || "Market Dormant",
+            score >= 0 ? 'BULLISH' : 'BEARISH'
+        );
     }
 }
+
