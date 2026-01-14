@@ -1,6 +1,3 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, validateSymbol, rateLimit } from '@/lib/api/middleware';
-import { withStockCache } from '@/lib/api/cache-middleware';
 import { FinnhubProvider } from '@/lib/api/providers/FinnhubProvider';
 import { YahooProvider } from '@/lib/api/providers/YahooProvider';
 
@@ -44,6 +41,7 @@ async function handler(request: Request) {
         }
     }
 }
+
 
 export const GET = withAuth(withStockCache(async (request: NextRequest) => {
     // Apply rate limiting

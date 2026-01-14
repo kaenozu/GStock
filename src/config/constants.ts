@@ -20,6 +20,8 @@ export const JAPAN_STOCK_LIST = [
 ];
 
 // スキャン設定
-export const SCAN_INTERVAL_MS = 5000; // 高速回転
-export const DATA_REFRESH_INTERVAL_MS = 300000; // データの再取得間隔 (5分)
-export const CONFIDENCE_THRESHOLD = 10; // ほぼ全てのシグナルを通す
+// スキャン設定
+export const SCAN_INTERVAL_MS = 10000; // 10秒間隔（レート制限配慮）
+export const DATA_REFRESH_INTERVAL_MS = 60000; // 1分毎にデータ更新
+export const CONFIDENCE_THRESHOLD = 70; // 高信頼度のシグナルのみ採用
+

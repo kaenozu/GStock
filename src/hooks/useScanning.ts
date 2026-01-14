@@ -13,9 +13,9 @@ import { PredictionClient, AutoEvaluator } from '@/lib/accuracy';
 import { AlertService } from '@/lib/alerts';
 import { ErrorLogger } from '@/lib/errors';
 import { toast } from 'sonner';
-import { KnowledgeAgent, RiskParameters } from '@/lib/agents/KnowledgeAgent';
-import { CONFIDENCE_THRESHOLD } from '@/config/constants';
 import { useSoundSystem } from '@/hooks/useSoundSystem';
+import { useAutoTrader } from '@/hooks/useAutoTrader';
+import { calculateAnalysis } from '@/lib/analysis/technical';
 
 /** スキャン間隔（ミリ秒） */
 const SCAN_INTERVAL_MS = 10000;
@@ -25,8 +25,6 @@ const ERROR_TOAST_THRESHOLD = 3;
 
 /** エラークリアまでの時間（ミリ秒） */
 const ERROR_CLEAR_DELAY_MS = 5000;
-
-import { calculateAnalysis } from '@/lib/analysis/technical';
 
 /**
  * 銘柄スキャンフック
@@ -43,6 +41,8 @@ export const useScanning = (
     handleAutoTrade?: (request: any) => Promise<any>
 ) => {
     const { play } = useSoundSystem();
+    const { executeTrade } = useAutoTrader(isAutoTrading, handleAutoTrade);
+
     const [scanningSymbol, setScanningSymbol] = useState<string | null>(null);
     const [isScanLoading, setIsScanLoading] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
@@ -129,44 +129,7 @@ export const useScanning = (
             }).catch(() => { /* ignore */ });
 
             // Auto Trading Execution
-            if (isAutoTrading && handleAutoTrade && result.sentiment !== 'NEUTRAL' && result.confidence >= CONFIDENCE_THRESHOLD) {
-                // Calculate position size and limit price
-                const riskParams: RiskParameters = {
-                    accountEquity: 1000000, // Mock equity for now, ideally fetched from usePortfolio
-                    riskPerTradePercent: 0.02, // 2% risk
-                    maxPositionSizePercent: 0.2 // Max 20% allocation
-                };
-
-                const setup = {
-                    symbol,
-                    price: lastPrice,
-                    confidence: result.confidence,
-                    sentiment: result.sentiment
-                };
-
-                const quantity = KnowledgeAgent.calculatePositionSize(setup, riskParams);
-                const limitPrice = KnowledgeAgent.calculateLimitPrice(setup);
-
-                // Execute Trade
-                handleAutoTrade({
-                    symbol,
-                    side: result.sentiment === 'BULLISH' ? 'BUY' : 'SELL',
-                    type: 'LIMIT',
-                    quantity,
-                    price: limitPrice,
-                    reason: `Auto-Bot: ${result.sentiment} (Conf: ${result.confidence}%)`
-                }).then((trade) => {
-                    toast.success(`🤖 Auto-Trade Executed: ${symbol}`, {
-                        description: `${result.sentiment} ${quantity} shares @ $${limitPrice}`
-                    });
-                    console.log(`[Auto-Bot] Executed: ${symbol}, Qty: ${quantity}, Price: ${limitPrice}`);
-                }).catch(err => {
-                    console.error('[Auto-Bot] Execution Failed:', err);
-                    toast.error(`🤖 Auto-Trade Failed: ${symbol}`, {
-                        description: err.message
-                    });
-                });
-            }
+            await executeTrade(result);
 
             // アラート送信
             const signalType = result.sentiment === 'BULLISH' ? 'BUY' : result.sentiment === 'BEARISH' ? 'SELL' : 'HOLD';
@@ -205,7 +168,7 @@ export const useScanning = (
         } finally {
             setIsScanLoading(false);
         }
-    }, [updateBestTrade, addToHistory, failedSymbolsList]);
+    }, [updateBestTrade, addToHistory, failedSymbolsList, executeTrade, play]);
 
     /**
      * 次のスキャン対象銘柄を取得
@@ -274,3 +237,4 @@ export const useScanning = (
         resetFailedSymbols: useCallback(() => setFailedSymbolsList([]), []),
     };
 };
+
