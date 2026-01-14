@@ -1,4 +1,5 @@
-import { Agent, AgentResult } from './types';
+import { BaseAgent } from './BaseAgent';
+import { AgentResult, AgentRole } from './types';
 import { StockDataPoint, MarketRegime } from '@/types/market';
 
 export interface OptionFlowData {
@@ -13,10 +14,10 @@ export interface OptionFlowData {
     maxPain?: number;
 }
 
-export class OptionFlowAgent implements Agent {
+export class OptionFlowAgent extends BaseAgent {
     id = 'option_flow_agent';
     name = 'Option Flow Analyzer';
-    role: Agent['role'] = 'OPTION';
+    role: AgentRole = 'OPTION';
 
     private historicalFlows: OptionFlowData[] = [];
 
@@ -96,26 +97,14 @@ export class OptionFlowAgent implements Agent {
             sentiment = 'BEARISH';
         }
 
-        return {
-            name: this.name,
-            role: this.role,
+        return this.createResult(
             signal,
             confidence,
-            reason: reasons.join('; ') || "Mixed option flow signals",
+            reasons.join('; ') || "Mixed option flow signals",
             sentiment
-        };
+        );
     }
 
-    private neutralResult(reason: string): AgentResult {
-        return {
-            name: this.name,
-            role: this.role,
-            signal: 'HOLD',
-            confidence: 0,
-            reason,
-            sentiment: 'NEUTRAL'
-        };
-    }
 
     addHistoricalFlow(flowData: OptionFlowData): void {
         this.historicalFlows.push(flowData);
