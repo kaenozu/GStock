@@ -1,3 +1,5 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth, rateLimit, withStockCache, validateSymbol } from '@/lib/api/middleware';
 import { FinnhubProvider } from '@/lib/api/providers/FinnhubProvider';
 import { YahooProvider } from '@/lib/api/providers/YahooProvider';
 
@@ -43,10 +45,10 @@ async function handler(request: Request) {
 }
 
 
-export const GET = withAuth(withStockCache(async (request: NextRequest) => {
+export const GET = withAuth(withStockCache((request: NextRequest) => {
     // Apply rate limiting
     if (!checkRateLimit(request)) {
-        return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+        return Promise.resolve(NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 }));
     }
     return handler(request);
 }));

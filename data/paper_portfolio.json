@@ -1,9 +1,34 @@
 {
-  "cash": 1000000,
-  "equity": 1000000,
-  "dailyStartEquity": 1000000,
+  "cash": 10097.15005,
+  "equity": 10097.15005,
+  "dailyStartEquity": 10000,
   "positions": [],
-  "trades": [],
-  "lastUpdated": "2026-01-11T08:55:00.000Z",
-  "dayStartDate": "2026-01-11"
+  "trades": [
+    {
+      "id": "bac6c13e-c468-4142-8409-6e6d9a485573",
+      "timestamp": "2026-01-14T04:07:34.481Z",
+      "symbol": "TEST",
+      "side": "BUY",
+      "quantity": 10,
+      "price": 90.045,
+      "total": 900.45,
+      "commission": 0.9004500000000001,
+      "orderType": "MARKET",
+      "reason": "Manual Trade"
+    },
+    {
+      "id": "d1059b86-26e1-4122-af25-bf5d26f5dac2",
+      "timestamp": "2026-01-14T04:07:34.476Z",
+      "symbol": "TEST",
+      "side": "SELL",
+      "quantity": 10,
+      "price": 99.95,
+      "total": 999.5,
+      "commission": 0.9995,
+      "orderType": "MARKET",
+      "reason": "Manual Trade"
+    }
+  ],
+  "lastUpdated": "2026-01-14T04:07:34.481Z",
+  "dayStartDate": "2026-01-14"
 }

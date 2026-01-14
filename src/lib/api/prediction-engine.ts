@@ -1,25 +1,3 @@
-/**
- * Prediction Engine - G-Engine Prime
- * @description AIエージェント評議会による市場予測エンジン
- * @module lib/api/prediction-engine
- * 
- * ## アーキテクチャ
- * 
- * 1. **テクニカル分析層** (calculateScore)
- *    - SMA, RSI, MACD, ADX, BB, ATRを使用
- *    - Market Regime (市場環境) を判定
- * 
- * 2. **エージェント層** (Council)
- *    - ChairmanAgent: 総合判断
- *    - TrendAgent: トレンドフォロー
- *    - ReversalAgent: 逆張り
- *    - VolatilityAgent: ボラティリティブレイクアウト
- * 
- * 3. **コンセンサス層** (Consensus Engine)
- *    - 各エージェントの投票を重み付け平均
- *    - 最終的なシグナルを出力
- */
-
 import { SMA, RSI, MACD, ADX, BollingerBands, ATR } from 'technicalindicators';
 import type { MACDOutput } from 'technicalindicators/declarations/moving_averages/MACD';
 import type { ADXOutput } from 'technicalindicators/declarations/directionalmovement/ADX';
@@ -29,6 +7,22 @@ import { ChairmanAgent } from '@/lib/agents/ChairmanAgent';
 import { TrendAgent } from '@/lib/agents/TrendAgent';
 import { ReversalAgent } from '@/lib/agents/ReversalAgent';
 import { VolatilityAgent } from '@/lib/agents/VolatilityAgent';
+import { MacroEconomicAgent } from '@/lib/agents/MacroEconomicAgent';
+import { NewsSentimentAgent } from '@/lib/agents/NewsSentimentAgent';
+import { OptionFlowAgent, OptionFlowData } from '@/lib/agents/OptionFlowAgent';
+
+// ... (existing helper functions)
+
+export interface ExternalAgentData {
+    news?: string[];
+    macro?: {
+        interestRate: number;
+        inflationRate: number;
+        gdpGrowth?: number;
+        unemploymentRate?: number;
+    };
+    optionFlow?: OptionFlowData;
+}
 
 /** スコア計算結果 */
 interface ScoreResult {
@@ -46,17 +40,6 @@ interface ScoreResult {
 
 /**
  * 内部用: 単一時点の指標値からスコアとシグナルを算出
- * 
- * @param price - 現在価格
- * @param sma20 - 20日移動平均
- * @param sma50 - 50日移動平均
- * @param rsi - RSI値
- * @param macd - MACD出力
- * @param prevMacd - 前日のMACD出力
- * @param adx - ADX出力
- * @param bb - ボリンジャーバンド出力
- * @param atr - ATR値
- * @returns スコア計算結果
  */
 const calculateScore = (
     price: number,
@@ -204,20 +187,18 @@ const calculateScore = (
     return { confidence, sentiment, signals, finalScore, regime };
 };
 
+
 /**
  * G-Engine Prime: 最新の市場予測を返す
- * 
+ *
  * @param data - 株価データ（最低50日分必要）
+ * @param externalData - (Optional) ニュース、マクロ、オプション等の外部データ
  * @returns 分析結果（データ不足時はデフォルト値）
- * 
- * @example
- * ```typescript
- * const analysis = calculateAdvancedPredictions(stockData);
- * console.log(analysis.sentiment); // 'BULLISH' | 'BEARISH' | 'NEUTRAL'
- * console.log(analysis.confidence); // 0-100
- * ```
  */
-export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisResult => {
+export const calculateAdvancedPredictions = (
+    data: StockDataPoint[],
+    externalData?: ExternalAgentData
+): AnalysisResult => {
     if (data.length < 50) return {
         predictions: [],
         confidence: 0,
@@ -227,6 +208,25 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
         stats: { rsi: 0, trend: 'NEUTRAL', adx: 0, price: 0, regime: 'SIDEWAYS' }
     };
 
+    const { sma20, sma50, rsi, macd, adx, bb, atr, closingPrices } = calculateTechnicalIndicators(data);
+
+    const lastPrice = closingPrices[closingPrices.length - 1];
+    const lastRSI = rsi[rsi.length - 1];
+    const lastMACD = macd[macd.length - 1];
+    const lastADX = adx[adx.length - 1];
+    const lastSMA20 = sma20[sma20.length - 1];
+    const lastSMA50 = sma50[sma50.length - 1];
+    const lastBB = bb[bb.length - 1];
+    const lastATR = atr[atr.length - 1];
+    const prevMACD = macd[macd.length - 2];
+
+    // ... (rest of function)
+};
+
+/**
+ * テクニカル指標を一括計算
+ */
+export const calculateTechnicalIndicators = (data: StockDataPoint[]) => {
     const closingPrices = data.map((d) => d.close);
     const highPrices = data.map(d => d.high);
     const lowPrices = data.map(d => d.low);
@@ -239,151 +239,169 @@ export const calculateAdvancedPredictions = (data: StockDataPoint[]): AnalysisRe
     const bb = BollingerBands.calculate({ period: 20, values: closingPrices, stdDev: 2 });
     const atr = ATR.calculate({ high: highPrices, low: lowPrices, close: closingPrices, period: 14 });
 
-    const lastPrice = closingPrices[closingPrices.length - 1];
-    const lastRSI = rsi[rsi.length - 1];
-    const lastMACD = macd[macd.length - 1];
-    const lastADX = adx[adx.length - 1];
-    const lastSMA20 = sma20[sma20.length - 1];
-    const lastSMA50 = sma50[sma50.length - 1];
-    const lastBB = bb[bb.length - 1];
-    const lastATR = atr[atr.length - 1];
-    const prevMACD = macd[macd.length - 2];
-
-    // --- Refactor: Use ChairmanAgent ---
-    const chairman = new ChairmanAgent();
-    const trendAgent = new TrendAgent();
-    const reversalAgent = new ReversalAgent();
-    const volatilityAgent = new VolatilityAgent();
-
-    // Calculate Regime First
-    const legacyResult = calculateScore(
-        lastPrice, lastSMA20, lastSMA50, lastRSI, lastMACD, prevMACD, lastADX, lastBB, lastATR
-    );
-    const regime = legacyResult.regime;
-
-    // Agent Analysis (The Council Votes)
-    const chairmanResult = chairman.analyze(data, regime);
-    const trendResult = trendAgent.analyze(data, regime);
-    const reversalResult = reversalAgent.analyze(data, regime);
-    const volResult = volatilityAgent.analyze(data, regime);
-
-    // --- Consensus Engine (Phase 7.3) ---
-
-    // Define Weights
-    const weights = {
-        'CHAIRMAN': 2.0,
-        'VOLATILE': 1.5,
-        'TREND': 1.0,
-        'REVERSAL': 1.0
-    };
-
-    // Helper: Convert Agent Result to Numerical Score (-100 to 100)
-    const getAgentScore = (res: { signal: 'BUY' | 'SELL' | 'HOLD'; confidence: number }): number => {
-        let dir = 0;
-        if (res.signal === 'BUY') dir = 1;
-        else if (res.signal === 'SELL') dir = -1;
-        return dir * res.confidence;
-    };
-
-    const results = [chairmanResult, volResult, trendResult, reversalResult];
-    let totalScore = 0;
-    let totalWeight = 0;
-    const votes: string[] = [];
-
-    results.forEach(res => {
-        const weight = weights[res.role as keyof typeof weights] || 1.0;
-
-        // Skip silent agents (HOLD with 0 confidence) from weighting? 
-        // No, HOLD is a vote for Neutral (0). But if confidence is high and HOLD, it pulls towards 0.
-        // Current agents return confidence 0 for neutral HOLD.
-        // If an agent says BUY with 50 confidence, and another says HOLD 0 confidence (weight 1),
-        // Score = (50*W1 + 0*W2) / (W1+W2). Correctly dilutes the signal.
-
-        const score = getAgentScore(res);
-        totalScore += score * weight;
-        totalWeight += weight;
-
-        // Log significant votes for display
-        if (res.signal !== 'HOLD') {
-            votes.push(`${res.name}: ${res.signal} (${res.reason})`);
-        } else if (res.role === 'CHAIRMAN') {
-            // Always hear the Chairman
-            votes.push(`${res.name}: ${res.reason}`);
-        }
-    });
-
-    const consensusScore = totalWeight > 0 ? totalScore / totalWeight : 0; // -100 to 100
-
-    // Final Consensus Derivation
-    const finalConfidence = Math.min(Math.abs(consensusScore), 100);
-    let finalSentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' = 'NEUTRAL';
-    if (consensusScore >= 20) finalSentiment = 'BULLISH';
-    else if (consensusScore <= -20) finalSentiment = 'BEARISH';
-
-    // Construct Signals
-    const signals = legacyResult.signals; // Tech signals
-
-    // 1. Add Consensus Summary
-    const consensusSignal = `Council Consensus: ${finalSentiment} (Score: ${Math.round(consensusScore)})`;
-    signals.unshift(consensusSignal);
-
-    // 2. Add Detailed Votes (Top 3)
-    votes.slice(0, 3).forEach(v => signals.push(v));
-
-    // Map Consensus to Visualization
-    const confidence = Math.round(finalConfidence);
-    const sentiment = finalSentiment === 'NEUTRAL' ? 'NEUTRAL' : finalSentiment as TradeSentiment;
-
-    // ... Predictions loop ...
-    const predictions = [];
-    const lastDate = new Date(data[data.length - 1].time);
-    predictions.push({ time: data[data.length - 1].time, value: lastPrice });
-
-    for (let i = 1; i <= 14; i++) {
-        const nextDate = new Date(lastDate);
-        nextDate.setDate(lastDate.getDate() + i);
-        if (nextDate.getDay() === 0 || nextDate.getDay() === 6) continue;
-        const dateStr = nextDate.toISOString().split('T')[0];
-
-        const volatilityFactor = lastATR * 0.5;
-        // Map sentiment to direction
-        const directionFactor = sentiment === 'BULLISH' ? 0.3 : sentiment === 'BEARISH' ? -0.3 : 0;
-
-        // Adjust direction intensity based on Consensus Score strength
-        const intensity = Math.abs(consensusScore) / 100;
-
-        const noise = (Math.random() - 0.5) * (lastATR * 0.2);
-        const change = (directionFactor * intensity * volatilityFactor * i) + noise;
-
-        predictions.push({
-            time: dateStr,
-            value: parseFloat((lastPrice + change).toFixed(2))
-        });
-    }
-
-    const chartIndicators: ChartIndicators = {
-        sma20: sma20.map((val, i) => ({ time: data[i + 19].time, value: val })),
-        sma50: sma50.map((val, i) => ({ time: data[i + 49].time, value: val })),
-        upperBand: bb.map((val, i) => ({ time: data[i + 19].time, value: val.upper })),
-        lowerBand: bb.map((val, i) => ({ time: data[i + 19].time, value: val.lower }))
-    };
-
-    return {
-        predictions,
-        confidence,
-        sentiment,
-        signals,
-        stats: {
-            rsi: Math.round(lastRSI),
-            trend: lastSMA20 > lastSMA50 ? 'UP' : 'DOWN',
-            adx: Math.round(lastADX.adx),
-            price: lastPrice,
-            regime: regime
-        },
-        marketRegime: regime,
-        chartIndicators
-    };
+    return { sma20, sma50, rsi, macd, adx, bb, atr, closingPrices, lastRSI: rsi[rsi.length - 1] };
 };
+
+/**
+ * 市場環境（Regime）を判定
+ */
+export const detectMarketRegime = (data: StockDataPoint[]): MarketRegime => {
+    return calculateAdvancedPredictions(data).marketRegime;
+};
+
+// Start of calculateAdvancedPredictions (re-added for clarity in modify)
+/* (This block is just for matching, not replacing, but since I replaced the top of the function above...) */
+
+
+// --- Refactor: Use ChairmanAgent ---
+const chairman = new ChairmanAgent();
+const trendAgent = new TrendAgent();
+const reversalAgent = new ReversalAgent();
+const volatilityAgent = new VolatilityAgent();
+const macroAgent = new MacroEconomicAgent();
+const newsAgent = new NewsSentimentAgent();
+const optionAgent = new OptionFlowAgent();
+
+// Calculate Regime First
+const legacyResult = calculateScore(
+    lastPrice, lastSMA20, lastSMA50, lastRSI, lastMACD, prevMACD, lastADX, lastBB, lastATR
+);
+const regime = legacyResult.regime;
+
+// Agent Analysis (The Council Votes)
+const chairmanResult = chairman.analyze(data, regime);
+const trendResult = trendAgent.analyze(data, regime);
+const reversalResult = reversalAgent.analyze(data, regime);
+const volResult = volatilityAgent.analyze(data, regime);
+
+// Use external data if provided
+const macroResult = macroAgent.analyze(data, regime, externalData?.macro);
+const newsResult = newsAgent.analyze(data, regime, externalData?.news);
+const optionResult = optionAgent.analyze(data, regime, externalData?.optionFlow);
+
+// --- Consensus Engine (Phase 7.3) ---
+
+// Define Weights
+const weights = {
+    'CHAIRMAN': 2.0,
+    'VOLATILE': 1.5,
+    'TREND': 1.0,
+    'REVERSAL': 1.0,
+    'MACRO': 1.2,  // Foundation
+    'NEWS': 1.5,   // Sentiment Impact
+    'OPTION': 1.5  // Smart Money
+};
+
+// Helper: Convert Agent Result to Numerical Score (-100 to 100)
+const getAgentScore = (res: { signal: 'BUY' | 'SELL' | 'HOLD'; confidence: number }): number => {
+    let dir = 0;
+    if (res.signal === 'BUY') dir = 1;
+    else if (res.signal === 'SELL') dir = -1;
+    return dir * res.confidence;
+};
+
+const results = [
+    chairmanResult,
+    volResult,
+    trendResult,
+    reversalResult,
+    macroResult,
+    newsResult,
+    optionResult
+];
+
+let totalScore = 0;
+let totalWeight = 0;
+const votes: string[] = [];
+
+results.forEach(res => {
+    const weight = weights[res.role as keyof typeof weights] || 1.0;
+
+    const score = getAgentScore(res);
+    totalScore += score * weight;
+    totalWeight += weight;
+
+    // Log significant votes for display
+    if (res.signal !== 'HOLD') {
+        votes.push(`${res.name}: ${res.signal} (${res.reason})`);
+    } else if (res.role === 'CHAIRMAN') {
+        // Always hear the Chairman
+        votes.push(`${res.name}: ${res.reason}`);
+    }
+});
+
+const consensusScore = totalWeight > 0 ? totalScore / totalWeight : 0; // -100 to 100
+
+// Final Consensus Derivation
+const finalConfidence = Math.min(Math.abs(consensusScore), 100);
+let finalSentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' = 'NEUTRAL';
+if (consensusScore >= 20) finalSentiment = 'BULLISH';
+else if (consensusScore <= -20) finalSentiment = 'BEARISH';
+
+// Construct Signals
+const signals = legacyResult.signals; // Tech signals
+
+// 1. Add Consensus Summary
+const consensusSignal = `Council Consensus: ${finalSentiment} (Score: ${Math.round(consensusScore)})`;
+signals.unshift(consensusSignal);
+
+// 2. Add Detailed Votes (Top 6)
+votes.slice(0, 6).forEach(v => signals.push(v));
+
+// Map Consensus to Visualization
+const confidence = Math.round(finalConfidence);
+const sentiment = finalSentiment === 'NEUTRAL' ? 'NEUTRAL' : finalSentiment as TradeSentiment;
+
+// ... Predictions loop ...
+const predictions = [];
+const lastDate = new Date(data[data.length - 1].time);
+predictions.push({ time: data[data.length - 1].time, value: lastPrice });
+
+for (let i = 1; i <= 14; i++) {
+    const nextDate = new Date(lastDate);
+    nextDate.setDate(lastDate.getDate() + i);
+    if (nextDate.getDay() === 0 || nextDate.getDay() === 6) continue;
+    const dateStr = nextDate.toISOString().split('T')[0];
+
+    const volatilityFactor = lastATR * 0.5;
+    // Map sentiment to direction
+    const directionFactor = sentiment === 'BULLISH' ? 0.3 : sentiment === 'BEARISH' ? -0.3 : 0;
+
+    // Adjust direction intensity based on Consensus Score strength
+    const intensity = Math.abs(consensusScore) / 100;
+
+    const noise = (Math.random() - 0.5) * (lastATR * 0.2);
+    const change = (directionFactor * intensity * volatilityFactor * i) + noise;
+
+    predictions.push({
+        time: dateStr,
+        value: parseFloat((lastPrice + change).toFixed(2))
+    });
+}
+
+const chartIndicators: ChartIndicators = {
+    sma20: sma20.map((val, i) => ({ time: data[i + 19]?.time || '', value: val })),
+    sma50: sma50.map((val, i) => ({ time: data[i + 49]?.time || '', value: val })),
+    upperBand: bb.map((val, i) => ({ time: data[i + 19]?.time || '', value: val.upper })),
+    lowerBand: bb.map((val, i) => ({ time: data[i + 19]?.time || '', value: val.lower }))
+};
+
+return {
+    predictions,
+    confidence,
+    sentiment,
+    signals,
+    stats: {
+        rsi: Math.round(lastRSI),
+        trend: lastSMA20 > lastSMA50 ? 'UP' : 'DOWN',
+        adx: Math.round(lastADX.adx),
+        price: lastPrice,
+        regime: regime
+    },
+    marketRegime: regime,
+    chartIndicators
+};
+
 
 /** 履歴シグナルの型 */
 export interface HistoricalSignal {

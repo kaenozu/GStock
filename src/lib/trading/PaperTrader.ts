@@ -158,10 +158,10 @@ export class PaperTradingEngine {
      * @param request - 取引リクエスト
      * @returns 取引結果
      */
-    public async executeTrade(request: TradeRequest): Promise<{ success: boolean; message: string; trade?: Trade }> {
+    public async executeTrade(request: TradeRequest, currentMarketPrice?: number): Promise<{ success: boolean; message: string; trade?: Trade }> {
         this.checkDailyReset();
 
-        // Circuit Breaker チェック
+        // Circuit Breaker Check
         const safetyCheck = CircuitBreaker.checkTrade(this.portfolio, request);
         if (!safetyCheck.allowed) {
             console.warn(`[Iron Dome] Trade Rejected: ${safetyCheck.reason}`);
@@ -171,89 +171,167 @@ export class PaperTradingEngine {
         const { symbol, side, reason, orderType } = request;
         const quantity = request.quantity || 1;
 
-        // スリッページを適用した実効価格
-        // NOTE: 指値の場合はスリッページ適用後の価格が指値条件を満たすかチェックすべきだが
-        // 簡易的に「市場価格(request.price) vs 指値条件」で判定し、約定価格にはスリッページを乗せる
-        const marketPrice = request.price; // リクエストのpriceは現在価格として渡ってくる想定（成行の場合）
-        // 指値の場合、priceは指値価格？
-        // Client側からは CurrentPrice と LimitPrice どちらを送る？
-        // TradeRequestのpriceは「注文価格」と定義されている。
-        // 成行ならCurrentPrice、指値ならLimitPriceが入るはず。
-        // しかしPaperTraderは「現在価格」を知らないと約定判定できない。
-        // 現状のPaperTraderは「リクエストされた価格＝市場価格」として処理している（Sandbox的）。
-        // よって、Limit判定は「もしこれが指値なら、本来はMarketPriceと比較が必要」だが、
-        // MarketPrice情報がないため、PaperTraderでは「Limit価格で即約定」とするしかない？
-        // いや、呼び出し元(route.ts)などはMarketPriceを知らないかもしれない。
-        // FIXME: PaperTraderにMarketDataを与える手段が必要だが、今回は簡易実装として
-        // "Market Order" -> uses price as execution price
-        // "Limit Order" -> uses price as execution price (Assuming market reached it)
-        // This is a limitation of stateless PaperTrader.
-
-        // 改善案: TradeRequestに `currentMarketPrice` を追加するか、
-        // PaperTraderがPrice Checkを行わず、単にOrderTypeを記録するにとどめる。
-        // 計画書には "If LIMIT and (Request Price < Market Price)..." とあるが、
-        // Requestには `price` (Limit Price) しかない。
-        // Market PriceとLimit Priceの両方が必要。
-        // UIからは `price` に Limit Price を入れて送ってくる。
-        // Backend側で Current Price を取得しないと判定できない。
-        // InternalBroker で Fetch して PaperTrader に渡す？
-
-        // 今回は「指値価格で約定した」ことにして進める（FOKシミュレーション不能）
-        // ただし、もしUIから「現在価格」も送れるなら判定可能。
-        // TradeRequestの定義を変更していないので、PaperTrader内では判定不可。
-        // よって、そのまま約定させる。
+        // Validation with currentMarketPrice if provided
+        if (currentMarketPrice && orderType === 'LIMIT') {
+            if (side === 'BUY' && currentMarketPrice > request.price) {
+                return { success: false, message: `Limit Buy Not Filled: Market(${currentMarketPrice}) > Limit(${request.price})` };
+            }
+            if (side === 'SELL' && currentMarketPrice < request.price) {
+                // For Short Sell Limit, we want to sell at Price or higher.
+                // If Market < Limit, we don't fill.
+                return { success: false, message: `Limit Sell Not Filled: Market(${currentMarketPrice}) < Limit(${request.price})` };
+            }
+        }
 
         const executionPrice = this.applySlippage(request.price, side);
         const grossAmount = executionPrice * quantity;
         const commission = this.calculateCommission(grossAmount);
 
+        // Find existing position
+        let existingPos = this.portfolio.positions.find(p => p.symbol === symbol);
+
         if (side === 'BUY') {
-            const totalCost = grossAmount + commission;
+            const totalCost = grossAmount + commission; // For buying long
 
-            if (this.portfolio.cash < totalCost) {
-                return { success: false, message: `Insufficient Funds (Required: ¥${totalCost.toLocaleString()}, Available: ¥${this.portfolio.cash.toLocaleString()})` };
-            }
+            // Scenario 1: Covering Short Position (Buy to Cover)
+            if (existingPos && existingPos.quantity < 0) {
+                // Determine how much we are covering
+                const coverQty = Math.min(Math.abs(existingPos.quantity), quantity);
+                const remainingQty = quantity - coverQty;
 
-            // 現金を減らす
-            this.portfolio.cash -= totalCost;
+                // Calculate Cost to Cover
+                const coverCost = (executionPrice * coverQty) + this.calculateCommission(executionPrice * coverQty);
 
-            // ポジション更新
-            const existingPos = this.portfolio.positions.find(p => p.symbol === symbol);
-            if (existingPos) {
-                // 平均取得価格の再計算（手数料込み）
-                const existingCost = existingPos.quantity * existingPos.averagePrice;
-                const newCost = totalCost;
-                existingPos.quantity += quantity;
-                existingPos.averagePrice = (existingCost + newCost) / existingPos.quantity;
+                if (this.portfolio.cash < coverCost) {
+                    return { success: false, message: `Insufficient Funds to Cover (Req: ¥${coverCost.toLocaleString()})` };
+                }
+
+                this.portfolio.cash -= coverCost;
+
+                // Update Position
+                existingPos.quantity += coverQty; // -10 + 5 = -5
+
+                // If flipping to Long (remainingQty > 0)
+                if (remainingQty > 0) {
+                    const longCost = (executionPrice * remainingQty) + this.calculateCommission(executionPrice * remainingQty);
+                    if (this.portfolio.cash < longCost) {
+                        // Covered partial but cannot flip? This is edge case.
+                        // Let's just stop at neutral or error.
+                        // For simplicity, failing the flip if insufficient funds.
+                        return { success: false, message: `Insufficient Funds to Flip Long` };
+                    }
+                    this.portfolio.cash -= longCost;
+                    existingPos.quantity += remainingQty;
+                    // Reset average price for the new long portion?
+                    // When crossing zero, avg price resets to new entry.
+                    // Since specific lots are not tracked, we assume new avg price for positive part.
+                    existingPos.averagePrice = executionPrice;
+                }
+
+                if (existingPos.quantity === 0) {
+                    this.portfolio.positions = this.portfolio.positions.filter(p => p.symbol !== symbol);
+                }
+
             } else {
-                this.portfolio.positions.push({
-                    symbol,
-                    quantity,
-                    averagePrice: totalCost / quantity, // 手数料込みの平均取得価格
-                });
+                // Scenario 2: Opening/Adding Long Position
+                if (this.portfolio.cash < totalCost) {
+                    return { success: false, message: `Insufficient Funds (Required: ¥${totalCost.toLocaleString()}, Available: ¥${this.portfolio.cash.toLocaleString()})` };
+                }
+
+                this.portfolio.cash -= totalCost;
+
+                if (existingPos) {
+                    // Averaging Up/Down
+                    const existingCost = existingPos.quantity * existingPos.averagePrice;
+                    const newCost = totalCost; // includes commission in logic? 
+                    // Usually AvgPrice is raw price. Commission is expensed immediately from cash.
+                    // Our Portfolio logic: averagePrice seems to be used for Cost Basis.
+                    // Previous code: `averagePrice: totalCost / quantity` (Commission included in Avg Price).
+                    // This is conservative (higher basis). Okay.
+                    existingPos.quantity += quantity;
+                    existingPos.averagePrice = (existingCost + newCost) / existingPos.quantity;
+                } else {
+                    this.portfolio.positions.push({
+                        symbol,
+                        quantity,
+                        averagePrice: totalCost / quantity,
+                    });
+                }
             }
 
         } else if (side === 'SELL') {
-            const existingPos = this.portfolio.positions.find(p => p.symbol === symbol);
-            if (!existingPos || existingPos.quantity < quantity) {
-                return { success: false, message: "Insufficient Holdings" };
-            }
-
-            // 現金を増やす（手数料を引く）
+            // Scenario 3: Closing Long Position / Selling Short
+            // Proceeds
             const netProceeds = grossAmount - commission;
-            this.portfolio.cash += netProceeds;
 
-            // ポジション更新
-            existingPos.quantity -= quantity;
-            if (existingPos.quantity === 0) {
-                this.portfolio.positions = this.portfolio.positions.filter(p => p.symbol !== symbol);
+            if (existingPos && existingPos.quantity > 0) {
+                // Closing Long
+                const closeQty = Math.min(existingPos.quantity, quantity);
+                const remainingQty = quantity - closeQty; // To Short
+
+                this.portfolio.cash += (executionPrice * closeQty) - this.calculateCommission(executionPrice * closeQty);
+                existingPos.quantity -= closeQty;
+
+                if (remainingQty > 0) {
+                    // Flip to Short
+                    // Need Margin/Cash check?
+                    // Assuming Cash is Collateral.
+                    // Short Proceeds are added to Cash, but we need consistent accounting.
+                    // Simple Short: Cash increases, but Liability exists.
+                    // Standard: Cash += Proceeds.
+                    const shortProceeds = (executionPrice * remainingQty) - this.calculateCommission(executionPrice * remainingQty);
+                    this.portfolio.cash += shortProceeds;
+
+                    existingPos.quantity -= remainingQty; // Becomes negative
+                    // Reset Avg Price for Short
+                    existingPos.averagePrice = executionPrice; // Commission should be "deducted" from proceeds, so effective price is lower?
+                    // Or Cost Basis for Short?
+                    // For Short, Higher Entry is better.
+                    // If we include commission in AvgPrice, we should Reduce AvgPrice?
+                    // (Entry Price - Comm/Qty).
+                    // Previous logic: AvgPrice = Cost / Qty.
+                    // Let's stick to: AvgPrice = (GrossProceeds - Comm) / Qty ? No.
+                    // Let's just use Execution Price for AvgPrice on Short, commission is sunk cost.
+                    existingPos.averagePrice = executionPrice;
+                }
+
+                if (existingPos.quantity === 0) {
+                    this.portfolio.positions = this.portfolio.positions.filter(p => p.symbol !== symbol);
+                }
+
+            } else {
+                // Scenario 4: Opening/Adding Short Position
+                if (existingPos) {
+                    // Adding to Short (quantity is negative)
+                    // existingPos.quantity is -10. Request 5. New is -15.
+                    // Weighted Average Price.
+                    // Current Basis: abs(-10) * 100 = 1000.
+                    // New Trade: 5 * 105 = 525.
+                    // New Basis: 1525 / 15 = 101.66.
+
+                    const currentBasis = Math.abs(existingPos.quantity) * existingPos.averagePrice;
+                    const newTradeValue = quantity * executionPrice;
+
+                    this.portfolio.cash += netProceeds;
+                    existingPos.quantity -= quantity;
+                    existingPos.averagePrice = (currentBasis + newTradeValue) / Math.abs(existingPos.quantity);
+
+                } else {
+                    // New Short
+                    this.portfolio.cash += netProceeds;
+                    this.portfolio.positions.push({
+                        symbol,
+                        quantity: -quantity,
+                        averagePrice: executionPrice
+                    });
+                }
             }
         }
 
-        // 評価額を更新
+        // Update Equity
         this.updateEquity();
 
-        // 取引記録
+        // Record Trade
         const trade: Trade = {
             id: this.generateSecureId(),
             timestamp: new Date().toISOString(),
@@ -274,7 +352,6 @@ export class PaperTradingEngine {
 
         this.portfolio.lastUpdated = new Date().toISOString();
 
-        // 非同期で保存（エラーをキャッチしてログ）
         this.saveStateAsync().catch(err => {
             console.error('[PaperTrader] Failed to persist trade:', err);
         });

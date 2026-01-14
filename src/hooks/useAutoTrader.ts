@@ -7,7 +7,7 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { AnalysisResult } from '@/types/market';
-import { KnowledgeAgent, RiskParameters } from '@/lib/agents/KnowledgeAgent';
+import { KnowledgeAgent, RiskParameters, TradeSetup } from '@/lib/agents/KnowledgeAgent';
 import { CONFIDENCE_THRESHOLD } from '@/config/constants';
 
 export const useAutoTrader = (
@@ -36,11 +36,11 @@ export const useAutoTrader = (
                 maxPositionSizePercent: 0.2 // Max 20% allocation
             };
 
-            const setup = {
-                symbol: result.symbol,
+            const setup: TradeSetup = {
+                symbol: result.symbol || 'UNKNOWN',
                 price: lastPrice,
                 confidence: result.confidence,
-                sentiment: result.sentiment
+                sentiment: result.sentiment as 'BULLISH' | 'BEARISH'
             };
 
             const quantity = KnowledgeAgent.calculatePositionSize(setup, riskParams);

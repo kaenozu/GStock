@@ -73,13 +73,17 @@ export class BacktestArena {
             equityCurve.push({ time: date, value: currentEquity });
 
             // Trading Logic
+            // Trading Logic
             if (position) {
                 // Check Exit Conditions using KnowledgeAgent Philosophy (Simplified)
                 let shouldExit = false;
                 let reason = "";
 
                 // PnL Calculation
-                const pnlUnrealized = (price - position.entryPrice) * position.quantity * (position.type === 'BUY' ? 1 : -1);
+                // Long: (Current - Entry)
+                // Short: (Entry - Current)
+                const priceDiff = position.type === 'BUY' ? (price - position.entryPrice) : (position.entryPrice - price);
+                const pnlUnrealized = priceDiff * position.quantity;
                 const pnlPercent = pnlUnrealized / (position.entryPrice * position.quantity);
 
                 // Stop Loss (Fixed 5%)
@@ -93,37 +97,38 @@ export class BacktestArena {
                     reason = "Take Profit (+10%)";
                 }
                 // Signal Reversal
-                else if (analysis.sentiment !== 'BULLISH' && position.type === 'BUY') {
-                    // Strong Bearish reversal
+                else if (position.type === 'BUY') {
                     if (analysis.sentiment === 'BEARISH') {
                         shouldExit = true;
                         reason = "Signal Reversal (Bearish)";
                     }
+                } else if (position.type === 'SELL') {
+                    if (analysis.sentiment === 'BULLISH') {
+                        shouldExit = true;
+                        reason = "Signal Reversal (Bullish)";
+                    }
                 }
 
                 if (shouldExit) {
-                    // Execute Sell
+                    // Execute Exit (Sell to Close or Buy to Cover)
                     // Note: In real logic, we might use Limit Order here too, but for backtest we assume Close price execution
-                    const exitPrice = price; // Or use average of Open/Close? Close is safer assumption for EOD.
+                    const exitPrice = price;
 
-                    const pnl = (exitPrice - position.entryPrice) * position.quantity * (position.type === 'BUY' ? 1 : -1);
+                    const finalPnlRaw = position.type === 'BUY' ? (exitPrice - position.entryPrice) : (position.entryPrice - exitPrice);
+                    const pnl = finalPnlRaw * position.quantity;
 
                     if (pnl > 0) grossWin += pnl;
                     else grossLoss += Math.abs(pnl);
 
                     // Update Cash
-                    // Buy: Cash = Cash + (ExitPrice * Qty) [Principal + Profit] ? No.
-                    // Initial Setup: Cash -= (EntryPrice * Qty)
-                    // Exit Setup: Cash += (ExitPrice * Qty)
                     if (position.type === 'BUY') {
+                        // Sell to Close
+                        // Cash += Proceeds
                         cash += (exitPrice * position.quantity);
                     } else {
-                        // Short selling logic is more complex with margin, sticking to LONG only for MVP if possible
-                        // But previous code allowed SELL type?
-                        // Let's assume Long Only for this Phase unless Short is requested.
-                        // Existing code used type check.
-                        // If Short: Cash += (EntryPrice * Qty) initially (Liability). Exit: Cash -= (ExitPrice * Qty).
-                        // Let's stick to Long Only behavior for simplicity in updating standard accounts.
+                        // Buy to Cover
+                        // Cash -= Cost
+                        cash -= (exitPrice * position.quantity);
                     }
 
                     // Matching trade
@@ -139,51 +144,58 @@ export class BacktestArena {
             }
             else {
                 // Check Entry Conditions
-                if (analysis.sentiment === 'BULLISH' && analysis.confidence >= config.buyThreshold) { // User Config for Threshold
+                const isBullish = analysis.sentiment === 'BULLISH' && analysis.confidence >= config.buyThreshold;
+                const isBearish = analysis.sentiment === 'BEARISH' && analysis.confidence >= config.buyThreshold;
 
-                    const riskParams: RiskParameters = {
-                        accountEquity: currentEquity,
-                        riskPerTradePercent: config.riskPercent, // User Config
-                        maxPositionSizePercent: config.maxPosPercent // User Config
-                    };
-
+                if (isBullish || isBearish) {
                     const setup = {
                         symbol,
                         price,
                         confidence: analysis.confidence,
-                        sentiment: 'BULLISH' as const
+                        sentiment: isBullish ? 'BULLISH' as const : 'BEARISH' as const
+                    };
+
+                    const riskParams: RiskParameters = {
+                        accountEquity: currentEquity,
+                        riskPerTradePercent: config.riskPercent,
+                        maxPositionSizePercent: config.maxPosPercent
                     };
 
                     // Use KnowledgeAgent for Sizing
                     const quantity = KnowledgeAgent.calculatePositionSize(setup, riskParams);
 
-                    if (quantity > 0 && (price * quantity) <= cash) {
-                        // Simulate Limit Order Execution
-                        // In real trading, we place Limit Price. In Backtest with EOD data, 
-                        // we check if Low < LimitPrice < High ? 
-                        // For simplicity, we assume we get filled at Close if we are aggressive, 
-                        // or at LimitPrice if it is within range.
-                        // KnowledgeAgent provides aggressive limit prices.
-                        const limitPrice = KnowledgeAgent.calculateLimitPrice(setup);
+                    const tradeValue = price * quantity;
 
-                        // Check if fillable (Low <= Limit <= High)
-                        // If Limit > Close (Buy), likely filled.
-                        // We will just use Close price for EOD simplicity but log the intention.
+                    if (quantity > 0 && tradeValue <= cash) {
+                        // For Short: We need margin. Assuming Cash is sufficient collateral.
+                        // Simple Model: Cash += Proceeds.
 
-                        cash -= (price * quantity);
-                        position = {
-                            quantity,
-                            entryPrice: price,
-                            type: 'BUY'
-                        };
+                        // Limit Price Simulation logic (omitted for EOD simplicity, assumed Close execution)
+
+                        if (isBullish) {
+                            cash -= tradeValue;
+                            position = {
+                                quantity,
+                                entryPrice: price,
+                                type: 'BUY'
+                            };
+                        } else {
+                            // Short Entry
+                            cash += tradeValue;
+                            position = {
+                                quantity,
+                                entryPrice: price,
+                                type: 'SELL'
+                            };
+                        }
 
                         simulatedTrades.push({
                             entryDate: date,
                             entryPrice: price,
-                            type: 'BUY',
+                            type: isBullish ? 'BUY' : 'SELL',
                             quantity,
                             pnl: 0,
-                            reason: `Smart Entry (Conf: ${analysis.confidence}%)`
+                            reason: `Smart Entry (${setup.sentiment} ${analysis.confidence}%)`
                         });
                     }
                 }

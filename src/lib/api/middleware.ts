@@ -131,3 +131,12 @@ export function rateLimit(maxRequests: number = 100, windowMs: number = 60000) {
         return true;
     };
 }
+
+// Caching Middleware (Simple Pass-through for now)
+export function withStockCache(handler: (req: NextRequest) => Promise<NextResponse>) {
+    return async (req: NextRequest) => {
+        // TODO: Implement actual caching logic (Redis/Vercel KV)
+        // For now, just execute the handler
+        return handler(req);
+    };
+}

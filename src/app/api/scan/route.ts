@@ -37,7 +37,16 @@ async function fetchStockData(symbol: string): Promise<AnalysisResult> {
         try {
             const data = await provider.fetchData(symbol);
             if (data.length > 0) {
-                const analysis = calculateAdvancedPredictions(data);
+                // Fetch external data for AI Agents
+                let news: any[] = [];
+                try {
+                    // Always try to fetch news from Finnhub regardless of stock data source
+                    news = await finnhub.fetchCompanyNews(symbol);
+                } catch (e) {
+                    console.warn(`[Scan] News fetch failed for ${symbol}:`, e);
+                }
+
+                const analysis = calculateAdvancedPredictions(data, { news });
                 return {
                     ...analysis,
                     symbol,
